@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { motion, Variants } from "framer-motion"
 
 // Sample data - we can move this to a separate file later
 const trendingMeds = [
@@ -38,9 +39,35 @@ const trendingMeds = [
 export default function TrendingSavings() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
 
+  const fadeIn: Variants = {
+    initial: { 
+      opacity: 0, 
+      y: 20 
+    },
+    animate: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.5 }
+    }
+  }
+
+  const staggerChildren: Variants = {
+    animate: {
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }
+
   return (
-    <section className="py-24 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-24">
+      <motion.div 
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+        initial="initial"
+        whileInView="animate"
+        viewport={{ once: true }}
+        variants={staggerChildren}
+      >
         <div className="text-center mb-12">
           <h2 className="text-3xl sm:text-4xl font-bold text-dark mb-4">
             Trending Savings
@@ -121,7 +148,7 @@ export default function TrendingSavings() {
             </svg>
           </button>
         </div>
-      </div>
+      </motion.div>
     </section>
   )
 } 

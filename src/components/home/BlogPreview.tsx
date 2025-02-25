@@ -1,5 +1,5 @@
 'use client'
-import { motion } from 'framer-motion'
+import { motion, Variants } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLongRightIcon } from '@heroicons/react/24/outline'
@@ -32,9 +32,35 @@ const blogPosts = [
 ]
 
 export default function BlogPreview() {
+  const fadeIn: Variants = {
+    initial: { 
+      opacity: 0, 
+      y: 20 
+    },
+    animate: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.5 }
+    }
+  }
+
+  const staggerChildren: Variants = {
+    animate: {
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }
+
   return (
     <section className="py-24 bg-gradient-to-b from-[#E1F4EA] to-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <motion.div 
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+        initial="initial"
+        whileInView="animate"
+        viewport={{ once: true }}
+        variants={staggerChildren}
+      >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -105,7 +131,7 @@ export default function BlogPreview() {
             <ArrowLongRightIcon className="w-5 h-5 ml-2" />
           </Link>
         </motion.div>
-      </div>
+      </motion.div>
     </section>
   )
 } 

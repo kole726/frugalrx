@@ -4,7 +4,7 @@ import { useState } from "react"
 import { CheckCircleIcon } from "@heroicons/react/24/solid"
 import FAQ from "@/components/home/FAQ"
 import { QrCodeIcon } from "@heroicons/react/24/outline"
-import { motion } from "framer-motion"
+import { motion, Variants } from "framer-motion"
 import ScrollProgress from "@/components/ScrollProgress"
 
 const steps = [
@@ -43,13 +43,19 @@ const benefits = [
 export default function HowItWorks() {
   const [showQR, setShowQR] = useState(false)
 
-  const fadeIn = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.5 }
+  const fadeIn: Variants = {
+    initial: { 
+      opacity: 0, 
+      y: 20 
+    },
+    animate: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.5 }
+    }
   }
 
-  const staggerChildren = {
+  const staggerChildren: Variants = {
     animate: {
       transition: {
         staggerChildren: 0.1
@@ -63,7 +69,7 @@ export default function HowItWorks() {
       <main className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="bg-gradient-to-b from-[#EFFDF6] to-white py-24 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute inset-0 bg-[url('/images/patterns/dots.svg')] bg-repeat opacity-50" />
           </div>
           <motion.div 
