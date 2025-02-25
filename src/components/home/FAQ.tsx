@@ -1,7 +1,7 @@
-'use client'
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDownIcon } from '@heroicons/react/24/outline'
+"use client"
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { ChevronDownIcon } from "@heroicons/react/24/outline"
 
 const faqs = [
   {
@@ -71,7 +71,7 @@ export default function FAQ() {
                 </span>
                 <ChevronDownIcon
                   className={`w-5 h-5 text-gray-500 transition-transform ${
-                    openId === faq.id ? 'transform rotate-180' : ''
+                    openId === faq.id ? "transform rotate-180" : ""
                   }`}
                 />
               </button>
