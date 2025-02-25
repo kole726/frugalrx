@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { DevicePhoneMobileIcon, QrCodeIcon } from '@heroicons/react/24/outline'
@@ -17,6 +18,8 @@ const features = [
 ]
 
 export default function DownloadCard() {
+  const [showQR, setShowQR] = useState(false)
+
   return (
     <section className="py-24 bg-gradient-to-b from-[#EFFDF6] to-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -90,10 +93,32 @@ export default function DownloadCard() {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="flex flex-col sm:flex-row gap-4"
             >
-              <button className="bg-accent hover:bg-accent/90 text-white px-8 py-3 rounded-full font-semibold transition-all transform hover:scale-105 flex items-center justify-center">
-                <QrCodeIcon className="w-5 h-5 mr-2" />
-                Get Digital Card
-              </button>
+              <div className="relative inline-block">
+                <button 
+                  className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-full font-semibold transition-colors flex items-center gap-2"
+                  onMouseEnter={() => setShowQR(true)}
+                  onMouseLeave={() => setShowQR(false)}
+                >
+                  <QrCodeIcon className="w-5 h-5" />
+                  Get Digital Card
+                </button>
+                {showQR && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white rounded-lg shadow-xl p-4 w-64">
+                    <div className="relative aspect-square">
+                      <Image
+                        src="/images/qr/FrugalRx-QR-Code.svg"
+                        alt="FrugalRx Digital Card QR Code"
+                        fill
+                        className="object-contain"
+                        priority
+                      />
+                    </div>
+                    <p className="text-gray-600 text-sm mt-2">
+                      Scan to get your digital card
+                    </p>
+                  </div>
+                )}
+              </div>
             </motion.div>
           </div>
         </div>
