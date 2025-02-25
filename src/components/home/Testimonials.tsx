@@ -6,13 +6,13 @@ import { StarIcon } from '@heroicons/react/24/solid'
 const testimonials = [
   {
     id: 1,
-    name: 'Sarah Johnson',
-    location: 'Dallas, TX',
+    name: "Sarah Johnson",
+    location: "Dallas, TX",
     image: '/images/testimonials/sarah.jpg',
-    text: 'I saved over $200 on my monthly prescription costs using FrugalRx. The card was so easy to use at my local pharmacy!',
+    text: "I saved over $200 on my monthly prescription costs using FrugalRx. The card was so easy to use at my local pharmacy!",
     rating: 5,
-    medication: 'Diabetes Medication',
-    savings: '$200/month',
+    medication: "Diabetes Medication",
+    savings: "$200/month",
   },
   {
     id: 2,

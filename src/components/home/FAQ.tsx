@@ -6,13 +6,13 @@ import { ChevronDownIcon } from '@heroicons/react/24/outline'
 const faqs = [
   {
     id: 1,
-    question: 'How does FrugalRx work?',
-    answer: 'FrugalRx provides free prescription discount cards that can be used at over 59,000 pharmacies nationwide. Simply show your card to the pharmacist when filling your prescription to receive instant savings of up to 80%.',
+    question: "How does FrugalRx work?",
+    answer: "FrugalRx provides free prescription discount cards that can be used at over 59,000 pharmacies nationwide. Simply show your card to the pharmacist when filling your prescription to receive instant savings of up to 80%.",
   },
   {
     id: 2,
-    question: 'Is FrugalRx really free to use?',
-    answer: 'Yes! FrugalRx is completely free to use. There are no fees, no registration required, and no obligations. We make our money through small transaction fees paid by the pharmacies, not from our users.',
+    question: "Is FrugalRx really free to use?",
+    answer: "Yes! FrugalRx is completely free to use. There are no fees, no registration required, and no obligations. We make our money through small transaction fees paid by the pharmacies, not from our users.",
   },
   {
     id: 3,
