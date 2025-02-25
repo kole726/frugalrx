@@ -79,13 +79,15 @@ export default function FAQ() {
                 {openId === faq.id && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
+                    animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.3 }}
                     className="overflow-hidden"
                   >
                     <div className="bg-white px-6 pb-6 rounded-b-xl shadow-md">
-                      <p className="text-gray-600">{faq.answer}</p>
+                      <p className="text-gray-600">
+                        {faq.answer.replace(/'/g, "&apos;").replace(/"/g, "&quot;")}
+                      </p>
                     </div>
                   </motion.div>
                 )}

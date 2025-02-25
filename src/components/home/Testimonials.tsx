@@ -67,7 +67,7 @@ export default function Testimonials() {
             >
               {/* Quote mark decoration */}
               <div className="absolute -top-4 -left-4 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-xl font-serif">
-                "
+                &quot;
               </div>
 
               {/* Rating */}
