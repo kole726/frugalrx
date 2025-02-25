@@ -74,7 +74,7 @@ export default function PharmacyHighlight() {
         {/* Additional Info */}
         <div className="mt-12 text-center">
           <p className="text-gray-600">
-            Don't see your pharmacy? 
+            Don&apos;t see your pharmacy? 
             <button className="text-primary hover:text-primary/80 font-semibold ml-2">
               View full list of participating pharmacies
             </button>

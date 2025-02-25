@@ -13,7 +13,7 @@ export default function Hero() {
             We Help You Save Up to 80% on Prescriptions
           </h1>
           <p className="text-xl text-gray-600 mb-12">
-            Because Meds Shouldn't Break the Bank
+            Because Meds Shouldn&apos;t Break the Bank
           </p>
 
           {/* Search Bar */}
