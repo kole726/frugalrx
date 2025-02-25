@@ -16,18 +16,18 @@ const faqs = [
   },
   {
     id: 3,
-    question: 'Can I use FrugalRx with my insurance?',
-    answer: 'While you cannot combine FrugalRx with insurance, you can use whichever provides the better price. Many times, our prices are lower than insurance copays, especially for generic medications.',
+    question: "Can I use FrugalRx with my insurance?",
+    answer: "While you cannot combine FrugalRx with insurance, you can use whichever provides the better price. Many times, our prices are lower than insurance copays, especially for generic medications.",
   },
   {
     id: 4,
-    question: 'Which pharmacies accept FrugalRx?',
-    answer: 'FrugalRx is accepted at most major pharmacy chains including CVS, Walgreens, Walmart, Rite Aid, and thousands of independent pharmacies. Use our pharmacy locator to find participating locations near you.',
+    question: "Which pharmacies accept FrugalRx?",
+    answer: "FrugalRx is accepted at most major pharmacy chains including CVS, Walgreens, Walmart, Rite Aid, and thousands of independent pharmacies. Use our pharmacy locator to find participating locations near you.",
   },
   {
     id: 5,
-    question: 'How much can I save with FrugalRx?',
-    answer: 'Savings vary by medication and pharmacy but typically range from 40-80% off retail prices. Some customers save hundreds of dollars per month on their prescriptions.',
+    question: "How much can I save with FrugalRx?",
+    answer: "Savings vary by medication and pharmacy but typically range from 40-80% off retail prices. Some customers save hundreds of dollars per month on their prescriptions.",
   },
 ]
 
