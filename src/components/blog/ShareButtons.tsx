@@ -24,7 +24,7 @@ export default function ShareButtons({ url, title, description }: ShareButtonsPr
     <div className="flex gap-3">
       <FacebookShareButton 
         url={url} 
-        title={title}
+        quote={title}
         className={roundedClass}
       >
         <FacebookIcon size={iconSize} />
