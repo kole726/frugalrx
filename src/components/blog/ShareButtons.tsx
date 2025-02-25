@@ -7,11 +7,7 @@ import {
   FacebookIcon,
   TwitterIcon,
   LinkedinIcon,
-  EmailIcon,
-  FacebookShareButtonProps,
-  TwitterShareButtonProps,
-  LinkedinShareButtonProps,
-  EmailShareButtonProps
+  EmailIcon
 } from 'react-share'
 
 interface ShareButtonsProps {
@@ -24,47 +20,39 @@ export default function ShareButtons({ url, title, description }: ShareButtonsPr
   const iconSize = 32
   const roundedClass = "rounded-full overflow-hidden hover:opacity-80 transition-opacity"
 
-  const facebookProps: FacebookShareButtonProps = {
-    url,
-    hashtag: "#FrugalRx",
-    className: roundedClass
-  }
-
-  const twitterProps: TwitterShareButtonProps = {
-    url,
-    title,
-    className: roundedClass
-  }
-
-  const linkedinProps: LinkedinShareButtonProps = {
-    url,
-    title,
-    summary: description,
-    className: roundedClass
-  }
-
-  const emailProps: EmailShareButtonProps = {
-    url,
-    subject: title,
-    body: description,
-    className: roundedClass
-  }
-
   return (
     <div className="flex gap-3">
-      <FacebookShareButton {...facebookProps}>
+      <FacebookShareButton 
+        url={url}
+        hashtag="#FrugalRx"
+        className={roundedClass}
+      >
         <FacebookIcon size={iconSize} />
       </FacebookShareButton>
 
-      <TwitterShareButton {...twitterProps}>
+      <TwitterShareButton 
+        url={url}
+        title={title}
+        className={roundedClass}
+      >
         <TwitterIcon size={iconSize} />
       </TwitterShareButton>
 
-      <LinkedinShareButton {...linkedinProps}>
+      <LinkedinShareButton 
+        url={url}
+        title={title}
+        summary={description}
+        className={roundedClass}
+      >
         <LinkedinIcon size={iconSize} />
       </LinkedinShareButton>
 
-      <EmailShareButton {...emailProps}>
+      <EmailShareButton 
+        url={url}
+        subject={title}
+        body={description}
+        className={roundedClass}
+      >
         <EmailIcon size={iconSize} />
       </EmailShareButton>
     </div>
