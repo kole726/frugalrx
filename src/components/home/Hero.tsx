@@ -1,9 +1,20 @@
 'use client'
 import { useState } from 'react'
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { useRouter } from 'next/navigation'
+import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline'
+import MedicationSearch from './MedicationSearch'
 
 export default function Hero() {
-  const [searchTerm, setSearchTerm] = useState('')
+  const router = useRouter()
+  const [medication, setMedication] = useState('')
+  const [location, setLocation] = useState('')
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (medication && location) {
+      router.push(`/search?medication=${encodeURIComponent(medication)}&location=${encodeURIComponent(location)}`)
+    }
+  }
 
   return (
     <section className="relative bg-gradient-to-b from-[#EFFDF6] to-white py-24">
@@ -16,22 +27,34 @@ export default function Hero() {
             Because Meds Shouldn&apos;t Break the Bank
           </p>
 
-          {/* Search Bar */}
-          <div className="relative max-w-2xl mx-auto">
-            <div className="flex items-center bg-white rounded-full shadow-lg p-2">
-              <MagnifyingGlassIcon className="h-6 w-6 text-gray-400 ml-3" />
-              <input
-                type="text"
-                placeholder="Enter medication name..."
-                className="flex-1 px-4 py-3 focus:outline-none text-lg"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <button className="bg-accent hover:bg-accent/90 text-white px-8 py-3 rounded-full font-semibold transition-all transform hover:scale-105">
+          {/* Search Form */}
+          <form onSubmit={handleSearch} className="max-w-2xl mx-auto relative z-10">
+            <div className="flex flex-col md:flex-row gap-4">
+              <MedicationSearch value={medication} onChange={setMedication} />
+
+              {/* Location Search */}
+              <div className="flex-1">
+                <div className="flex items-center bg-white rounded-full shadow-lg p-2">
+                  <MapPinIcon className="h-6 w-6 text-gray-400 ml-3" />
+                  <input
+                    type="text"
+                    placeholder="Enter ZIP code..."
+                    className="flex-1 px-4 py-3 focus:outline-none text-lg rounded-full"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button 
+                type="submit"
+                className="bg-accent hover:bg-accent/90 text-white px-8 py-3 rounded-full font-semibold transition-all transform hover:scale-105 md:self-stretch md:flex md:items-center"
+              >
                 Search
               </button>
             </div>
-          </div>
+          </form>
 
           {/* Trust Indicators */}
           <div className="mt-12 grid grid-cols-2 md:grid-cols-3 gap-6 text-center">
