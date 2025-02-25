@@ -85,9 +85,10 @@ export default function FAQ() {
                     className="overflow-hidden"
                   >
                     <div className="bg-white px-6 pb-6 rounded-b-xl shadow-md">
-                      <p className="text-gray-600">
-                        {faq.answer.replace(/'/g, "&apos;").replace(/"/g, "&quot;")}
-                      </p>
+                      <p 
+                        className="text-gray-600"
+                        dangerouslySetInnerHTML={{ __html: faq.answer }}
+                      />
                     </div>
                   </motion.div>
                 )}
