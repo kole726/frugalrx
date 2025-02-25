@@ -1,10 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --primary: #006142;    /* Castleton green - Main brand color */
+  --secondary: #22A307;  /* Kelly green - Accent color */
+  --accent: #EF065B;     /* Raspberry - Call to action */
+  --light: #C5F9E4;      /* Celeste - Light background */
+  --dark: #373347;       /* Space cadet - Text color */
+}
+
+@layer base {
+  body {
+    @apply font-lato text-dark bg-white;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-lato font-bold;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
