@@ -3,11 +3,28 @@ import Link from "next/link"
 import { ArrowLongLeftIcon } from "@heroicons/react/24/outline"
 import ShareButtons from "@/components/blog/ShareButtons"
 
+interface BlogPost {
+  id: number
+  title: string
+  content: string
+  excerpt?: string
+  image: string
+  category: string
+  readTime: string
+  date: string
+  author: {
+    name: string
+    role: string
+    image: string
+  }
+}
+
 // This would eventually come from a CMS or database
-const blogPosts = [
+const blogPosts: BlogPost[] = [
   {
     id: 1,
     title: "10 Ways to Save on Prescription Medications",
+    excerpt: "Learn the insider tips and tricks to maximize your savings on prescription drugs. From generic alternatives to discount programs, discover how to reduce your medication costs without compromising on quality.",
     content: `
       <p>Prescription medication costs can be a significant burden on your budget. Here are ten effective ways to save money on your prescriptions without compromising on quality:</p>
 
@@ -39,6 +56,7 @@ const blogPosts = [
   {
     id: 2,
     title: "Understanding Generic vs. Brand Name Drugs",
+    excerpt: "Discover the key differences between generic and brand-name medications, FDA requirements, and how choosing generic drugs can lead to significant savings without compromising on quality.",
     content: `
       <p>When it comes to prescription medications, one of the most common questions is about the difference between generic and brand-name drugs. Let's break down what you need to know:</p>
 
@@ -73,6 +91,7 @@ const blogPosts = [
   {
     id: 3,
     title: "Your Guide to Medicare Part D Coverage",
+    excerpt: "Navigate the complexities of Medicare Part D prescription drug coverage. Learn about key features, understand the coverage gap, and discover strategies to manage your medication costs effectively.",
     content: `
       <p>Medicare Part D prescription drug coverage can be complex to understand. This comprehensive guide will help you navigate your options and make informed decisions about your coverage.</p>
 
