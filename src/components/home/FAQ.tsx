@@ -85,10 +85,7 @@ export default function FAQ() {
                     className="overflow-hidden"
                   >
                     <div className="bg-white px-6 pb-6 rounded-b-xl shadow-md">
-                      <p 
-                        className="text-gray-600"
-                        dangerouslySetInnerHTML={{ __html: faq.answer }}
-                      />
+                      <p className="text-gray-600">{faq.answer}</p>
                     </div>
                   </motion.div>
                 )}
