@@ -1,12 +1,12 @@
 import Image from 'next/image'
 
 const pharmacies = [
-  { name: 'CVS', logo: '/images/pharmacies/cvs.svg' },
-  { name: 'Walgreens', logo: '/images/pharmacies/walgreens.svg' },
-  { name: 'Walmart', logo: '/images/pharmacies/walmart.svg' },
-  { name: 'Rite Aid', logo: '/images/pharmacies/riteaid.svg' },
-  { name: 'Kroger', logo: '/images/pharmacies/kroger.svg' },
-  { name: 'Costco', logo: '/images/pharmacies/costco.svg' },
+  { name: 'CVS', logo: '/images/pharmacies/logos-cvs.svg' },
+  { name: 'Fred Meyer', logo: '/images/pharmacies/logos-fredmeyer.svg' },
+  { name: 'King Soopers', logo: '/images/pharmacies/logos-king.svg' },
+  { name: 'Safeway', logo: '/images/pharmacies/logos-safeway.svg' },
+  { name: "Smith's", logo: '/images/pharmacies/logos-smiths.svg' },
+  { name: 'Walmart', logo: '/images/pharmacies/logos-walmart.svg' },
 ]
 
 export default function PharmacyHighlight() {
