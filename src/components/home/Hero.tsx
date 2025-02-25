@@ -10,8 +10,7 @@ export default function Hero() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-dark mb-6">
-            We Help You Save Up to{' '}
-            <span className="text-primary">80% on Prescriptions</span>
+            We Help You Save Up to 80% on Prescriptions
           </h1>
           <p className="text-xl text-gray-600 mb-12">
             Because Meds Shouldn't Break the Bank

@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import Image from 'next/image'
 
 // Sample data - we can move this to a separate file later
 const trendingMeds = [
