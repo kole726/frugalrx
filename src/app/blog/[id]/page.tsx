@@ -1,7 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowLongLeftIcon } from "@heroicons/react/24/outline"
-import ShareButtons from "@/components/blog/ShareButtons"
 
 interface BlogPost {
   id: number
@@ -141,9 +140,6 @@ export default function BlogPost({ params }: { params: { id: string } }) {
     return <div>Post not found</div>
   }
 
-  // Get the current URL (this will run on the client)
-  const url = typeof window !== 'undefined' ? window.location.href : ''
-
   return (
     <main className="min-h-screen bg-white py-24">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -206,33 +202,23 @@ export default function BlogPost({ params }: { params: { id: string } }) {
           />
         </article>
 
-        {/* Share and Subscribe Section */}
+        {/* Newsletter Section - Removed Share section */}
         <div className="mt-16 border-t pt-16">
-          <div className="grid md:grid-cols-2 gap-12">
-            <div>
-              <h3 className="text-xl font-bold text-dark mb-4">Share this article</h3>
-              <ShareButtons 
-                url={url}
-                title={post.title}
-                description={post.excerpt || post.title}
+          <div>
+            <h3 className="text-xl font-bold text-dark mb-4">Subscribe to our newsletter</h3>
+            <form className="flex gap-4">
+              <input
+                type="email"
+                placeholder="Enter your email"
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-dark mb-4">Subscribe to our newsletter</h3>
-              <form className="flex gap-4">
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-                <button
-                  type="submit"
-                  className="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
-                >
-                  Subscribe
-                </button>
-              </form>
-            </div>
+              <button
+                type="submit"
+                className="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+              >
+                Subscribe
+              </button>
+            </form>
           </div>
         </div>
       </div>
