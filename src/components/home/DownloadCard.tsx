@@ -21,7 +21,7 @@ export default function DownloadCard() {
   const [showQR, setShowQR] = useState(false)
 
   return (
-    <section className="py-24 bg-gradient-to-b from-[#EFFDF6] to-white">
+    <section className="py-24 bg-gradient-to-b from-[#EFFDF6] to-white relative z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left Column - Phone Preview */}
@@ -93,7 +93,7 @@ export default function DownloadCard() {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="flex flex-col sm:flex-row gap-4"
             >
-              <div className="relative inline-block">
+              <div className="relative inline-block group">
                 <button 
                   className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-full font-semibold transition-colors flex items-center gap-2"
                   onMouseEnter={() => setShowQR(true)}
@@ -102,22 +102,25 @@ export default function DownloadCard() {
                   <QrCodeIcon className="w-5 h-5" />
                   Get Digital Card
                 </button>
-                {showQR && (
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white rounded-lg shadow-xl p-4 w-64">
-                    <div className="relative aspect-square">
-                      <Image
-                        src="/images/qr/FrugalRx-QR-Code.svg"
-                        alt="FrugalRx Digital Card QR Code"
-                        fill
-                        className="object-contain"
-                        priority
-                      />
-                    </div>
-                    <p className="text-gray-600 text-sm mt-2">
-                      Scan to get your digital card
-                    </p>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white rounded-lg shadow-xl p-4 w-64 z-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="relative aspect-square">
+                    <Image
+                      src="/images/qr/FrugalRx-QR-Code.svg"
+                      alt="FrugalRx Digital Card QR Code"
+                      fill
+                      className="object-contain"
+                      priority
+                      onError={(e) => {
+                        console.error('Failed to load QR code image');
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
                   </div>
-                )}
+                  <p className="text-gray-600 text-sm mt-2">
+                    Scan to get your digital card
+                  </p>
+                </div>
               </div>
             </motion.div>
           </div>
