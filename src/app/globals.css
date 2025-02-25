@@ -5,20 +5,21 @@
 @tailwind utilities;
 
 :root {
-  --primary: #006142;    /* Castleton green - Main brand color */
-  --secondary: #22A307;  /* Kelly green - Accent color */
-  --accent: #EF065B;     /* Raspberry - Call to action */
-  --light: #C5F9E4;      /* Celeste - Light background */
-  --dark: #373347;       /* Space cadet - Text color */
+  --primary: #006142;    /* Keep our brand green */
+  --secondary: #22A307;  /* Keep our accent green */
+  --accent: #EF065B;     /* Keep our CTA pink */
+  --light: #EFFDF6;      /* Our new light mint */
+  --dark: #2C3E50;       /* Softer blue-gray instead of dark */
+  --gray-text: #64748B;  /* Softer text color */
 }
 
 @layer base {
   body {
-    @apply font-lato text-dark bg-white;
+    @apply bg-white text-gray-600 font-lato;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-lato font-bold;
+    @apply text-[#2C3E50] font-bold font-lato;
   }
 }
 

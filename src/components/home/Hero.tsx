@@ -6,13 +6,13 @@ export default function Hero() {
   const [searchTerm, setSearchTerm] = useState('')
 
   return (
-    <section className="relative bg-gradient-to-b from-light to-white py-20 sm:py-32">
+    <section className="relative bg-gradient-to-b from-[#EFFDF6] to-white py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-dark mb-6">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#2C3E50] mb-6">
             We Help You Save Up to 80% on Prescriptions
           </h1>
-          <p className="text-xl text-gray-600 mb-12">
+          <p className="text-xl text-gray-500 mb-12">
             Because Meds Shouldn&apos;t Break the Bank
           </p>
 
@@ -37,15 +37,15 @@ export default function Hero() {
           <div className="mt-12 grid grid-cols-2 md:grid-cols-3 gap-6 text-center">
             <div>
               <div className="font-bold text-2xl text-primary mb-1">59,000+</div>
-              <div className="text-gray-600">Participating Pharmacies</div>
+              <div className="text-gray-500">Participating Pharmacies</div>
             </div>
             <div>
               <div className="font-bold text-2xl text-primary mb-1">1M+</div>
-              <div className="text-gray-600">Customers Served</div>
+              <div className="text-gray-500">Customers Served</div>
             </div>
             <div className="col-span-2 md:col-span-1">
               <div className="font-bold text-2xl text-primary mb-1">$500M+</div>
-              <div className="text-gray-600">Customer Savings</div>
+              <div className="text-gray-500">Customer Savings</div>
             </div>
           </div>
         </div>
@@ -53,8 +53,8 @@ export default function Hero() {
 
       {/* Background Elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/4 -right-1/4 w-1/2 h-1/2 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-1/4 -left-1/4 w-1/2 h-1/2 bg-secondary/5 rounded-full blur-3xl" />
+        <div className="absolute -top-1/4 -right-1/4 w-1/2 h-1/2 bg-[#EFFDF6]/50 rounded-full blur-3xl" />
+        <div className="absolute -bottom-1/4 -left-1/4 w-1/2 h-1/2 bg-[#EFFDF6]/30 rounded-full blur-3xl" />
       </div>
     </section>
   )
