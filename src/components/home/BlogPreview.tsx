@@ -9,7 +9,7 @@ const blogPosts = [
     id: 1,
     title: '10 Ways to Save on Prescription Medications',
     excerpt: 'Learn the insider tips and tricks to maximize your savings on prescription drugs...',
-    image: '/images/blog/10-Ways-to-Save-Blog.jpg',
+    image: '/images/blog/Ways-to-Save-Blog.jpg',
     category: 'Savings Tips',
     readTime: '5 min read',
   },

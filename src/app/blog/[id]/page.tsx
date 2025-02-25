@@ -42,7 +42,7 @@ const blogPosts: BlogPost[] = [
       <h2>5. Consider 90-Day Supplies</h2>
       <p>Buying a 90-day supply instead of a 30-day supply can often result in significant savings per dose.</p>
     `,
-    image: "/images/blog/10-Ways-to-Save-Blog.jpg",
+    image: "/images/blog/Ways-to-Save-Blog.jpg",
     category: "Savings Tips",
     readTime: "5 min read",
     date: "March 15, 2024",
