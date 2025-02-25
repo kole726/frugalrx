@@ -17,16 +17,24 @@ interface ShareButtonsProps {
 }
 
 export default function ShareButtons({ url, title, description }: ShareButtonsProps) {
-  const iconSize = 40
-  const roundedClass = "rounded-lg overflow-hidden hover:opacity-80 transition-opacity"
+  const iconSize = 32
+  const roundedClass = "rounded-full overflow-hidden hover:opacity-80 transition-opacity"
 
   return (
     <div className="flex gap-3">
-      <FacebookShareButton url={url} quote={title} className={roundedClass}>
+      <FacebookShareButton 
+        url={url} 
+        title={title}
+        className={roundedClass}
+      >
         <FacebookIcon size={iconSize} />
       </FacebookShareButton>
 
-      <TwitterShareButton url={url} title={title} className={roundedClass}>
+      <TwitterShareButton 
+        url={url} 
+        title={title}
+        className={roundedClass}
+      >
         <TwitterIcon size={iconSize} />
       </TwitterShareButton>
 
@@ -34,16 +42,15 @@ export default function ShareButtons({ url, title, description }: ShareButtonsPr
         url={url} 
         title={title}
         summary={description}
-        source="FrugalRx"
         className={roundedClass}
       >
         <LinkedinIcon size={iconSize} />
       </LinkedinShareButton>
 
-      <EmailShareButton
-        url={url}
+      <EmailShareButton 
+        url={url} 
         subject={title}
-        body={`Check out this article from FrugalRx: ${description}\n\n${url}`}
+        body={description}
         className={roundedClass}
       >
         <EmailIcon size={iconSize} />
