@@ -121,9 +121,12 @@ export default function TrendingSavings() {
                     </div>
                   </div>
 
-                  <button className="w-full bg-accent hover:bg-accent/90 text-white py-2 rounded-lg font-semibold transition-colors">
+                  <a 
+                    href={`/drug/${med.name.toUpperCase()}`}
+                    className="block w-full bg-accent hover:bg-accent/90 text-white py-2 rounded-lg font-semibold text-center transition-colors"
+                  >
                     Get Discount
-                  </button>
+                  </a>
                 </div>
               </div>
             </div>

@@ -1,14 +1,19 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { getDrugPrices, getDrugInfo } from '@/services/medicationApi'
 import PharmacyList from '@/components/search/PharmacyList'
 import DrugInfo from '@/components/search/DrugInfo'
 import SearchFilters from '@/components/search/SearchFilters'
 import LoadingState from '@/components/search/LoadingState'
 
-export default function SearchPage() {
-  const searchParams = useSearchParams()
+interface Props {
+  params: {
+    drug: string
+    location: string
+  }
+}
+
+export default function DrugSearchPage({ params }: Props) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [drugInfo, setDrugInfo] = useState<any>(null)
@@ -20,23 +25,17 @@ export default function SearchPage() {
   })
 
   useEffect(() => {
-    const fetchResults = async () => {
+    const fetchDrugData = async () => {
       try {
         setIsLoading(true)
         setError(null)
 
-        const medication = searchParams.get('medication')
-        const location = searchParams.get('location')
+        // Get coordinates from ZIP code (you'll need to implement this)
+        const coords = await getCoordinatesFromZip(decodeURIComponent(params.location))
 
-        if (!medication || !location) {
-          throw new Error('Missing search parameters')
-        }
-
-        // Get user's coordinates from ZIP code
-        const coords = await getCoordinatesFromZip(location)
-
+        // Get drug prices
         const prices = await getDrugPrices({
-          drugName: medication,
+          drugName: decodeURIComponent(params.drug),
           latitude: coords.latitude,
           longitude: coords.longitude,
           radius: filters.radius,
@@ -45,25 +44,30 @@ export default function SearchPage() {
 
         setPharmacyPrices(prices.pharmacyPrices || [])
 
+        // Get drug info if GSN is available
         if (prices.drug?.gsn) {
           const info = await getDrugInfo(prices.drug.gsn)
           setDrugInfo(info)
         }
-      } catch (err) {
+      } catch (err: any) {
         setError(err.message)
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchResults()
-  }, [searchParams, filters.radius])
+    fetchDrugData()
+  }, [params.drug, params.location, filters.radius])
 
   if (isLoading) return <LoadingState />
   if (error) return <div className="text-red-500 text-center p-4">{error}</div>
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">
+        {decodeURIComponent(params.drug)} Prices Near {decodeURIComponent(params.location)}
+      </h1>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Sidebar */}
         <div className="lg:col-span-1">
@@ -88,8 +92,7 @@ export default function SearchPage() {
 }
 
 async function getCoordinatesFromZip(zipCode: string) {
-  // You'll need to implement this using a geocoding service
-  // For now, returning mock coordinates
+  // Implement geocoding here - for now returning mock data
   return {
     latitude: 37.7749,
     longitude: -122.4194

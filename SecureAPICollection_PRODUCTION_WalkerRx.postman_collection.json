@@ -1,0 +1,361 @@
+{
+	"info": {
+		"_postman_id": "43d91802-a257-4d29-b18a-30deb9272f08",
+		"name": "SecureAPICollection_PROD_WalkerRx",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12862363"
+	},
+	"item": [
+		{
+			"name": "Token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();\r",
+							"pm.collectionVariables.set(\"JWT\", jsonData.access_token);\r",
+							"\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "grant_type=client_credentials&client_id=0oatgei47wp1CfkaQ297&client_secret=pMQW2VhwqCiCcG2sWtEEsTW5b3rbMkMHaI5oChXjJDa2f3e5jzkjzKIV-IgJmObc&scope=ccds.read",
+					"options": {
+						"raw": {
+							"language": "text"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://medimpact.okta.com/oauth2/aus107c5yrHDu55K8297/v1/token",
+					"protocol": "https",
+					"host": [
+						"medimpact",
+						"okta",
+						"com"
+					],
+					"path": [
+						"oauth2",
+						"aus107c5yrHDu55K8297",
+						"v1",
+						"token"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "drug-names",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{JWT}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{JWT}}",
+						"disabled": true
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"hqMappingName\": \"walkerrx\",\r\n    \"prefixText\": \"ADV\"\r\n}"
+				},
+				"url": {
+					"raw": "https://api.americaspharmacy.com/pricing/v1/drugs/names",
+					"protocol": "https",
+					"host": [
+						"api",
+						"americaspharmacy",
+						"com"
+					],
+					"path": [
+						"pricing",
+						"v1",
+						"drugs",
+						"names"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "drugprices/byName",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{JWT}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{JWT}}",
+						"type": "text",
+						"disabled": true
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"hqMappingName\": \"walkerrx\",\r\n    \"drugName\": \"lipitor\",\r\n    \"latitude\": 30.4015,\r\n    \"longitude\": -97.7527\r\n}"
+				},
+				"url": {
+					"raw": "https://api.americaspharmacy.com/pricing/v1/drugprices/byName",
+					"protocol": "https",
+					"host": [
+						"api",
+						"americaspharmacy",
+						"com"
+					],
+					"path": [
+						"pricing",
+						"v1",
+						"drugprices",
+						"byName"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "drugprices/byGSN",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{JWT}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{JWT}}",
+						"disabled": true
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"hqMappingName\": \"walkerrx\",\r\n    \"gsn\": 62733,\r\n    \"latitude\": 30.4014,\r\n    \"longitude\": -97.7525,\r\n    \"customizedQuantity\": true,\r\n    \"quantity\": 900\r\n}"
+				},
+				"url": {
+					"raw": "https://api.americaspharmacy.com/pricing/v1/drugprices/byGSN",
+					"protocol": "https",
+					"host": [
+						"api",
+						"americaspharmacy",
+						"com"
+					],
+					"path": [
+						"pricing",
+						"v1",
+						"drugprices",
+						"byGSN"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "getPharmacies",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{JWT}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{JWT}}",
+						"disabled": true
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"hqMappingName\": \"walkerrx\",\r\n    \"lat\": 30.4015,\r\n    \"long\": -97.7527\r\n   \r\n}"
+				},
+				"url": {
+					"raw": "https://api.americaspharmacy.com/pricing/v1/pharmacies?lat=30.4015&long=-97.7525&hqmappingName=strategycorps&pharmacyCount=5",
+					"protocol": "https",
+					"host": [
+						"api",
+						"americaspharmacy",
+						"com"
+					],
+					"path": [
+						"pricing",
+						"v1",
+						"pharmacies"
+					],
+					"query": [
+						{
+							"key": "lat",
+							"value": "30.4015"
+						},
+						{
+							"key": "long",
+							"value": "-97.7525"
+						},
+						{
+							"key": "hqmappingName",
+							"value": "strategycorps"
+						},
+						{
+							"key": "pharmacyCount",
+							"value": "5"
+						},
+						{
+							"key": "",
+							"value": "",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "drugprices/byNdcCode",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{JWT}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "{{JWT}}",
+						"type": "text",
+						"disabled": true
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"hqMappingName\": \"walkerrx\",\r\n    \"ndcCode\": 70954014010,\r\n       \"latitude\": 30.4015,\r\n    \"longitude\": -97.7527,\r\n    \"customizedQuantity\": true,\r\n    \"quantity\": 900\r\n}"
+				},
+				"url": {
+					"raw": "https://api.americaspharmacy.com/pricing/v1/drugprices/byNdcCode",
+					"protocol": "https",
+					"host": [
+						"api",
+						"americaspharmacy",
+						"com"
+					],
+					"path": [
+						"pricing",
+						"v1",
+						"drugprices",
+						"byNdcCode"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer"
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "JWT",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
