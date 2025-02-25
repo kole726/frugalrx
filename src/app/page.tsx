@@ -27,35 +27,20 @@ export default function Home() {
     <main>
       {/* Hero Section */}
       <section className="relative bg-gradient-to-b from-[#EFFDF6] to-white">
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div 
-            className="absolute inset-0 bg-[url('/images/patterns/dots.svg')] bg-repeat opacity-50" 
-            style={{ backgroundSize: '20px 20px' }}
-          />
-        </div>
         <Hero />
       </section>
 
       {/* TrendingSavings Section */}
       <section className="relative bg-white">
-        <div className="absolute inset-0 opacity-5 pointer-events-none">
-          <div className="absolute inset-0 bg-[url('/images/patterns/dots.svg')] bg-repeat rotate-45" style={{ backgroundSize: '20px 20px' }} />
-        </div>
         <TrendingSavings />
       </section>
 
       <PharmacyHighlight />
-
-      {/* HowToSave Section - Removed pattern */}
       <HowToSave />
-
       <DownloadCard />
 
       {/* Testimonials Section */}
       <section className="relative bg-white">
-        <div className="absolute inset-0 opacity-5 pointer-events-none">
-          <div className="absolute inset-0 bg-[url('/images/patterns/dots.svg')] bg-repeat rotate-45" style={{ backgroundSize: '20px 20px' }} />
-        </div>
         <Testimonials />
       </section>
 
@@ -63,9 +48,6 @@ export default function Home() {
 
       {/* Newsletter Section */}
       <section className="relative bg-[#F8FAFC]">
-        <div className="absolute inset-0 opacity-5 pointer-events-none">
-          <div className="absolute inset-0 bg-[url('/images/patterns/dots.svg')] bg-repeat rotate-45" style={{ backgroundSize: '20px 20px' }} />
-        </div>
         <Newsletter />
       </section>
 
