@@ -1,3 +1,14 @@
+interface SearchFiltersProps {
+  onFilterChange: (filters: SearchFilters) => void;
+  initialFilters: SearchFilters;
+}
+
+interface SearchFilters {
+  radius: number;
+  sortBy: 'price' | 'distance';
+  pharmacyType: string[];
+}
+
 interface Props {
   filters: {
     radius: number

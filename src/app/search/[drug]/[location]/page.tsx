@@ -5,12 +5,18 @@ import PharmacyList from '@/components/search/PharmacyList'
 import DrugInfo from '@/components/search/DrugInfo'
 import SearchFilters from '@/components/search/SearchFilters'
 import LoadingState from '@/components/search/LoadingState'
+import { DrugInfo as DrugInfoType, DrugPrice } from '@/types/api'
 
 interface Props {
   params: {
     drug: string
     location: string
   }
+}
+
+interface SearchResults {
+  drug: DrugInfoType;
+  prices: DrugPrice[];
 }
 
 export default function DrugSearchPage({ params }: Props) {
@@ -23,6 +29,7 @@ export default function DrugSearchPage({ params }: Props) {
     sortBy: 'price',
     chainOnly: false,
   })
+  const [results, setResults] = useState<SearchResults | null>(null)
 
   useEffect(() => {
     const fetchDrugData = async () => {
@@ -49,6 +56,11 @@ export default function DrugSearchPage({ params }: Props) {
           const info = await getDrugInfo(prices.drug.gsn)
           setDrugInfo(info)
         }
+
+        setResults({
+          drug: prices.drug as DrugInfoType,
+          prices: prices.pharmacyPrices as DrugPrice[]
+        })
       } catch (err: any) {
         setError(err.message)
       } finally {

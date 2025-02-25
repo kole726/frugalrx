@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { getDrugPrices } from '@/services/medicationApi'
 import DrugInfo from '@/components/search/DrugInfo'
 import LoadingState from '@/components/search/LoadingState'
+import { DrugInfo as DrugInfoType } from '@/types/api'
 
 interface Props {
   params: {
@@ -13,7 +14,7 @@ interface Props {
 export default function DrugPage({ params }: Props) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [drugInfo, setDrugInfo] = useState<any>(null)
+  const [drugInfo, setDrugInfo] = useState<DrugInfoType | null>(null)
 
   useEffect(() => {
     const fetchDrugData = async () => {
