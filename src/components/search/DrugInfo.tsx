@@ -1,9 +1,11 @@
+import { DrugPrice } from '@/types/api';
+
 interface DrugInfoProps {
   info: {
     brandName: string;
     genericName: string;
     gsn: number;
-    ndcCode: number;
+    ndcCode: string;
     strength?: string;
     form?: string;
     packageSize?: string;
@@ -14,11 +16,7 @@ interface DrugInfoProps {
     warnings?: string[];
     interactions?: string[];
     storage?: string;
-    prices?: {
-      price: number;
-      pharmacy: string;
-      distance: number;
-    }[];
+    prices?: DrugPrice[];
   }
 }
 

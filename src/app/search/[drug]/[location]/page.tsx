@@ -22,7 +22,7 @@ interface SearchResults {
 export default function DrugSearchPage({ params }: Props) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [drugInfo, setDrugInfo] = useState<typeof DrugInfo | null>(null)
+  const [drugInfo, setDrugInfo] = useState<DrugInfoType | null>(null)
   const [pharmacyPrices, setPharmacyPrices] = useState<DrugPrice[]>([])
   const [filters, setFilters] = useState({
     radius: 10,
