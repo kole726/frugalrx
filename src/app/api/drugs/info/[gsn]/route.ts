@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getAuthToken } from '@/utils/auth'
+import { getDrugDetailsByGsn } from '@/lib/server/medicationService'
 
 interface APIError extends Error {
   status?: number;
@@ -10,30 +10,19 @@ export async function GET(
   { params }: { params: { gsn: string } }
 ) {
   try {
-    // Get a fresh token
-    const token = await getAuthToken();
-
-    // Using the correct endpoint for drug info
-    const apiUrl = `https://api.americaspharmacy.com/pricing/v1/druginfo/${params.gsn}`;
-    console.log('Fetching drug info from:', apiUrl);
-
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API Error Response:', errorText);
-      throw new Error(`API Error: ${response.status}`);
+    console.log('Fetching drug info for GSN:', params.gsn);
+    
+    const gsn = parseInt(params.gsn, 10);
+    if (isNaN(gsn)) {
+      return NextResponse.json(
+        { error: 'Invalid GSN parameter' },
+        { status: 400 }
+      );
     }
-
-    const data = await response.json();
+    
+    const data = await getDrugDetailsByGsn(gsn);
     console.log('Drug Info Response:', data);
+    
     return NextResponse.json(data);
   } catch (error: unknown) {
     const apiError = error as APIError;

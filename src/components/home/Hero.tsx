@@ -12,8 +12,6 @@ export default function Hero() {
   const router = useRouter()
   const [medication, setMedication] = useState('')
   const [selectedMedication, setSelectedMedication] = useState<SelectedMedication | null>(null)
-  const [isSearching, setIsSearching] = useState(false)
-  const [useDirectApi, setUseDirectApi] = useState(false)
 
   const handleMedicationChange = (value: string, gsn?: number) => {
     setMedication(value)
@@ -31,7 +29,6 @@ export default function Hero() {
     if (!medication) return
     
     try {
-      setIsSearching(true)
       // Navigate to the drug page with GSN if available
       if (selectedMedication?.gsn) {
         router.push(`/drug/${encodeURIComponent(medication)}?gsn=${selectedMedication.gsn}`)
@@ -40,8 +37,6 @@ export default function Hero() {
       }
     } catch (error) {
       console.error('Error during search:', error)
-    } finally {
-      setIsSearching(false)
     }
   }
 
@@ -62,21 +57,7 @@ export default function Hero() {
               value={medication} 
               onChange={handleMedicationChange}
               onSearch={handleSearch}
-              useDirectApi={useDirectApi}
             />
-            
-            {/* API Toggle (for development/testing) */}
-            <div className="mt-4 flex items-center justify-center text-sm text-gray-500">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={useDirectApi}
-                  onChange={() => setUseDirectApi(!useDirectApi)}
-                  className="form-checkbox h-4 w-4 text-[#006B52] rounded"
-                />
-                <span className="ml-2">Use direct API (for testing)</span>
-              </label>
-            </div>
           </div>
 
           {/* Stats */}

@@ -26,7 +26,7 @@ export default function Navigation() {
                 FrugalRx-QR-Code
               </h3>
               <p className="text-xs text-gray-500 mt-1">
-                Scan The Code With Your Camera Phone To Download The Free SingleCare App
+                Scan The Code With Your Camera Phone To Download
               </p>
             </div>
             

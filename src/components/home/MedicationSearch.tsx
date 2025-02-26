@@ -2,13 +2,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline"
 import { useDebounce } from '@/hooks/useDebounce'
-import { searchMedications, searchDrugs } from '@/services/medicationApi'
+import { searchMedications } from '@/services/medicationApi'
 
 interface Props {
   value: string
   onChange: (value: string, gsn?: number) => void
   onSearch?: (e: React.FormEvent) => void
-  useDirectApi?: boolean
 }
 
 interface DrugSuggestion {
@@ -16,7 +15,7 @@ interface DrugSuggestion {
   gsn?: number;
 }
 
-export default function MedicationSearch({ value, onChange, onSearch, useDirectApi = false }: Props) {
+export default function MedicationSearch({ value, onChange, onSearch }: Props) {
   const [searchTerm, setSearchTerm] = useState(value)
   const [suggestions, setSuggestions] = useState<DrugSuggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -39,14 +38,8 @@ export default function MedicationSearch({ value, onChange, onSearch, useDirectA
       try {
         console.log('Searching for:', debouncedSearch);
         
-        let results;
-        if (useDirectApi) {
-          // Use the direct API call to Americas Pharmacy
-          results = await searchDrugs(debouncedSearch);
-        } else {
-          // Use the existing API through our backend
-          results = await searchMedications(debouncedSearch);
-        }
+        // Always use our API route
+        const results = await searchMedications(debouncedSearch);
         
         setSuggestions(results);
       } catch (error) {
@@ -58,7 +51,7 @@ export default function MedicationSearch({ value, onChange, onSearch, useDirectA
     }
 
     fetchSuggestions()
-  }, [debouncedSearch, useDirectApi])
+  }, [debouncedSearch])
 
   // Close suggestions when clicking outside
   useEffect(() => {

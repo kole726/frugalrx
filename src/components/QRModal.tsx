@@ -49,14 +49,14 @@ export default function QRModal({ isOpen, setIsOpen }: { isOpen: boolean; setIsO
                     </Dialog.Title>
                     <div className="mt-2">
                       <p className="text-sm text-gray-500">
-                        Scan The Code With Your Camera Phone To Download The Free SingleCare App
+                        Scan The Code With Your Camera Phone To Download
                       </p>
                     </div>
                   </div>
                   <div className="mt-4 bg-[#37B34A] rounded-lg p-4">
                     <div className="relative w-full aspect-square bg-white rounded-lg p-4">
                       <Image
-                        src="/images/qr/FrugalRx-QR-Code.png"
+                        src="/images/qr/FrugalRx-QR-Code.svg"
                         alt="FrugalRx QR Code"
                         fill
                         className="object-contain p-2"

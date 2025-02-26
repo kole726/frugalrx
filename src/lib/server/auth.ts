@@ -1,5 +1,7 @@
+'use server';
+
 /**
- * Authentication utilities for API requests
+ * Server-only authentication utilities for API requests
  */
 
 interface AuthToken {
@@ -26,10 +28,10 @@ export async function getAuthToken(): Promise<string> {
   try {
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
-    params.append('client_id', process.env.AMERICAS_PHARMACY_CLIENT_ID || '0oatgei47wp1CfkaQ297');
-    params.append('client_secret', process.env.AMERICAS_PHARMACY_CLIENT_SECRET || 'pMQW2VhwqCiCcG2sWtEEsTW5b3rbMkMHaI5oChXjJDa2f3e5jzkjzKIV-IgJmObc');
+    params.append('client_id', process.env.AMERICAS_PHARMACY_CLIENT_ID!);
+    params.append('client_secret', process.env.AMERICAS_PHARMACY_CLIENT_SECRET!);
 
-    const response = await fetch(process.env.AMERICAS_PHARMACY_AUTH_URL || 'https://medimpact.okta.com/oauth2/aus107c5yrHDu55K8297/v1/token', {
+    const response = await fetch(process.env.AMERICAS_PHARMACY_AUTH_URL!, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
