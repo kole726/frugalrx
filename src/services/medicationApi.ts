@@ -8,39 +8,6 @@ interface DrugSearchResponse {
   brandGenericFlag: string;
 }
 
-interface PharmacyPrice {
-  pharmacy: {
-    name: string;
-    chainCode: string;
-    streetAddress: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    phone: string;
-    distance: number;
-    latitude: number;
-    longitude: number;
-  };
-  price: {
-    price: number;
-    awpPrice: number;
-    macPrice: number;
-    ucPrice: number;
-    priceBasis: string;
-  };
-}
-
-interface PricingSearchCriteria {
-  drugName?: string;
-  gsn?: number;
-  latitude: number;
-  longitude: number;
-  radius: number;
-  quantity?: number;
-  brandGenericFlag?: 'B' | 'G';
-  maximumPharmacies?: number;
-}
-
 interface DrugPriceRequest {
   drugName: string;
   latitude: number;

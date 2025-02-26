@@ -103,7 +103,7 @@ export default function HowItWorks() {
             variants={staggerChildren}
           >
             <div className="grid md:grid-cols-3 gap-12">
-              {steps.map((step, index) => (
+              {steps.map((step) => (
                 <motion.div
                   key={step.number}
                   className="text-center relative"
@@ -154,9 +154,9 @@ export default function HowItWorks() {
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {benefits.map((benefit, index) => (
+              {benefits.map((benefit) => (
                 <div 
-                  key={index}
+                  key={benefit}
                   className="flex items-start gap-4 bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow"
                 >
                   <CheckCircleIcon className="w-6 h-6 text-primary flex-shrink-0" />

@@ -5,18 +5,13 @@ import PharmacyList from '@/components/search/PharmacyList'
 import DrugInfo from '@/components/search/DrugInfo'
 import SearchFilters from '@/components/search/SearchFilters'
 import LoadingState from '@/components/search/LoadingState'
-import { DrugInfo as DrugInfoType, DrugPrice, APIError } from '@/types/api'
+import { DrugInfo as DrugInfoType, DrugPrice, APIError, DrugPriceRequest } from '@/types/api'
 
 interface Props {
   params: {
     drug: string
     location: string
   }
-}
-
-interface SearchResults {
-  drug: DrugInfoType;
-  prices: DrugPrice[];
 }
 
 export default function DrugSearchPage({ params }: Props) {
@@ -29,7 +24,6 @@ export default function DrugSearchPage({ params }: Props) {
     sortBy: 'price',
     chainOnly: false,
   })
-  const [results, setResults] = useState<SearchResults | null>(null)
 
   useEffect(() => {
     const fetchDrugData = async () => {
@@ -44,9 +38,9 @@ export default function DrugSearchPage({ params }: Props) {
           latitude: coords.latitude,
           longitude: coords.longitude,
           radius: filters.radius,
-          maximumPharmacies: 50,
-          hqMappingName: 'walkerrx'
-        })
+          hqMappingName: 'walkerrx',
+          maximumPharmacies: 50
+        } as DrugPriceRequest)
 
         setPharmacyPrices(prices.pharmacyPrices || [])
 
@@ -54,11 +48,6 @@ export default function DrugSearchPage({ params }: Props) {
           const info = await getDrugInfo(prices.drug.gsn)
           setDrugInfo(info)
         }
-
-        setResults({
-          drug: prices.drug as DrugInfoType,
-          prices: prices.pharmacyPrices as DrugPrice[]
-        })
       } catch (error: unknown) {
         const apiError = error as APIError;
         setError(apiError.message || 'An error occurred')
@@ -102,8 +91,7 @@ export default function DrugSearchPage({ params }: Props) {
   )
 }
 
-async function getCoordinatesFromZip(zipCode: string) {
-  // Implement geocoding here - for now returning mock data
+async function getCoordinatesFromZip(_zipCode: string) {
   return {
     latitude: 37.7749,
     longitude: -122.4194

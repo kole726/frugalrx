@@ -1,7 +1,6 @@
 "use client"
 import { useState, useEffect, useRef } from 'react'
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline"
-import { searchMedications } from '@/services/medicationApi'
 import { useDebounce } from '@/hooks/useDebounce'
 
 interface Props {

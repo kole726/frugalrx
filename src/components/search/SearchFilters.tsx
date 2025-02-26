@@ -1,7 +1,8 @@
-interface SearchFiltersProps {
-  onFilterChange: (filters: SearchFilters) => void;
-  initialFilters: SearchFilters;
-}
+// Remove unused interface
+// interface SearchFiltersProps {
+//   onFilterChange: (filters: SearchFilters) => void;
+//   initialFilters: SearchFilters;
+// }
 
 interface SearchFilters {
   radius: number;

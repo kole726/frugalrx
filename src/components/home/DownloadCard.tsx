@@ -1,5 +1,4 @@
 'use client'
-import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import { DevicePhoneMobileIcon, QrCodeIcon } from '@heroicons/react/24/outline'
@@ -18,8 +17,6 @@ const features = [
 ]
 
 export default function DownloadCard() {
-  const [showQR, setShowQR] = useState(false)
-
   return (
     <section className="py-24 bg-gradient-to-b from-[#EFFDF6] to-white relative z-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -96,8 +93,6 @@ export default function DownloadCard() {
               <div className="relative inline-block group">
                 <button 
                   className="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-full font-semibold transition-colors flex items-center gap-2"
-                  onMouseEnter={() => setShowQR(true)}
-                  onMouseLeave={() => setShowQR(false)}
                 >
                   <QrCodeIcon className="w-5 h-5" />
                   Get Digital Card

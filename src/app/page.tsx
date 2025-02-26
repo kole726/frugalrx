@@ -1,5 +1,4 @@
 "use client"
-import { motion, Variants } from "framer-motion"
 import Hero from "@/components/home/Hero"
 import TrendingSavings from "@/components/home/TrendingSavings"
 import PharmacyHighlight from "@/components/home/PharmacyHighlight"
@@ -11,18 +10,6 @@ import Newsletter from "@/components/home/Newsletter"
 import FAQ from "@/components/home/FAQ"
 
 export default function Home() {
-  const fadeIn: Variants = {
-    initial: { 
-      opacity: 0, 
-      y: 20 
-    },
-    animate: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.5 }
-    }
-  }
-
   return (
     <main>
       {/* Hero Section */}

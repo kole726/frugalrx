@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { getDrugPrices } from '@/services/medicationApi'
 import DrugInfo from '@/components/search/DrugInfo'
 import LoadingState from '@/components/search/LoadingState'
-import { DrugInfo as DrugInfoType } from '@/types/api'
+import { DrugInfo as DrugInfoType, APIError, DrugPriceRequest } from '@/types/api'
 
 interface Props {
   params: {
@@ -23,18 +23,18 @@ export default function DrugPage({ params }: Props) {
         setError(null)
 
         const drugName = decodeURIComponent(params.name)
-        // Using mock coordinates for now - we'll add location later
         const data = await getDrugPrices({
           drugName,
           latitude: 30.4015,
           longitude: -97.7527,
           radius: 10,
           hqMappingName: 'walkerrx'
-        })
+        } as DrugPriceRequest)
 
         setDrugInfo(data.drug)
-      } catch (err: any) {
-        setError(err.message)
+      } catch (error: unknown) {
+        const apiError = error as APIError;
+        setError(apiError.message || 'An error occurred')
       } finally {
         setIsLoading(false)
       }

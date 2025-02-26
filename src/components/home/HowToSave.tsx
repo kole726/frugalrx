@@ -25,18 +25,6 @@ const steps = [
 ]
 
 export default function HowToSave() {
-  const fadeIn: Variants = {
-    initial: { 
-      opacity: 0, 
-      y: 20 
-    },
-    animate: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.5 }
-    }
-  }
-
   const staggerChildren: Variants = {
     animate: {
       transition: {

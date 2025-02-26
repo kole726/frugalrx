@@ -32,16 +32,9 @@ const blogPosts = [
 ]
 
 export default function BlogPreview() {
-  const fadeIn: Variants = {
-    initial: { 
-      opacity: 0, 
-      y: 20 
-    },
-    animate: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.5 }
-    }
+  const fadeIn = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 }
   }
 
   const staggerChildren: Variants = {

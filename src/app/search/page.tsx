@@ -6,13 +6,14 @@ import PharmacyList from '@/components/search/PharmacyList'
 import DrugInfo from '@/components/search/DrugInfo'
 import SearchFilters from '@/components/search/SearchFilters'
 import LoadingState from '@/components/search/LoadingState'
+import { DrugInfo as DrugInfoType, DrugPrice, APIError, DrugPriceRequest } from '@/types/api'
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [drugInfo, setDrugInfo] = useState<any>(null)
-  const [pharmacyPrices, setPharmacyPrices] = useState<any[]>([])
+  const [drugInfo, setDrugInfo] = useState<DrugInfoType | null>(null)
+  const [pharmacyPrices, setPharmacyPrices] = useState<DrugPrice[]>([])
   const [filters, setFilters] = useState({
     radius: 10,
     sortBy: 'price',
@@ -32,7 +33,6 @@ export default function SearchPage() {
           throw new Error('Missing search parameters')
         }
 
-        // Get user's coordinates from ZIP code
         const coords = await getCoordinatesFromZip(location)
 
         const prices = await getDrugPrices({
@@ -40,8 +40,9 @@ export default function SearchPage() {
           latitude: coords.latitude,
           longitude: coords.longitude,
           radius: filters.radius,
-          maximumPharmacies: 50,
-        })
+          hqMappingName: 'walkerrx',
+          maximumPharmacies: 50
+        } as DrugPriceRequest)
 
         setPharmacyPrices(prices.pharmacyPrices || [])
 
@@ -49,8 +50,9 @@ export default function SearchPage() {
           const info = await getDrugInfo(prices.drug.gsn)
           setDrugInfo(info)
         }
-      } catch (err) {
-        setError(err.message)
+      } catch (error: unknown) {
+        const apiError = error as APIError;
+        setError(apiError.message || 'An error occurred')
       } finally {
         setIsLoading(false)
       }
@@ -87,9 +89,7 @@ export default function SearchPage() {
   )
 }
 
-async function getCoordinatesFromZip(zipCode: string) {
-  // You'll need to implement this using a geocoding service
-  // For now, returning mock coordinates
+async function getCoordinatesFromZip(_zipCode: string) {
   return {
     latitude: 37.7749,
     longitude: -122.4194

@@ -1,7 +1,6 @@
 "use client"
 import { motion, Variants } from "framer-motion"
 import Image from "next/image"
-import { StarIcon } from "@heroicons/react/24/solid"
 
 const testimonials = [
   {
