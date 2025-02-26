@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAccessToken } from '@/services/authService'
+import { APIError } from '@/types/api'
 
 export async function POST(request: Request) {
   try {
@@ -26,10 +27,11 @@ export async function POST(request: Request) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Server Error:', error);
+  } catch (error: unknown) {
+    const apiError = error as APIError;
+    console.error('Server Error:', apiError);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch drug prices' },
+      { error: apiError.message || 'Failed to fetch prices' },
       { status: 500 }
     );
   }

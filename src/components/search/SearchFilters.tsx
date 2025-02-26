@@ -15,7 +15,7 @@ interface Props {
     sortBy: string
     chainOnly: boolean
   }
-  onChange: (filters: any) => void
+  onChange: (filters: Props['filters']) => void
 }
 
 export default function SearchFilters({ filters, onChange }: Props) {

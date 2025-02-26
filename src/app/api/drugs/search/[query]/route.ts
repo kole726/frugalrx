@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getAccessToken } from '@/services/authService'
+import { APIError } from '@/types/api'
 
 export async function GET(
   request: Request,
@@ -32,8 +33,12 @@ export async function GET(
     const data = await response.json();
     console.log('API Success Response:', data); // Debug log
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Server Error:', error);
-    return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 });
+  } catch (error: unknown) {
+    const apiError = error as APIError;
+    console.error('Server Error:', apiError);
+    return NextResponse.json(
+      { error: apiError.message || 'Failed to fetch suggestions' },
+      { status: 500 }
+    );
   }
 } 

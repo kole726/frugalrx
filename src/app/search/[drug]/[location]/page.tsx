@@ -5,7 +5,7 @@ import PharmacyList from '@/components/search/PharmacyList'
 import DrugInfo from '@/components/search/DrugInfo'
 import SearchFilters from '@/components/search/SearchFilters'
 import LoadingState from '@/components/search/LoadingState'
-import { DrugInfo as DrugInfoType, DrugPrice } from '@/types/api'
+import { DrugInfo as DrugInfoType, DrugPrice, APIError } from '@/types/api'
 
 interface Props {
   params: {
@@ -22,8 +22,8 @@ interface SearchResults {
 export default function DrugSearchPage({ params }: Props) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [drugInfo, setDrugInfo] = useState<any>(null)
-  const [pharmacyPrices, setPharmacyPrices] = useState<any[]>([])
+  const [drugInfo, setDrugInfo] = useState<typeof DrugInfo | null>(null)
+  const [pharmacyPrices, setPharmacyPrices] = useState<DrugPrice[]>([])
   const [filters, setFilters] = useState({
     radius: 10,
     sortBy: 'price',
@@ -37,21 +37,19 @@ export default function DrugSearchPage({ params }: Props) {
         setIsLoading(true)
         setError(null)
 
-        // Get coordinates from ZIP code (you'll need to implement this)
         const coords = await getCoordinatesFromZip(decodeURIComponent(params.location))
 
-        // Get drug prices
         const prices = await getDrugPrices({
           drugName: decodeURIComponent(params.drug),
           latitude: coords.latitude,
           longitude: coords.longitude,
           radius: filters.radius,
           maximumPharmacies: 50,
+          hqMappingName: 'walkerrx'
         })
 
         setPharmacyPrices(prices.pharmacyPrices || [])
 
-        // Get drug info if GSN is available
         if (prices.drug?.gsn) {
           const info = await getDrugInfo(prices.drug.gsn)
           setDrugInfo(info)
@@ -61,8 +59,9 @@ export default function DrugSearchPage({ params }: Props) {
           drug: prices.drug as DrugInfoType,
           prices: prices.pharmacyPrices as DrugPrice[]
         })
-      } catch (err: any) {
-        setError(err.message)
+      } catch (error: unknown) {
+        const apiError = error as APIError;
+        setError(apiError.message || 'An error occurred')
       } finally {
         setIsLoading(false)
       }
