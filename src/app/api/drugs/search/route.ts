@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { searchDrugs } from '@/lib/server/medicationService'
 
-interface APIError extends Error {
-  status?: number;
+interface APIError {
+  message: string;
+  status: number;
 }
 
 export async function GET(request: Request) {
@@ -16,17 +17,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 })
     }
 
-    const data = await searchDrugs(query);
-    console.log('API Success Response:', data)
-    
-    return NextResponse.json(data)
-
-  } catch (error: unknown) {
-    const apiError = error as APIError;
-    console.error('Server Error:', apiError)
+    const drugs = await searchDrugs(query);
+    return NextResponse.json(drugs);
+  } catch (error) {
+    console.error('Server error in drug search API:', error);
     return NextResponse.json(
-      { error: apiError.message || 'Failed to fetch suggestions' },
+      { error: `Failed to search drugs: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
-    )
+    );
   }
 } 

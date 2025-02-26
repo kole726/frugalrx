@@ -30,6 +30,7 @@ export async function getAuthToken(): Promise<string> {
     params.append('grant_type', 'client_credentials');
     params.append('client_id', process.env.AMERICAS_PHARMACY_CLIENT_ID!);
     params.append('client_secret', process.env.AMERICAS_PHARMACY_CLIENT_SECRET!);
+    params.append('scope', 'ccds.read');
 
     const response = await fetch(process.env.AMERICAS_PHARMACY_AUTH_URL!, {
       method: 'POST',

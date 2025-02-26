@@ -134,7 +134,7 @@ export async function getDrugInfo(drugName: string) {
  */
 export async function testApiConnection(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/test`);
+    const response = await fetch(`${API_BASE_URL}/test-connection`);
     
     if (!response.ok) {
       throw new Error(`API Error: ${response.status}`);

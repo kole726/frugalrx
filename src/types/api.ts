@@ -1,10 +1,13 @@
 export interface DrugPriceRequest {
-  drugName: string;
+  drugName?: string;
+  gsn?: number;
   latitude: number;
   longitude: number;
   radius?: number;
   hqMappingName?: string;
   maximumPharmacies?: number;
+  customizedQuantity?: boolean;
+  quantity?: number;
 }
 
 export interface DrugInfo {

@@ -11,6 +11,8 @@
   --light: #EFFDF6;      /* Our new light mint */
   --dark: #2C3E50;       /* Softer blue-gray instead of dark */
   --gray-text: #64748B;  /* Softer text color */
+  --background: #ffffff;
+  --foreground: #2C3E50;
 }
 
 @layer base {
@@ -23,15 +25,17 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
+/* Remove the dark mode override that's causing issues */
+/* @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
-}
+} */
 
-body {
+/* Remove the conflicting body style */
+/* body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
-}
+} */
