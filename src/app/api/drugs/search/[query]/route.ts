@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
-import { getAccessToken } from '@/services/authService'
-import { APIError } from '@/types/api'
+import { getAuthToken } from '@/utils/auth'
+
+interface APIError extends Error {
+  status?: number;
+}
 
 export async function GET(
   request: Request,
@@ -8,21 +11,21 @@ export async function GET(
 ) {
   try {
     // Get a fresh token
-    const token = await getAccessToken();
+    const token = await getAuthToken();
 
-    const response = await fetch(`${process.env.AMERICAS_PHARMACY_API_URL}/drugs/names`, {
-      method: 'POST',
+    // Using the correct endpoint for medication autocomplete
+    const apiUrl = `https://api.americaspharmacy.com/pricing/v1/drugs/${encodeURIComponent(params.query)}`;
+    console.log('Calling API:', apiUrl);
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        hqMappingName: 'walkerrx',
-        prefixText: params.query
-      })
+      }
     });
 
-    console.log('API Response Status:', response.status); // Debug log
+    console.log('API Response Status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -31,7 +34,7 @@ export async function GET(
     }
 
     const data = await response.json();
-    console.log('API Success Response:', data); // Debug log
+    console.log('API Success Response:', data);
     return NextResponse.json(data);
   } catch (error: unknown) {
     const apiError = error as APIError;

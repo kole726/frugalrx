@@ -2,8 +2,8 @@ export interface DrugPriceRequest {
   drugName: string;
   latitude: number;
   longitude: number;
-  radius: number;
-  hqMappingName: string;
+  radius?: number;
+  hqMappingName?: string;
   maximumPharmacies?: number;
 }
 
@@ -16,18 +16,41 @@ export interface DrugInfo {
   form?: string;
   packageSize?: string;
   manufacturer?: string;
-  prices?: DrugPrice[];
+  description?: string;
+  sideEffects?: string;
+  dosage?: string;
+  storage?: string;
+  contraindications?: string;
+  prices?: PharmacyPrice[];
 }
 
 export interface DrugPrice {
   price: number;
-  pharmacy: {
-    name: string;
-    address: string;
-    distance: number;
-    latitude: number;
-    longitude: number;
-  };
+  pharmacy: string;
+  address: string;
+  distance: number;
+  latitude: number;
+  longitude: number;
+}
+
+export interface PharmacyPrice {
+  name: string;
+  price: number;
+  distance: string;
+}
+
+export interface DrugPriceResponse {
+  pharmacies: PharmacyPrice[];
+}
+
+export interface DrugDetails {
+  brandName: string;
+  genericName: string;
+  description: string;
+  sideEffects: string;
+  dosage: string;
+  storage: string;
+  contraindications: string;
 }
 
 export interface APIError {

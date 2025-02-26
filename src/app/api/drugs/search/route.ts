@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
+import { getAuthToken } from '@/utils/auth'
 
-const API_BASE_URL = 'https://api.medimpact.com/prod/v1'
-const API_TOKEN = 'eyJraWQiOiJBSXIyWm9fdVBtaGFzbW9JcWM0RV9DckZ2dzFYeC1JUnA0LXQ0eGlLY21vIiwiYWxnIjoiUlMyNTYifQ.eyJ2ZXIiOjEsImp0aSI6IkFULlJDc3llcDhvMm0zbEx1RDdZMXlDZU5adGRVNUFzb3pVWVNHb3dhSDZkYjQiLCJpc3MiOiJodHRwczovL21lZGltcGFjdC5va3RhLmNvbS9vYXV0aDIvYXVzMTA3YzV5ckhEdTU1SzgyOTciLCJhdWQiOiJhcGk6Ly9tZWRpbXBhY3QiLCJpYXQiOjE3NDA1MTk5MTcsImV4cCI6MTc0MDUzMDcxNywiY2lkIjoiMG9hdGdlaTQ3d3AxQ2ZrYVEyOTciLCJzY3AiOlsiY2Nkcy5yZWFkIl0sInN1YiI6IjBvYXRnZWk0N3dwMUNma2FRMjk3In0.IrNI3AFPNPmiaK2ZBhEgnBDlegXQjP8an0XGMWHTSpFmO5Ix9ISv4H0Zt2A8VklHvG1hqGqJeINRyedeO_Ek9IJ2DMV-F3P0KNxIAtmx2HFXjRZgXWu79NY52KMI1Xgy2a2xaSk9Mr7mwVgfjei3RI-vKj5OLSvfpLKoET-7K3qdPdarhWHGKu0hAGbsn9M4Ao5MruG5ziVZitvEpP1Ujhj0RuHGBEoqMmCVJ7x4qdEa_o4aqCmULz6T8cB6CTplEYu-lx4UcYxNAUtcOhLyctdMRKSWBXzlUmWQwHCma_tKsuxqK5rnr-5gQUXecSmauWwnEPHvgaKEON6B-a8C6w'
+const API_BASE_URL = process.env.AMERICAS_PHARMACY_API_URL
 
 export async function GET(request: Request) {
   try {
@@ -14,13 +14,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 })
     }
 
+    // Get a fresh authentication token
+    const token = await getAuthToken()
+
     const apiUrl = `${API_BASE_URL}/drugs/search?q=${encodeURIComponent(query)}`
     console.log('Calling API:', apiUrl)
 
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${API_TOKEN}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       }
@@ -41,10 +44,11 @@ export async function GET(request: Request) {
     console.log('API Success Response:', data)
     return NextResponse.json(data)
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Server Error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
     return NextResponse.json(
-      { error: 'Internal Server Error', details: error.message },
+      { error: 'Internal Server Error', details: errorMessage },
       { status: 500 }
     )
   }

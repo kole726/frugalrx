@@ -2,20 +2,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline"
 import { useDebounce } from '@/hooks/useDebounce'
+import { searchMedications, searchDrugs } from '@/services/medicationApi'
 
 interface Props {
   value: string
-  onChange: (value: string) => void
+  onChange: (value: string, gsn?: number) => void
+  onSearch?: (e: React.FormEvent) => void
+  useDirectApi?: boolean
 }
 
 interface DrugSuggestion {
   drugName: string;
-  gsn: number;
-  ndcCode: number;
-  brandGenericFlag: string;
+  gsn?: number;
 }
 
-export default function MedicationSearch({ value, onChange }: Props) {
+export default function MedicationSearch({ value, onChange, onSearch, useDirectApi = false }: Props) {
   const [searchTerm, setSearchTerm] = useState(value)
   const [suggestions, setSuggestions] = useState<DrugSuggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -37,15 +38,17 @@ export default function MedicationSearch({ value, onChange }: Props) {
       setError(null)
       try {
         console.log('Searching for:', debouncedSearch);
-        const response = await fetch(`/api/drugs/search/${encodeURIComponent(debouncedSearch)}`);
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch suggestions');
+        let results;
+        if (useDirectApi) {
+          // Use the direct API call to Americas Pharmacy
+          results = await searchDrugs(debouncedSearch);
+        } else {
+          // Use the existing API through our backend
+          results = await searchMedications(debouncedSearch);
         }
-
-        const data = await response.json();
-        // The API returns an array of drug names
-        setSuggestions(data.map((name: string) => ({ drugName: name })));
+        
+        setSuggestions(results);
       } catch (error) {
         console.error('Error fetching suggestions:', error)
         setError('Failed to fetch medications. Please try again.')
@@ -55,7 +58,7 @@ export default function MedicationSearch({ value, onChange }: Props) {
     }
 
     fetchSuggestions()
-  }, [debouncedSearch])
+  }, [debouncedSearch, useDirectApi])
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -68,23 +71,38 @@ export default function MedicationSearch({ value, onChange }: Props) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const handleSuggestionClick = (suggestion: DrugSuggestion) => {
+    setSearchTerm(suggestion.drugName)
+    onChange(suggestion.drugName, suggestion.gsn)
+    setShowSuggestions(false)
+  }
+
   return (
     <div ref={wrapperRef} className="relative">
-      <div className="bg-white rounded-full shadow-lg p-2 flex items-center">
+      <form onSubmit={onSearch} className="bg-white rounded-full shadow-lg p-2 flex items-center">
         <MagnifyingGlassIcon className="h-6 w-6 text-gray-400 ml-3" />
         <input
           type="text"
           placeholder="Enter medication name..."
-          className="flex-1 px-4 py-3 focus:outline-none text-xl text-gray-900 font-medium rounded-full"
+          className="flex-1 px-4 py-3 focus:outline-none text-xl text-gray-900 font-medium"
           value={searchTerm}
           onChange={(e) => {
             setSearchTerm(e.target.value)
             setShowSuggestions(true)
+            onChange(e.target.value)
           }}
           onFocus={() => setShowSuggestions(true)}
           required
         />
-      </div>
+        {onSearch && (
+          <button 
+            type="submit"
+            className="bg-[#FF1B75] hover:bg-[#FF1B75]/90 text-white px-8 py-3 rounded-full font-semibold ml-2"
+          >
+            Search
+          </button>
+        )}
+      </form>
 
       {showSuggestions && searchTerm && searchTerm.length > 1 && (
         <div className="absolute w-full mt-2 bg-white rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
@@ -96,11 +114,7 @@ export default function MedicationSearch({ value, onChange }: Props) {
                 <li
                   key={index}
                   className="px-6 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                  onClick={() => {
-                    setSearchTerm(suggestion.drugName)
-                    onChange(suggestion.drugName)
-                    setShowSuggestions(false)
-                  }}
+                  onClick={() => handleSuggestionClick(suggestion)}
                 >
                   <div className="flex items-start">
                     <span className="text-lg text-gray-900 font-medium">

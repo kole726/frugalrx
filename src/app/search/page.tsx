@@ -6,14 +6,14 @@ import PharmacyList from '@/components/search/PharmacyList'
 import DrugInfo from '@/components/search/DrugInfo'
 import SearchFilters from '@/components/search/SearchFilters'
 import LoadingState from '@/components/search/LoadingState'
-import { DrugInfo as DrugInfoType, DrugPrice, APIError, DrugPriceRequest } from '@/types/api'
+import { DrugInfo as DrugInfoType, PharmacyPrice, APIError, DrugPriceRequest } from '@/types/api'
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [drugInfo, setDrugInfo] = useState<DrugInfoType | null>(null)
-  const [pharmacyPrices, setPharmacyPrices] = useState<DrugPrice[]>([])
+  const [pharmacyPrices, setPharmacyPrices] = useState<PharmacyPrice[]>([])
   const [filters, setFilters] = useState({
     radius: 10,
     sortBy: 'price',
@@ -44,11 +44,28 @@ export default function SearchPage() {
           maximumPharmacies: 50
         } as DrugPriceRequest)
 
-        setPharmacyPrices(prices.pharmacyPrices || [])
+        setPharmacyPrices(prices.pharmacies || [])
 
-        if (prices.drug?.gsn) {
-          const info = await getDrugInfo(prices.drug.gsn)
-          setDrugInfo(info)
+        // Try to get drug info by name
+        try {
+          const info = await getDrugInfo(medication)
+          if (info) {
+            const drugInfoData: DrugInfoType = {
+              brandName: info.brandName,
+              genericName: info.genericName,
+              gsn: 0, // Placeholder since we don't have GSN
+              ndcCode: '', // Placeholder since we don't have NDC
+              description: info.description,
+              sideEffects: info.sideEffects,
+              dosage: info.dosage,
+              storage: info.storage,
+              contraindications: info.contraindications,
+              prices: prices.pharmacies
+            }
+            setDrugInfo(drugInfoData)
+          }
+        } catch (infoError) {
+          console.warn('Could not fetch drug info:', infoError)
         }
       } catch (error: unknown) {
         const apiError = error as APIError;

@@ -3,14 +3,45 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import MedicationSearch from './MedicationSearch'
 
+interface SelectedMedication {
+  name: string;
+  gsn?: number;
+}
+
 export default function Hero() {
   const router = useRouter()
   const [medication, setMedication] = useState('')
+  const [selectedMedication, setSelectedMedication] = useState<SelectedMedication | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
+  const [useDirectApi, setUseDirectApi] = useState(false)
+
+  const handleMedicationChange = (value: string, gsn?: number) => {
+    setMedication(value)
+    if (gsn) {
+      setSelectedMedication({ name: value, gsn })
+    } else {
+      // If no GSN is provided, we're just typing, not selecting from dropdown
+      setSelectedMedication(null)
+    }
+  }
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (medication) {
-      router.push(`/drug/${encodeURIComponent(medication)}`)
+    
+    if (!medication) return
+    
+    try {
+      setIsSearching(true)
+      // Navigate to the drug page with GSN if available
+      if (selectedMedication?.gsn) {
+        router.push(`/drug/${encodeURIComponent(medication)}?gsn=${selectedMedication.gsn}`)
+      } else {
+        router.push(`/drug/${encodeURIComponent(medication)}`)
+      }
+    } catch (error) {
+      console.error('Error during search:', error)
+    } finally {
+      setIsSearching(false)
     }
   }
 
@@ -26,21 +57,27 @@ export default function Hero() {
           </p>
 
           {/* Search Form */}
-          <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 max-w-2xl mx-auto">
-            <div className="flex-1">
-              <MedicationSearch 
-                value={medication} 
-                onChange={setMedication}
-              />
+          <div className="max-w-2xl mx-auto">
+            <MedicationSearch 
+              value={medication} 
+              onChange={handleMedicationChange}
+              onSearch={handleSearch}
+              useDirectApi={useDirectApi}
+            />
+            
+            {/* API Toggle (for development/testing) */}
+            <div className="mt-4 flex items-center justify-center text-sm text-gray-500">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useDirectApi}
+                  onChange={() => setUseDirectApi(!useDirectApi)}
+                  className="form-checkbox h-4 w-4 text-[#006B52] rounded"
+                />
+                <span className="ml-2">Use direct API (for testing)</span>
+              </label>
             </div>
-
-            <button 
-              type="submit"
-              className="bg-[#FF1B75] hover:bg-[#FF1B75]/90 text-white px-8 py-3 rounded-full font-semibold"
-            >
-              Search
-            </button>
-          </form>
+          </div>
 
           {/* Stats */}
           <div className="mt-16 grid grid-cols-3 gap-8">

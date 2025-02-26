@@ -1,4 +1,4 @@
-import { DrugPrice } from '@/types/api';
+import { PharmacyPrice } from '@/types/api';
 
 interface DrugInfoProps {
   info: {
@@ -12,15 +12,20 @@ interface DrugInfoProps {
     manufacturer?: string;
     description?: string;
     usage?: string;
-    sideEffects?: string[];
+    sideEffects?: string | string[];
     warnings?: string[];
     interactions?: string[];
     storage?: string;
-    prices?: DrugPrice[];
+    prices?: PharmacyPrice[];
   }
 }
 
 export default function DrugInfo({ info }: DrugInfoProps) {
+  // Convert sideEffects to array if it's a string
+  const sideEffectsArray = typeof info.sideEffects === 'string' 
+    ? [info.sideEffects] 
+    : info.sideEffects;
+
   return (
     <div className="space-y-6">
       {/* Basic Info Card */}
@@ -46,7 +51,7 @@ export default function DrugInfo({ info }: DrugInfoProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {info.strength && (
               <div>
-                <span className="text-gray-600 font-medium">Strength: </span>
+                <span className="text-gray-600 font-medium">Strength/Dosage: </span>
                 <span className="text-gray-900">{info.strength}</span>
               </div>
             )}
@@ -64,7 +69,7 @@ export default function DrugInfo({ info }: DrugInfoProps) {
             )}
             {info.manufacturer && (
               <div>
-                <span className="text-gray-600 font-medium">Manufacturer: </span>
+                <span className="text-gray-600 font-medium">Manufacturer/Contraindications: </span>
                 <span className="text-gray-900">{info.manufacturer}</span>
               </div>
             )}
@@ -96,8 +101,8 @@ export default function DrugInfo({ info }: DrugInfoProps) {
             {info.prices.map((price, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <h4 className="font-medium text-gray-900">{price.pharmacy}</h4>
-                  <p className="text-sm text-gray-500">{price.distance.toFixed(1)} miles away</p>
+                  <h4 className="font-medium text-gray-900">{price.name}</h4>
+                  <p className="text-sm text-gray-500">{price.distance}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-[#006B52]">${price.price.toFixed(2)}</p>
@@ -127,11 +132,11 @@ export default function DrugInfo({ info }: DrugInfoProps) {
           </div>
         )}
 
-        {info.sideEffects && info.sideEffects.length > 0 && (
+        {sideEffectsArray && sideEffectsArray.length > 0 && (
           <div className="mb-6">
             <h4 className="font-medium text-gray-900 mb-2">Side Effects</h4>
             <ul className="list-disc list-inside text-gray-700 space-y-1">
-              {info.sideEffects.map((effect, index) => (
+              {sideEffectsArray.map((effect, index) => (
                 <li key={index}>{effect}</li>
               ))}
             </ul>

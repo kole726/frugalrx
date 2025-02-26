@@ -1,23 +1,33 @@
 import { NextResponse } from 'next/server'
-import { getAccessToken } from '@/services/authService'
-import { APIError } from '@/types/api'
+import { getAuthToken } from '@/utils/auth'
+
+interface APIError extends Error {
+  status?: number;
+}
 
 export async function POST(request: Request) {
   try {
-    const token = await getAccessToken();
+    // Get a fresh token
+    const token = await getAuthToken();
     const criteria = await request.json();
 
-    const response = await fetch(`${process.env.AMERICAS_PHARMACY_API_URL}/drugprices/byName`, {
+    // Using the correct endpoint for drug prices
+    const response = await fetch(`https://api.americaspharmacy.com/pricing/v1/drugprices/byName`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        ...criteria,
-        hqMappingName: 'walkerrx'
+        hqMappingName: "walkerrx",
+        drugName: criteria.drugName,
+        latitude: criteria.latitude,
+        longitude: criteria.longitude,
+        radius: criteria.radius || 10
       })
     });
+
+    console.log('API Response Status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -26,6 +36,7 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
+    console.log('Drug Prices Response:', data);
     return NextResponse.json(data);
   } catch (error: unknown) {
     const apiError = error as APIError;
