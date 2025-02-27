@@ -40,6 +40,13 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
       console.log('Successfully obtained auth token for drug search');
     } catch (authError) {
       console.error('Authentication error:', authError);
+      
+      // In development, provide mock data instead of failing
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Using mock drug search data in development due to auth error');
+        return getMockDrugSearchResults(normalizedQuery);
+      }
+      
       throw new Error(`Authentication failed: ${authError instanceof Error ? authError.message : 'Unknown error'}`);
     }
     
@@ -63,6 +70,13 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
       const errorText = await response.text();
       console.error(`Drug search API error: ${response.status}`, errorText);
       console.error(`Request details: query="${normalizedQuery}", endpoint=${baseUrl}${endpoint}`);
+      
+      // In development, provide mock data instead of failing
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Using mock drug search data in development due to API error');
+        return getMockDrugSearchResults(normalizedQuery);
+      }
+      
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
@@ -87,8 +101,46 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     return data;
   } catch (error) {
     console.error('Error searching drugs:', error);
+    
+    // In development, provide mock data as a last resort
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Using mock drug search data as last resort');
+      return getMockDrugSearchResults(query.toLowerCase());
+    }
+    
     throw new Error(`Failed to search drugs: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+}
+
+/**
+ * Get mock drug search results for development and testing
+ * @param query The search query
+ * @returns A list of mock drug results
+ */
+function getMockDrugSearchResults(query: string): DrugSearchResponse[] {
+  // Common medications for testing
+  const commonMedications = [
+    { drugName: 'Amoxicillin', gsn: 1234 },
+    { drugName: 'Lisinopril', gsn: 2345 },
+    { drugName: 'Atorvastatin', gsn: 3456 },
+    { drugName: 'Metformin', gsn: 4567 },
+    { drugName: 'Levothyroxine', gsn: 5678 },
+    { drugName: 'Amlodipine', gsn: 6789 },
+    { drugName: 'Metoprolol', gsn: 7890 },
+    { drugName: 'Albuterol', gsn: 8901 },
+    { drugName: 'Omeprazole', gsn: 9012 },
+    { drugName: 'Losartan', gsn: 1023 },
+    { drugName: 'Gabapentin', gsn: 2134 },
+    { drugName: 'Hydrochlorothiazide', gsn: 3245 },
+    { drugName: 'Sertraline', gsn: 4356 },
+    { drugName: 'Simvastatin', gsn: 5467 },
+    { drugName: 'Vyvanse', gsn: 6578 }
+  ];
+  
+  // Filter medications based on the query
+  return commonMedications.filter(med => 
+    med.drugName.toLowerCase().includes(query.toLowerCase())
+  );
 }
 
 /**

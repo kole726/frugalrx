@@ -177,65 +177,127 @@ export default function DrugPage({ params }: Props) {
   }
 
   useEffect(() => {
-    const fetchDrugData = async () => {
+    const fetchDrugInfo = async () => {
+      if (!params.name) return;
+      
       try {
-        setIsLoading(true)
-        setError(null)
-
-        const drugName = decodeURIComponent(params.name)
+        setIsLoading(true);
+        setError(null);
         
-        // If we have a GSN, fetch drug details directly
+        // Decode the drug name from the URL
+        const drugName = decodeURIComponent(params.name);
+        console.log(`Fetching drug info for: ${drugName}`);
+        
+        // If GSN is provided, use it to get drug details
         if (gsn) {
-          const details = await getDrugDetailsByGsn(parseInt(gsn, 10))
-          setDrugDetails(details)
+          try {
+            const gsnNumber = parseInt(gsn, 10);
+            const details = await getDrugDetailsByGsn(gsnNumber);
+            setDrugDetails(details);
+            console.log('Drug details fetched by GSN:', details);
+            
+            // Create a basic drug info object from the details
+            setDrugInfo({
+              brandName: details.brandName,
+              genericName: details.genericName,
+              gsn: gsnNumber,
+              ndcCode: '',
+              description: details.description,
+              sideEffects: details.sideEffects,
+              dosage: details.dosage,
+              storage: details.storage,
+              contraindications: details.contraindications
+            });
+          } catch (detailsError) {
+            console.error('Error fetching drug details by GSN:', detailsError);
+            // Fall back to getting info by name if GSN fails
+            const details = await getDrugInfo(drugName);
+            setDrugDetails(details);
+            console.log('Drug details fetched by name (GSN fallback):', details);
+            
+            // Create a basic drug info object from the details
+            setDrugInfo({
+              brandName: details.brandName,
+              genericName: details.genericName,
+              gsn: 0, // We don't have a GSN in this case
+              ndcCode: '',
+              description: details.description,
+              sideEffects: details.sideEffects,
+              dosage: details.dosage,
+              storage: details.storage,
+              contraindications: details.contraindications
+            });
+          }
+        } else {
+          // Get drug info by name
+          const details = await getDrugInfo(drugName);
+          setDrugDetails(details);
+          console.log('Drug details fetched by name:', details);
           
           // Create a basic drug info object from the details
           setDrugInfo({
             brandName: details.brandName,
             genericName: details.genericName,
-            gsn: parseInt(gsn, 10),
+            gsn: 0, // We don't have a GSN in this case
             ndcCode: '',
             description: details.description,
             sideEffects: details.sideEffects,
             dosage: details.dosage,
             storage: details.storage,
             contraindications: details.contraindications
-          })
-        } else {
-          // Otherwise, search for the drug by name
-          const info = await getDrugInfo(drugName)
-          setDrugDetails(info)
-          
-          // Create a basic drug info object from the details
-          setDrugInfo({
-            brandName: info.brandName,
-            genericName: info.genericName,
-            gsn: 0, // We don't have a GSN in this case
-            ndcCode: '',
-            description: info.description,
-            sideEffects: info.sideEffects,
-            dosage: info.dosage,
-            storage: info.storage,
-            contraindications: info.contraindications
-          })
+          });
         }
-
-        // Fetch pharmacy prices with initial location and radius
-        await fetchPharmacyPrices(
-          userLocation.latitude, 
-          userLocation.longitude, 
-          searchRadius
-        )
-      } catch (error: unknown) {
-        const apiError = error as APIError;
-        setError(apiError.message || 'An error occurred')
+        
+        // Try to get user location and fetch pharmacy prices
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              try {
+                await fetchPharmacyPrices(
+                  position.coords.latitude,
+                  position.coords.longitude,
+                  searchRadius
+                );
+              } catch (priceError) {
+                console.error('Error fetching pharmacy prices:', priceError);
+                // Don't set an error for prices, just show empty state
+                setIsLoadingPharmacies(false);
+              }
+            },
+            (geoError) => {
+              console.error('Geolocation error:', geoError);
+              // Use default location if geolocation fails
+              fetchPharmacyPrices(
+                userLocation.latitude,
+                userLocation.longitude,
+                searchRadius
+              ).catch(priceError => {
+                console.error('Error fetching pharmacy prices with default location:', priceError);
+                setIsLoadingPharmacies(false);
+              });
+            }
+          );
+        } else {
+          // Use default location if geolocation is not available
+          fetchPharmacyPrices(
+            userLocation.latitude,
+            userLocation.longitude,
+            searchRadius
+          ).catch(priceError => {
+            console.error('Error fetching pharmacy prices with default location:', priceError);
+            setIsLoadingPharmacies(false);
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching drug information:', error);
+        setError('Failed to load drug information. Please try again later.');
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchDrugData()
-  }, [params.name, gsn])
+    fetchDrugInfo();
+  }, [params.name, gsn, searchRadius]);
 
   // Handle ZIP code change from the map component
   const handleZipCodeChange = async (newZipCode: string) => {

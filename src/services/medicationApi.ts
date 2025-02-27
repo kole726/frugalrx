@@ -31,7 +31,14 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     const normalizedQuery = query.toLowerCase();
     console.log(`Client: Searching for medications with query: "${normalizedQuery}"`);
     
-    const response = await fetch(`${API_BASE_URL}/drugs/search/${encodeURIComponent(normalizedQuery)}`);
+    // In development, use the mock API endpoint
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const apiEndpoint = isDevelopment 
+      ? `${API_BASE_URL}/test-mock/drugs/search?q=${encodeURIComponent(normalizedQuery)}`
+      : `${API_BASE_URL}/drugs/search/${encodeURIComponent(normalizedQuery)}`;
+    
+    console.log(`Using API endpoint: ${apiEndpoint}`);
+    const response = await fetch(apiEndpoint);
     
     if (!response.ok) {
       let errorMessage = `Failed to fetch medications: ${response.status}`;
@@ -227,11 +234,19 @@ export async function getDrugInfo(drugName: string, languageCode?: string): Prom
     const normalizedDrugName = drugName.toLowerCase();
     console.log(`Client: Getting drug info for: "${normalizedDrugName}"`);
     
+    // In development, use the mock API endpoint
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
     // Build the URL with optional language code
-    let url = `${API_BASE_URL}/drugs/info?name=${encodeURIComponent(normalizedDrugName)}`;
+    let url = isDevelopment
+      ? `${API_BASE_URL}/test-mock/drugs/info?name=${encodeURIComponent(normalizedDrugName)}`
+      : `${API_BASE_URL}/drugs/info?name=${encodeURIComponent(normalizedDrugName)}`;
+    
     if (languageCode) {
       url += `&languageCode=${encodeURIComponent(languageCode)}`;
     }
+    
+    console.log(`Using API endpoint: ${url}`);
     
     // Try to get real data from API
     const response = await fetch(url);
@@ -249,7 +264,7 @@ export async function getDrugInfo(drugName: string, languageCode?: string): Prom
       console.error(`Client: API error when getting info for "${normalizedDrugName}":`, errorMessage);
       throw new Error(errorMessage);
     }
-    
+
     const data = await response.json();
     console.log(`Client: Received drug info for "${normalizedDrugName}":`, data);
     
@@ -266,54 +281,10 @@ export async function getDrugInfo(drugName: string, languageCode?: string): Prom
       }
     }
     
-    // Ensure all required fields are present with proper formatting
-    // Map API response fields to our DrugDetails interface
-    const formattedData: DrugDetails = {
-      brandName: data.brandName || drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase(),
-      genericName: data.genericName || drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase(),
-      description: data.description || `${drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
-      sideEffects: data.sideEffects || data.side || "Side effects may vary. Please consult with your healthcare provider for detailed information.",
-      dosage: data.dosage || "Various strengths available",
-      storage: data.storage || data.store || "Store according to package instructions.",
-      contraindications: data.contraindications || data.contra || "Please consult with your healthcare provider for contraindication information.",
-      admin: data.admin,
-      disclaimer: data.disclaimer,
-      interaction: data.interaction,
-      missedD: data.missedD,
-      monitor: data.monitor
-    };
-    
-    console.log(`Client: Successfully processed drug info for "${normalizedDrugName}":`, formattedData);
-    return formattedData;
+    return data;
   } catch (error) {
-    console.error('Client: Error fetching drug info, using mock data:', error);
-    
-    // Fall back to mock data
-    const drugNameLower = drugName.toLowerCase();
-    
-    if (drugNameLower.includes('amoxicillin')) {
-      return MOCK_DRUG_DATA.amoxicillin;
-    } else if (drugNameLower.includes('lisinopril')) {
-      return MOCK_DRUG_DATA.lisinopril;
-    } else if (drugNameLower.includes('atorvastatin') || drugNameLower.includes('lipitor')) {
-      return MOCK_DRUG_DATA.atorvastatin;
-    } else if (drugNameLower.includes('vyvanse')) {
-      return MOCK_DRUG_DATA.vyvanse;
-    }
-    
-    // Create a generic drug info object based on the drug name instead of defaulting to amoxicillin
-    const formattedName = drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase();
-    console.log(`Client: Creating generic drug info for "${formattedName}"`);
-    
-    return {
-      brandName: formattedName,
-      genericName: formattedName,
-      description: `${formattedName} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
-      sideEffects: "Side effects may vary. Please consult with your healthcare provider for detailed information.",
-      dosage: "Various strengths available",
-      storage: "Store according to package instructions.",
-      contraindications: "Please consult with your healthcare provider for contraindication information."
-    };
+    console.error('Error fetching drug info:', error);
+    throw error;
   }
 }
 
