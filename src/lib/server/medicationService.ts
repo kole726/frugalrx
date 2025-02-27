@@ -164,4 +164,45 @@ export async function testApiConnection(): Promise<boolean> {
     console.error('API connection test failed:', error);
     return false;
   }
+}
+
+/**
+ * Get pharmacies near a specific location
+ * @param latitude The latitude coordinate
+ * @param longitude The longitude coordinate
+ * @param pharmacyCount Optional number of pharmacies to return (default: 10)
+ * @returns A list of pharmacies near the specified location
+ */
+export async function getPharmacies(
+  latitude: number,
+  longitude: number,
+  pharmacyCount: number = 10
+): Promise<any> {
+  try {
+    const token = await getAuthToken();
+    
+    const url = new URL(`${process.env.AMERICAS_PHARMACY_API_URL}/pharmacies`);
+    url.searchParams.append('lat', latitude.toString());
+    url.searchParams.append('long', longitude.toString());
+    url.searchParams.append('hqmappingName', 'walkerrx');
+    url.searchParams.append('pharmacyCount', pharmacyCount.toString());
+    
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error getting pharmacies:', error);
+    throw new Error(`Failed to get pharmacies: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 } 

@@ -147,4 +147,25 @@ export async function testApiConnection(): Promise<boolean> {
     console.error('API Connection Test Failed:', error);
     return false;
   }
+}
+
+/**
+ * Get pharmacies near a specific ZIP code
+ * @param zipCode The ZIP code to search near
+ * @returns A list of pharmacies near the specified ZIP code
+ */
+export async function getPharmaciesByZipCode(zipCode: string): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/pharmacies?zipCode=${encodeURIComponent(zipCode)}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Failed to fetch pharmacies: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching pharmacies:', error);
+    throw error;
+  }
 } 

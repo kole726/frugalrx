@@ -29,8 +29,8 @@ export default function Header() {
             <Link href="/find-rx-savings" className="text-dark hover:text-primary transition-colors">
               Find Rx Savings
             </Link>
-            <Link href="/pharmacy-lookup" className="text-dark hover:text-primary transition-colors">
-              Savings Near Me
+            <Link href="/pharmacies" className="text-dark hover:text-primary transition-colors">
+              Find Pharmacies
             </Link>
           </nav>
 
@@ -85,10 +85,10 @@ export default function Header() {
                 Find Rx Savings
               </Link>
               <Link
-                href="/pharmacy-lookup"
+                href="/pharmacies"
                 className="block px-3 py-2 text-dark hover:bg-light rounded-md"
               >
-                Savings Near Me
+                Find Pharmacies
               </Link>
               <Link
                 href="/download-card"

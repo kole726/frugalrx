@@ -23,6 +23,7 @@ export default function Home() {
       </section>
 
       <PharmacyHighlight />
+      
       <HowToSave />
       <DownloadCard />
 
