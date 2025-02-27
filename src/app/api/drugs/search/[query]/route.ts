@@ -28,6 +28,10 @@ export async function GET(
       console.log('Got auth token:', token.substring(0, 15) + '...' + token.substring(token.length - 10));
     } catch (authError) {
       console.error('Auth token error:', authError);
+      return NextResponse.json(
+        { error: `Authentication error: ${authError instanceof Error ? authError.message : 'Unknown error'}` },
+        { status: 401 }
+      );
     }
     
     // Normalize the query to lowercase
@@ -55,6 +59,13 @@ export async function GET(
       statusCode = 404;
       console.error('Not found error detected. Status code:', statusCode);
     }
+    
+    // Log detailed error information
+    console.error(`Drug search API error details:
+      - Query: ${params.query}
+      - Status code: ${statusCode}
+      - Error message: ${errorMessage}
+    `);
     
     return NextResponse.json(
       { error: `Failed to search drugs: ${errorMessage}` },

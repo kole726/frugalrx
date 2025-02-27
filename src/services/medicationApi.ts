@@ -24,16 +24,30 @@ interface DrugPriceRequest {
 export async function searchMedications(query: string): Promise<DrugSearchResponse[]> {
   try {
     // Convert query to lowercase before encoding to ensure consistent URL format
-    const response = await fetch(`${API_BASE_URL}/drugs/search/${encodeURIComponent(query.toLowerCase())}`);
+    const normalizedQuery = query.toLowerCase();
+    console.log(`Client: Searching for medications with query: "${normalizedQuery}"`);
+    
+    const response = await fetch(`${API_BASE_URL}/drugs/search/${encodeURIComponent(normalizedQuery)}`);
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `Failed to fetch medications: ${response.status}`);
+      let errorMessage = `Failed to fetch medications: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If we can't parse the error as JSON, use the status code
+        console.error('Could not parse error response as JSON:', e);
+      }
+      
+      console.error(`Client: API error when searching for "${normalizedQuery}":`, errorMessage);
+      throw new Error(errorMessage);
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log(`Client: Found ${data.length} results for "${normalizedQuery}"`);
+    return data;
   } catch (error) {
-    console.error('Error searching medications:', error);
+    console.error('Client: Error searching medications:', error);
     throw error;
   }
 }
@@ -93,17 +107,30 @@ export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
   try {
     // Normalize drug name to lowercase
     const normalizedDrugName = drugName.toLowerCase();
+    console.log(`Client: Getting drug info for: "${normalizedDrugName}"`);
     
     // Try to get real data from API
     const response = await fetch(`${API_BASE_URL}/drugs/info?name=${encodeURIComponent(normalizedDrugName)}`);
     
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+      let errorMessage = `API error: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If we can't parse the error as JSON, use the status code
+        console.error('Could not parse error response as JSON:', e);
+      }
+      
+      console.error(`Client: API error when getting info for "${normalizedDrugName}":`, errorMessage);
+      throw new Error(errorMessage);
     }
     
-    return await response.json();
+    const data = await response.json();
+    console.log(`Client: Successfully retrieved drug info for "${normalizedDrugName}"`);
+    return data;
   } catch (error) {
-    console.error('Error fetching drug info, using mock data:', error);
+    console.error('Client: Error fetching drug info, using mock data:', error);
     
     // Fall back to mock data
     const drugNameLower = drugName.toLowerCase();
@@ -117,6 +144,7 @@ export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
     }
     
     // Default to amoxicillin if no match
+    console.warn(`Client: No mock data for "${drugNameLower}", defaulting to amoxicillin`);
     return MOCK_DRUG_DATA.amoxicillin;
   }
 }

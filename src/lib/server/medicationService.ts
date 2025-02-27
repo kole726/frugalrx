@@ -31,12 +31,14 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     let token;
     try {
       token = await getAuthToken();
+      console.log('Successfully obtained auth token for drug search');
     } catch (authError) {
       console.error('Authentication error:', authError);
       throw new Error(`Authentication failed: ${authError instanceof Error ? authError.message : 'Unknown error'}`);
     }
     
     // Make API request
+    console.log(`Making API request to ${apiUrl}/drugs/names with query: ${normalizedQuery}`);
     const response = await fetch(`${apiUrl}/drugs/names`, {
       method: 'POST',
       headers: {
@@ -54,7 +56,8 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Drug search API error: ${response.status}`, errorText);
-      throw new Error(`${response.status}`);
+      console.error(`Request details: query="${normalizedQuery}", endpoint=${apiUrl}/drugs/names`);
+      throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
