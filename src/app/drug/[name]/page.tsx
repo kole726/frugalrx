@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getDrugDetailsByGsn, getDrugInfo, getDrugPrices } from '@/services/medicationApi'
 import LoadingState from '@/components/search/LoadingState'
@@ -30,7 +30,7 @@ export default function DrugPage({ params }: Props) {
   const [selectedStrength, setSelectedStrength] = useState<string>('500 mg')
   const [selectedQuantity, setSelectedQuantity] = useState<string>('21 CAPSULE')
   const [selectedSort, setSelectedSort] = useState<string>('PRICE')
-  const [searchRadius, setSearchRadius] = useState<string>('50 MILES')
+  const [searchRadius, setSearchRadius] = useState<number>(50)
   const [userLocation, setUserLocation] = useState({
     latitude: 30.4015,
     longitude: -97.7527,
@@ -39,25 +39,142 @@ export default function DrugPage({ params }: Props) {
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false)
   const [selectedPharmacy, setSelectedPharmacy] = useState<PharmacyPrice | null>(null)
   const [showPrices, setShowPrices] = useState(true)
+  const [isLoadingPharmacies, setIsLoadingPharmacies] = useState(false)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pharmaciesPerPage, setPharmaciesPerPage] = useState(5)
+
+  // Create a ref for the pharmacy list
+  const pharmacyListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Try to get user's location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            zipCode: userLocation.zipCode // Keep the existing zip code for now
-          })
+        async (position) => {
+          try {
+            // Get coordinates from browser
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            
+            // Get ZIP code from coordinates using reverse geocoding
+            let zipCode = userLocation.zipCode; // Default
+            
+            try {
+              // Use the Google Maps Geocoding API to get the ZIP code
+              const response = await fetch(
+                `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+              );
+              
+              if (response.ok) {
+                const data = await response.json();
+                if (data.results && data.results.length > 0) {
+                  // Extract ZIP code from address components
+                  for (const result of data.results) {
+                    for (const component of result.address_components) {
+                      if (component.types.includes('postal_code')) {
+                        zipCode = component.short_name;
+                        break;
+                      }
+                    }
+                    if (zipCode !== userLocation.zipCode) break;
+                  }
+                }
+              }
+            } catch (error) {
+              console.error("Error getting ZIP code from coordinates:", error);
+              // Keep existing ZIP code
+            }
+            
+            // Update user location with coordinates and ZIP code
+            const newLocation = {
+              latitude,
+              longitude,
+              zipCode
+            };
+            
+            setUserLocation(newLocation);
+            
+            // Fetch pharmacy prices with the new location
+            await fetchPharmacyPrices(latitude, longitude, searchRadius);
+          } catch (error) {
+            console.error("Error processing user location:", error);
+            // Keep default location
+          }
         },
         (error) => {
-          console.error("Error getting user location:", error)
+          console.error("Error getting user location:", error);
           // Keep default location
         }
-      )
+      );
     }
   }, [])
+
+  // Function to fetch pharmacy prices
+  const fetchPharmacyPrices = async (lat: number, lng: number, radius: number) => {
+    try {
+      setIsLoadingPharmacies(true)
+      setError(null)
+      setCurrentPage(1) // Reset to first page when new data is loaded
+
+      const drugName = decodeURIComponent(params.name)
+      
+      console.log(`Fetching pharmacy prices for ${drugName} at coordinates: ${lat}, ${lng}, radius: ${radius}`)
+      
+      const response = await fetch('/api/pricing/v1/drugprices/byName', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          hqMappingName: 'walkerrx',
+          drugName: drugName,
+          latitude: lat,
+          longitude: lng,
+          radius: radius
+        })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`Error fetching pharmacy prices: ${response.status}`, errorText)
+        throw new Error(`API error: ${response.status} - ${errorText || 'Unknown error'}`)
+      }
+
+      const data = await response.json()
+      
+      if (data.pharmacies && Array.isArray(data.pharmacies)) {
+        setPharmacyPrices(data.pharmacies)
+      } else {
+        console.warn('Unexpected API response format:', data)
+        setPharmacyPrices([])
+        setError('No pharmacy data available. Please try a different location or medication.')
+      }
+    } catch (error: unknown) {
+      const apiError = error as APIError;
+      const errorMessage = apiError.message || 'An error occurred loading pharmacy prices';
+      
+      console.error('Error fetching pharmacy prices:', error);
+      
+      // Provide more specific error messages based on the error
+      if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+        setError('Network error. Please check your internet connection and try again.');
+      } else if (errorMessage.includes('API error: 404')) {
+        setError('The requested medication information could not be found. Please try a different medication.');
+      } else if (errorMessage.includes('API error: 401') || errorMessage.includes('API error: 403')) {
+        setError('Authentication error. Please try again later or contact support.');
+      } else if (errorMessage.includes('API error: 405')) {
+        setError('API configuration error. The server is not accepting requests in the expected format.');
+      } else if (errorMessage.includes('API error: 500')) {
+        setError('Server error. Our systems are experiencing issues. Please try again later.');
+      } else {
+        setError(errorMessage);
+      }
+    } finally {
+      setIsLoadingPharmacies(false)
+    }
+  }
 
   useEffect(() => {
     const fetchDrugData = async () => {
@@ -103,26 +220,12 @@ export default function DrugPage({ params }: Props) {
           })
         }
 
-        // Fetch pharmacy prices
-        const pricesResponse = await getDrugPrices({
-          drugName,
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          radius: parseInt(searchRadius, 10)
-        })
-
-        if (pricesResponse && pricesResponse.pharmacies) {
-          setPharmacyPrices(pricesResponse.pharmacies)
-          
-          // Update drug info with prices
-          setDrugInfo(prevInfo => {
-            if (!prevInfo) return null
-            return {
-              ...prevInfo,
-              prices: pricesResponse.pharmacies
-            }
-          })
-        }
+        // Fetch pharmacy prices with initial location and radius
+        await fetchPharmacyPrices(
+          userLocation.latitude, 
+          userLocation.longitude, 
+          searchRadius
+        )
       } catch (error: unknown) {
         const apiError = error as APIError;
         setError(apiError.message || 'An error occurred')
@@ -132,34 +235,73 @@ export default function DrugPage({ params }: Props) {
     }
 
     fetchDrugData()
-  }, [params.name, gsn, userLocation.latitude, userLocation.longitude, searchRadius])
+  }, [params.name, gsn])
+
+  // Handle ZIP code change from the map component
+  const handleZipCodeChange = async (newZipCode: string) => {
+    try {
+      console.log(`Handling ZIP code change to: ${newZipCode}`);
+      setIsLoadingPharmacies(true);
+      setError(null);
+      setCurrentPage(1); // Reset to first page when ZIP code changes
+      
+      // Use our geocoding utility to get coordinates from ZIP code
+      const { geocodeZipCode } = await import('@/utils/geocoding');
+      const newLocation = await geocodeZipCode(newZipCode);
+      
+      console.log(`Geocoded ${newZipCode} to coordinates:`, newLocation);
+      
+      // Update user location
+      setUserLocation(newLocation);
+      
+      // Fetch prices with new location
+      await fetchPharmacyPrices(newLocation.latitude, newLocation.longitude, searchRadius);
+    } catch (error) {
+      console.error("Error updating location:", error);
+      setError("Failed to update location. Please try a valid US ZIP code.");
+    } finally {
+      setIsLoadingPharmacies(false);
+    }
+  };
+
+  // Handle radius change from the map component
+  const handleRadiusChange = async (newRadius: number) => {
+    try {
+      console.log(`Handling radius change to: ${newRadius} miles`);
+      setIsLoadingPharmacies(true);
+      setError(null);
+      setSearchRadius(newRadius);
+      setCurrentPage(1); // Reset to first page when radius changes
+      
+      await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, newRadius);
+    } catch (error) {
+      console.error("Error updating search radius:", error);
+      setError("Failed to update search radius. Please try again.");
+    } finally {
+      setIsLoadingPharmacies(false);
+    }
+  };
 
   // Format pharmacy data for the map
   const mapPharmacies = pharmacyPrices.map((pharmacy, index) => {
     // Extract distance value (assuming format like "0.8 miles")
-    const distanceValue = parseFloat(pharmacy.distance.split(' ')[0]) || 0;
-    
-    // Generate random but consistent coordinates around the user's location
-    // In a real app, these would come from the API
-    const seed = pharmacy.name.length; // Use name length as a simple seed
-    const latOffset = (Math.sin(seed * 0.1) * 0.02);
-    const lngOffset = (Math.cos(seed * 0.1) * 0.02);
+    const distanceValue = parseFloat(pharmacy.distance?.split(' ')[0]) || 0;
     
     return {
       pharmacyId: index,
       name: pharmacy.name,
-      address: `${index + 100} Main St`, // Placeholder - would come from API
-      city: "Austin", // Placeholder
-      state: "TX", // Placeholder
-      postalCode: userLocation.zipCode,
-      phone: pharmacy.name.length > 8 ? "555-123-4567" : undefined, // Some pharmacies might not have phone numbers
+      address: pharmacy.address || `${index + 100} Main St`, // Use API address or fallback
+      city: pharmacy.city || "Austin", // Use API city or fallback
+      state: pharmacy.state || "TX", // Use API state or fallback
+      postalCode: pharmacy.zipCode || userLocation.zipCode,
+      phone: pharmacy.phone || `555-${100 + index}-${1000 + index}`,
       distance: distanceValue,
-      latitude: userLocation.latitude + latOffset,
-      longitude: userLocation.longitude + lngOffset,
+      latitude: pharmacy.latitude || (userLocation.latitude + (Math.sin(index) * 0.05)),
+      longitude: pharmacy.longitude || (userLocation.longitude + (Math.cos(index) * 0.05)),
       price: pharmacy.price,
-      open24H: index % 3 === 0, // Every 3rd pharmacy is open 24 hours (for demo)
-      driveUpWindow: index % 2 === 0, // Every 2nd pharmacy has drive-up (for demo)
-      handicapAccess: true // All pharmacies have handicap access (for demo)
+      open24H: pharmacy.open24H || index % 3 === 0, // Use API data or fallback
+      driveUpWindow: pharmacy.driveUpWindow || index % 2 === 0, // Use API data or fallback
+      handicapAccess: pharmacy.handicapAccess || true // Use API data or fallback
     }
   });
 
@@ -174,6 +316,42 @@ export default function DrugPage({ params }: Props) {
     const alternativesSection = document.getElementById('alternatives-section');
     if (alternativesSection) {
       alternativesSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Handle search radius change from the dropdown
+  const handleSearchRadiusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    const radius = parseInt(value.split(' ')[0], 10);
+    setCurrentPage(1); // Reset to first page when radius changes
+    handleRadiusChange(radius);
+  };
+
+  // Handle sort change
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedSort(e.target.value);
+    setCurrentPage(1); // Reset to first page when sort changes
+  };
+
+  // Handle pharmacies per page change
+  const handlePharmaciesPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === 'all') {
+      // Set to a large number to show all pharmacies
+      setPharmaciesPerPage(1000);
+    } else {
+      setPharmaciesPerPage(parseInt(value, 10));
+    }
+    setCurrentPage(1); // Reset to first page when items per page changes
+  };
+
+  // Function to handle page change
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    
+    // Scroll to the top of the pharmacy list
+    if (pharmacyListRef.current) {
+      pharmacyListRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -340,25 +518,41 @@ export default function DrugPage({ params }: Props) {
               <select 
                 className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedSort}
-                onChange={(e) => setSelectedSort(e.target.value)}
+                onChange={handleSortChange}
               >
                 <option value="PRICE">PRICE</option>
                 <option value="DISTANCE">DISTANCE</option>
                 <option value="NAME">NAME</option>
               </select>
             </div>
-            <div className="flex items-center">
-              <span className="text-gray-600 mr-2">SEARCH RADIUS:</span>
-              <select 
-                className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={searchRadius}
-                onChange={(e) => setSearchRadius(e.target.value)}
-              >
-                <option value="5 MILES">5 MILES</option>
-                <option value="10 MILES">10 MILES</option>
-                <option value="25 MILES">25 MILES</option>
-                <option value="50 MILES">50 MILES</option>
-              </select>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <span className="text-gray-600 mr-2">SHOW:</span>
+                <select 
+                  className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={pharmaciesPerPage === 1000 ? 'all' : pharmaciesPerPage.toString()}
+                  onChange={handlePharmaciesPerPageChange}
+                >
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="15">15</option>
+                  <option value="20">20</option>
+                  <option value="all">All</option>
+                </select>
+              </div>
+              <div className="flex items-center">
+                <span className="text-gray-600 mr-2">RADIUS:</span>
+                <select 
+                  className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={`${searchRadius} MILES`}
+                  onChange={handleSearchRadiusChange}
+                >
+                  <option value="5 MILES">5 MILES</option>
+                  <option value="10 MILES">10 MILES</option>
+                  <option value="25 MILES">25 MILES</option>
+                  <option value="50 MILES">50 MILES</option>
+                </select>
+              </div>
             </div>
           </motion.div>
 
@@ -371,84 +565,207 @@ export default function DrugPage({ params }: Props) {
           >
             {/* Pharmacy Prices */}
             <div>
-              <h2 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
+              <h2 className="text-lg font-semibold mb-4 text-gray-800 flex items-center" ref={pharmacyListRef}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-[#006142]" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
                 </svg>
                 RESULTS FOR DRUG
               </h2>
-              <div className="space-y-4">
-                {pharmacyPrices.length > 0 ? (
-                  pharmacyPrices
-                    .sort((a, b) => {
-                      if (selectedSort === 'PRICE') return a.price - b.price;
-                      if (selectedSort === 'DISTANCE') {
-                        const distA = parseFloat(a.distance.split(' ')[0]) || 0;
-                        const distB = parseFloat(b.distance.split(' ')[0]) || 0;
-                        return distA - distB;
-                      }
-                      return a.name.localeCompare(b.name);
-                    })
-                    .map((pharmacy, index) => (
-                      <motion.div 
-                        key={index} 
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.1 * index }}
-                        className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center p-4">
-                          <div className="flex-shrink-0 mr-4">
-                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-[#EFFDF6] text-[#006142] font-semibold">
-                              {index + 1}
-                            </div>
-                          </div>
-                          <div className="flex-grow">
-                            <h3 className="font-medium text-gray-900">{pharmacy.name}</h3>
-                            <div className="flex items-center text-gray-600 mb-2">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                              </svg>
-                              <span>{pharmacy.distance}</span>
-                            </div>
-                          </div>
-                          <div className="flex-shrink-0 text-right">
-                            <p className="text-2xl font-bold text-[#006142]">${pharmacy.price.toFixed(2)}</p>
-                            <p className="text-xs text-gray-500">with coupon</p>
-                          </div>
-                        </div>
-                        <div className="bg-gray-50 p-3 flex justify-between items-center border-t border-gray-200">
-                          {index === 0 && (
-                            <span className="text-xs font-semibold text-[#006142] px-2 py-1 bg-[#EFFDF6] rounded">
-                              BEST VALUE
-                            </span>
-                          )}
-                          <div className="flex-grow"></div>
-                          <button 
-                            className="bg-[#006142] hover:bg-[#22A307] text-white font-bold py-2 px-4 rounded transition duration-300" 
-                            onClick={() => handleGetCoupon(pharmacy)}
+              
+              {isLoadingPharmacies ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#006142]"></div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pharmacyPrices.length > 0 ? (
+                    <>
+                      {/* Results count indicator */}
+                      <div className="text-sm text-gray-600 mb-4">
+                        Showing {Math.min((currentPage - 1) * pharmaciesPerPage + 1, pharmacyPrices.length)}-
+                        {Math.min(currentPage * pharmaciesPerPage, pharmacyPrices.length)} of {pharmacyPrices.length} results
+                      </div>
+                      
+                      {pharmacyPrices
+                        .sort((a, b) => {
+                          if (selectedSort === 'PRICE') return a.price - b.price;
+                          if (selectedSort === 'DISTANCE') {
+                            const distA = parseFloat(a.distance.split(' ')[0]) || 0;
+                            const distB = parseFloat(b.distance.split(' ')[0]) || 0;
+                            return distA - distB;
+                          }
+                          return a.name.localeCompare(b.name);
+                        })
+                        // Apply pagination
+                        .slice((currentPage - 1) * pharmaciesPerPage, currentPage * pharmaciesPerPage)
+                        .map((pharmacy, index) => {
+                          // Calculate the actual index in the full sorted array for the badge
+                          const actualIndex = pharmacyPrices
+                            .sort((a, b) => {
+                              if (selectedSort === 'PRICE') return a.price - b.price;
+                              if (selectedSort === 'DISTANCE') {
+                                const distA = parseFloat(a.distance.split(' ')[0]) || 0;
+                                const distB = parseFloat(b.distance.split(' ')[0]) || 0;
+                                return distA - distB;
+                              }
+                              return a.name.localeCompare(b.name);
+                            })
+                            .findIndex(p => p === pharmacy);
+                            
+                          return (
+                            <motion.div 
+                              key={index} 
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.3, delay: 0.1 * index }}
+                              className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex items-center p-2 py-3">
+                                <div className="flex-shrink-0 mr-3">
+                                  <div className="w-6 h-6 flex items-center justify-center rounded-full bg-[#EFFDF6] text-[#006142] font-semibold text-sm">
+                                    {actualIndex + 1}
+                                  </div>
+                                </div>
+                                <div className="flex-grow">
+                                  <h3 className="font-medium text-gray-900 text-sm">{pharmacy.name}</h3>
+                                  <div className="flex items-center text-gray-600 text-xs">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                    </svg>
+                                    <span>{pharmacy.distance}</span>
+                                  </div>
+                                </div>
+                                <div className="flex-shrink-0 text-right">
+                                  <p className="text-xl font-bold text-[#006142]">${pharmacy.price.toFixed(2)}</p>
+                                  <p className="text-xs text-gray-500">with coupon</p>
+                                </div>
+                              </div>
+                              <div className="bg-gray-50 p-2 flex justify-between items-center border-t border-gray-200">
+                                {actualIndex === 0 && (
+                                  <span className="text-xs font-semibold text-[#006142] px-2 py-0.5 bg-[#EFFDF6] rounded">
+                                    BEST VALUE
+                                  </span>
+                                )}
+                                <div className="flex-grow"></div>
+                                <button 
+                                  className="bg-[#006142] hover:bg-[#22A307] text-white font-bold py-1.5 px-3 text-sm rounded transition duration-300" 
+                                  onClick={() => handleGetCoupon(pharmacy)}
+                                >
+                                  GET FREE COUPON
+                                </button>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                        
+                      {/* Pagination Controls */}
+                      {pharmacyPrices.length > pharmaciesPerPage && (
+                        <div className="flex justify-center items-center mt-6 space-x-2">
+                          <button
+                            onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                            disabled={currentPage === 1}
+                            className={`px-3 py-1 rounded-md ${
+                              currentPage === 1 
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
+                                : 'bg-[#EFFDF6] text-[#006142] hover:bg-[#006142] hover:text-white'
+                            } transition-colors`}
+                            aria-label="Previous page"
                           >
-                            GET FREE COUPON
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                          
+                          {/* Page numbers - responsive approach */}
+                          <div className="hidden md:flex space-x-2">
+                            {Array.from({ length: Math.ceil(pharmacyPrices.length / pharmaciesPerPage) }).map((_, index) => {
+                              // Show all pages if there are 7 or fewer
+                              // Otherwise show first, last, current, and pages around current
+                              const totalPages = Math.ceil(pharmacyPrices.length / pharmaciesPerPage);
+                              const pageNum = index + 1;
+                              
+                              if (
+                                totalPages <= 7 ||
+                                pageNum === 1 ||
+                                pageNum === totalPages ||
+                                Math.abs(pageNum - currentPage) <= 1
+                              ) {
+                                return (
+                                  <button
+                                    key={index}
+                                    onClick={() => handlePageChange(pageNum)}
+                                    className={`w-8 h-8 rounded-md ${
+                                      currentPage === pageNum
+                                        ? 'bg-[#006142] text-white'
+                                        : 'bg-[#EFFDF6] text-[#006142] hover:bg-[#006142] hover:text-white'
+                                    } transition-colors`}
+                                  >
+                                    {pageNum}
+                                  </button>
+                                );
+                              } else if (
+                                (pageNum === 2 && currentPage > 3) ||
+                                (pageNum === totalPages - 1 && currentPage < totalPages - 2)
+                              ) {
+                                // Show ellipsis
+                                return (
+                                  <span key={index} className="w-8 flex items-center justify-center">
+                                    ...
+                                  </span>
+                                );
+                              }
+                              
+                              return null;
+                            })}
+                          </div>
+                          
+                          {/* Mobile pagination - just show current/total */}
+                          <div className="md:hidden flex items-center">
+                            <span className="text-sm text-gray-600">
+                              Page {currentPage} of {Math.ceil(pharmacyPrices.length / pharmaciesPerPage)}
+                            </span>
+                          </div>
+                          
+                          <button
+                            onClick={() => handlePageChange(Math.min(currentPage + 1, Math.ceil(pharmacyPrices.length / pharmaciesPerPage)))}
+                            disabled={currentPage === Math.ceil(pharmacyPrices.length / pharmaciesPerPage)}
+                            className={`px-3 py-1 rounded-md ${
+                              currentPage === Math.ceil(pharmacyPrices.length / pharmaciesPerPage)
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                : 'bg-[#EFFDF6] text-[#006142] hover:bg-[#006142] hover:text-white'
+                            } transition-colors`}
+                            aria-label="Next page"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            </svg>
                           </button>
                         </div>
-                      </motion.div>
-                    ))
-                ) : (
-                  <div className="text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-gray-600">No pharmacy prices available for this medication.</p>
-                  </div>
-                )}
-              </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center p-8 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-gray-600">No pharmacy prices available for this medication.</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Map */}
-            <div className="h-[500px] bg-gray-100 rounded-lg overflow-hidden shadow-md">
-              {mapPharmacies.length > 0 ? (
+            <div className="h-[600px] bg-gray-100 rounded-lg overflow-hidden shadow-md">
+              {isLoadingPharmacies ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#006142]"></div>
+                  <p className="ml-3 text-gray-600">Loading pharmacy data...</p>
+                </div>
+              ) : mapPharmacies.length > 0 ? (
                 <PharmacyMap 
                   pharmacies={mapPharmacies}
                   zipCode={userLocation.zipCode}
                   centerLat={userLocation.latitude}
                   centerLng={userLocation.longitude}
+                  searchRadius={searchRadius}
                   onMarkerClick={(pharmacy) => {
                     // Find the corresponding pharmacy in our prices list
                     const matchedPharmacy = pharmacyPrices.find((p, idx) => idx === pharmacy.pharmacyId);
@@ -458,10 +775,18 @@ export default function DrugPage({ params }: Props) {
                       setIsCouponModalOpen(true);
                     }
                   }}
+                  onZipCodeChange={handleZipCodeChange}
+                  onRadiusChange={handleRadiusChange}
                 />
               ) : (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-600">Map data not available</p>
+                <div className="flex flex-col items-center justify-center h-full">
+                  <p className="text-gray-600 mb-4">No pharmacies found in this area</p>
+                  <button 
+                    onClick={() => handleRadiusChange(Math.min(searchRadius + 25, 100))}
+                    className="px-4 py-2 bg-[#006142] text-white rounded-md hover:bg-[#22A307] transition-colors"
+                  >
+                    Increase Search Radius
+                  </button>
                 </div>
               )}
             </div>

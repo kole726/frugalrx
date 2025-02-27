@@ -27,8 +27,15 @@ const tokenState: TokenState = {
  */
 export function initMapsLoader(): Loader {
   if (!tokenState.loader) {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+    
+    // Check if API key is missing or using the placeholder value
+    if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY') {
+      console.warn('WARNING: Google Maps API key is missing or using the placeholder value. Maps functionality will be limited.');
+    }
+    
     tokenState.loader = new Loader({
-      apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+      apiKey: apiKey,
       version: 'weekly',
       libraries: ['places'],
     });
@@ -66,6 +73,13 @@ export async function getGoogleMapsWithRefresh(): Promise<any> {
     return await tokenState.loader!.load();
   } catch (error) {
     console.error('Error loading Google Maps API:', error);
+    
+    // Check if the error is related to an invalid API key
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('API key') || errorMessage.includes('apiKey')) {
+      throw new Error('Google Maps API key is invalid or missing. Please check your .env.local file and ensure you have a valid API key.');
+    }
+    
     return refreshToken();
   }
 }
@@ -83,9 +97,18 @@ async function refreshToken(): Promise<any> {
   // Set refreshing state
   tokenState.isRefreshing = true;
   
+  // Get the API key
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  
+  // Check if API key is missing or using the placeholder value
+  if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY') {
+    tokenState.isRefreshing = false;
+    throw new Error('Google Maps API key is missing or using the placeholder value. Please update your .env.local file with a valid API key.');
+  }
+  
   // Create a new loader with the API key
   tokenState.loader = new Loader({
-    apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    apiKey: apiKey,
     version: 'weekly',
     libraries: ['places'],
   });
@@ -102,6 +125,14 @@ async function refreshToken(): Promise<any> {
     })
     .catch(async (error) => {
       console.error('Error refreshing Google Maps API token:', error);
+      
+      // Check if the error is related to an invalid API key
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('API key') || errorMessage.includes('apiKey')) {
+        tokenState.isRefreshing = false;
+        tokenState.refreshPromise = null;
+        throw new Error('Google Maps API key is invalid. Please check your .env.local file and ensure you have a valid API key.');
+      }
       
       // Retry logic
       if (tokenState.retryCount < MAX_RETRIES) {

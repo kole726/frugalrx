@@ -41,6 +41,16 @@ export interface PharmacyPrice {
   name: string;
   price: number;
   distance: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  latitude?: number;
+  longitude?: number;
+  open24H?: boolean;
+  driveUpWindow?: boolean;
+  handicapAccess?: boolean;
 }
 
 export interface DrugPriceResponse {

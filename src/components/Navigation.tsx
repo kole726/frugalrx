@@ -45,12 +45,13 @@ export default function Navigation() {
             </div>
             
             <div className="bg-[#37B34A] rounded-lg p-4">
-              <div className="relative w-full aspect-square bg-white rounded-lg p-4">
+              <div className="relative w-full max-w-[250px] mx-auto bg-white rounded-lg p-4">
                 <Image
                   src="/images/qr/FrugalRx-QR-Code.svg"
                   alt="FrugalRx QR Code"
-                  fill
-                  className="object-contain p-2"
+                  width={200}
+                  height={200}
+                  className="object-contain"
                 />
               </div>
             </div>

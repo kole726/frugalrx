@@ -1,191 +1,216 @@
-'use client'
-import { useState, useEffect } from 'react'
+"use client"
+import { Fragment, useRef } from 'react'
+import { Dialog, Transition } from '@headlessui/react'
 import Image from 'next/image'
 
+interface PharmacyPrice {
+  name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  distance?: string;
+  price?: number;
+  latitude?: number;
+  longitude?: number;
+  open24H?: boolean;
+  driveUpWindow?: boolean;
+  handicapAccess?: boolean;
+}
+
 interface CouponModalProps {
-  isOpen: boolean
-  onClose: () => void
-  drugName?: string
-  pharmacy?: any
-  price?: string
+  isOpen: boolean;
+  onClose: () => void;
+  drugName: string;
+  pharmacy: PharmacyPrice;
+  price?: string;
 }
 
 export default function CouponModal({ isOpen, onClose, drugName, pharmacy, price }: CouponModalProps) {
-  const [showQR, setShowQR] = useState(false)
+  const cancelButtonRef = useRef(null);
   
-  // Close modal when escape key is pressed
-  useEffect(() => {
-    const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    
-    window.addEventListener('keydown', handleEsc)
-    return () => window.removeEventListener('keydown', handleEsc)
-  }, [onClose])
+  // Format the pharmacy address
+  const formattedAddress = [
+    pharmacy.address,
+    pharmacy.city && pharmacy.state ? `${pharmacy.city}, ${pharmacy.state}` : '',
+    pharmacy.zipCode
+  ].filter(Boolean).join(' ');
   
-  // Prevent scrolling when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'auto'
-    }
-    
-    return () => {
-      document.body.style.overflow = 'auto'
-    }
-  }, [isOpen])
+  // Format the phone number
+  const formatPhoneNumber = (phone?: string) => {
+    if (!phone || phone.length !== 10) return phone;
+    return `(${phone.slice(0, 3)}) ${phone.slice(3, 6)}-${phone.slice(6)}`;
+  };
   
-  if (!isOpen) return null
+  // Generate a random coupon code
+  const couponCode = `FRUGAL-${Math.random().toString(36).substring(2, 7).toUpperCase()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
   
+  // Handle print coupon
+  const handlePrintCoupon = () => {
+    window.print();
+  };
+  
+  // Handle text coupon
+  const handleTextCoupon = () => {
+    // In a real app, this would send a text message with the coupon
+    alert('Text message feature would be implemented here');
+  };
+  
+  // Handle email coupon
+  const handleEmailCoupon = () => {
+    // In a real app, this would send an email with the coupon
+    alert('Email feature would be implemented here');
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        {/* Close button */}
-        <button 
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-          aria-label="Close"
+    <Transition.Root show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" initialFocus={cancelButtonRef} onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        
-        {/* Header */}
-        <div className="bg-[#006142] p-6 rounded-t-lg">
-          <h2 className="text-xl font-bold text-white">Your Free Coupon</h2>
-          <p className="text-[#EFFDF6] mt-1">
-            {drugName} {pharmacy ? `at ${pharmacy.name}` : ''}
-            {price ? ` - $${price}` : ''}
-          </p>
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" />
+        </Transition.Child>
+
+        <div className="fixed inset-0 z-10 overflow-y-auto">
+          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+              enterTo="opacity-100 translate-y-0 sm:scale-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 translate-y-0 sm:scale-100"
+              leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            >
+              <Dialog.Panel className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+                <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                  <div className="sm:flex sm:items-start">
+                    <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                      <Dialog.Title as="h3" className="text-xl font-semibold leading-6 text-gray-900">
+                        Your Free Coupon
+                      </Dialog.Title>
+                      
+                      {/* Coupon Card */}
+                      <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+                        {/* Coupon Header */}
+                        <div className="bg-[#006142] text-white p-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h4 className="text-lg font-bold">FrugalRx</h4>
+                              <p className="text-sm">Prescription Savings Card</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm">BIN: 610020</p>
+                              <p className="text-sm">PCN: ACN</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Coupon Body */}
+                        <div className="p-4">
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <h5 className="font-semibold">{drugName}</h5>
+                              <p className="text-sm text-gray-600">at {pharmacy.name}</p>
+                              <p className="text-sm text-gray-600">{formattedAddress}</p>
+                              {pharmacy.phone && (
+                                <p className="text-sm text-gray-600">{formatPhoneNumber(pharmacy.phone)}</p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-gray-600">Your Price</p>
+                              <p className="text-2xl font-bold text-[#006142]">${price || (pharmacy.price?.toFixed(2) || '0.00')}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="border-t border-gray-200 pt-4 mb-4">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="text-sm text-gray-600">Coupon Code</p>
+                                <p className="font-mono font-semibold">{couponCode}</p>
+                              </div>
+                              <div className="bg-gray-100 p-2 rounded">
+                                {/* This would be a real QR code in production */}
+                                <div className="w-16 h-16 bg-gray-300 flex items-center justify-center">
+                                  <span className="text-xs text-gray-600">QR Code</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <p className="text-xs text-gray-500 mt-2">
+                            Present this coupon to the pharmacist when filling your prescription. 
+                            This coupon is not insurance. Savings may vary.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Action Buttons */}
+                      <div className="mt-4 grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          className="flex flex-col items-center justify-center rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                          onClick={handlePrintCoupon}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
+                          </svg>
+                          Print
+                        </button>
+                        <button
+                          type="button"
+                          className="flex flex-col items-center justify-center rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                          onClick={handleTextCoupon}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                          </svg>
+                          Text
+                        </button>
+                        <button
+                          type="button"
+                          className="flex flex-col items-center justify-center rounded-md bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
+                          onClick={handleEmailCoupon}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mb-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                          </svg>
+                          Email
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                  <button
+                    type="button"
+                    className="inline-flex w-full justify-center rounded-md bg-[#006142] px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#22A307] sm:ml-3 sm:w-auto"
+                    onClick={onClose}
+                  >
+                    Done
+                  </button>
+                  <button
+                    type="button"
+                    className="mt-3 inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                    onClick={onClose}
+                    ref={cancelButtonRef}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </Dialog.Panel>
+            </Transition.Child>
+          </div>
         </div>
-        
-        {/* Content */}
-        <div className="p-6">
-          {showQR ? (
-            <div className="text-center">
-              <div className="bg-white p-4 rounded-lg shadow-inner border border-gray-200 mx-auto max-w-[200px] mb-4">
-                <div className="relative w-full aspect-square">
-                  <Image
-                    src="/images/qr/FrugalRx-QR-Code.svg"
-                    alt="Coupon QR Code"
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-              </div>
-              <p className="text-sm text-gray-600 mb-4">
-                Scan this QR code at the pharmacy to redeem your discount
-              </p>
-              <button 
-                onClick={() => setShowQR(false)}
-                className="text-[#006142] font-medium hover:text-[#22A307]"
-              >
-                Back to coupon
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h3 className="font-bold text-gray-800">FrugalRx</h3>
-                    <p className="text-sm text-gray-600">Prescription Savings Card</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">BIN: 610020</p>
-                    <p className="text-sm text-gray-600">PCN: ACN</p>
-                  </div>
-                </div>
-                <div className="border-t border-gray-300 pt-4">
-                  <p className="text-sm text-gray-600 mb-1"><span className="font-medium">Member ID:</span> FRUGAL12345</p>
-                  <p className="text-sm text-gray-600"><span className="font-medium">Group:</span> FRGRX</p>
-                </div>
-              </div>
-              
-              <div className="space-y-4 mb-6">
-                <div>
-                  <h3 className="font-medium text-gray-800 mb-1">How to use this coupon:</h3>
-                  <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
-                    <li>Show this coupon to your pharmacist</li>
-                    <li>The pharmacy will process the coupon like insurance</li>
-                    <li>You pay the discounted price - no insurance needed!</li>
-                  </ol>
-                </div>
-                
-                <div>
-                  <h3 className="font-medium text-gray-800 mb-1">Medication:</h3>
-                  <p className="text-sm text-gray-600">{drugName}</p>
-                </div>
-                
-                {pharmacy && (
-                  <div>
-                    <h3 className="font-medium text-gray-800 mb-1">Pharmacy:</h3>
-                    <p className="text-sm text-gray-600">{pharmacy.name}</p>
-                  </div>
-                )}
-                
-                {price && (
-                  <div>
-                    <h3 className="font-medium text-gray-800 mb-1">Price with coupon:</h3>
-                    <p className="text-xl font-bold text-[#006142]">${price}</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex flex-col space-y-3">
-                <button 
-                  onClick={() => window.print()}
-                  className="w-full py-2 px-4 bg-[#006142] text-white rounded-md hover:bg-[#22A307] transition-colors flex items-center justify-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clipRule="evenodd" />
-                  </svg>
-                  Print Coupon
-                </button>
-                
-                <button 
-                  onClick={() => setShowQR(true)}
-                  className="w-full py-2 px-4 bg-white border border-[#006142] text-[#006142] rounded-md hover:bg-[#EFFDF6] transition-colors flex items-center justify-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                  </svg>
-                  Show QR Code
-                </button>
-                
-                <button 
-                  onClick={() => {
-                    // In a real app, this would send the coupon via SMS
-                    alert('SMS feature would be implemented here')
-                  }}
-                  className="w-full py-2 px-4 bg-white border border-[#006142] text-[#006142] rounded-md hover:bg-[#EFFDF6] transition-colors flex items-center justify-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                  </svg>
-                  Text to Phone
-                </button>
-                
-                <button 
-                  onClick={() => {
-                    // In a real app, this would email the coupon
-                    alert('Email feature would be implemented here')
-                  }}
-                  className="w-full py-2 px-4 bg-white border border-[#006142] text-[#006142] rounded-md hover:bg-[#EFFDF6] transition-colors flex items-center justify-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                  </svg>
-                  Email Coupon
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  )
+      </Dialog>
+    </Transition.Root>
+  );
 } 

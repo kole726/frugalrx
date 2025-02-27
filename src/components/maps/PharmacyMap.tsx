@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useRef, useState } from 'react'
 import { getGoogleMapsWithRefresh } from '@/utils/mapsTokenManager'
-import { MARKER_COLORS, PHARMACY_PIN_PATH } from '@/utils/mapMarkers'
+import { MARKER_COLORS, createPharmacyMarker, createUserLocationMarker } from '@/utils/mapMarkers'
 
 interface Pharmacy {
   pharmacyId: number;
@@ -26,93 +26,48 @@ interface PharmacyMapProps {
   centerLat?: number;
   centerLng?: number;
   onMarkerClick?: (pharmacy: Pharmacy) => void;
+  onZipCodeChange?: (zipCode: string) => void;
+  onRadiusChange?: (radius: number) => void;
+  searchRadius?: number;
 }
 
 // Define a type for the Google Maps API
 declare global {
   interface Window {
     google: {
-      maps: Record<string, any>;
+      maps: any;
     };
   }
 }
 
 // Google Maps type definitions
-interface GoogleMapOptions {
-  center: GoogleLatLng;
-  zoom: number;
-  mapTypeId?: string;
-  [key: string]: any;
-}
-
-interface GoogleLatLng {
-  lat(): number;
-  lng(): number;
-  [key: string]: any;
-}
-
-interface GoogleMarkerOptions {
-  position: GoogleLatLng;
-  map: GoogleMap | null;
-  icon?: string;
-  title?: string;
-  [key: string]: any;
-}
-
-interface GoogleMarker {
-  setMap: (map: GoogleMap | null) => void;
-  addListener: (event: string, callback: () => void) => void;
-  [key: string]: any;
-}
-
-interface GoogleMap {
-  setCenter: (latLng: GoogleLatLng) => void;
-  setZoom: (zoom: number) => void;
-  [key: string]: any;
-}
-
-interface GoogleInfoWindowOptions {
-  content: string;
-  [key: string]: any;
-}
-
-interface GoogleInfoWindow {
-  open: (map: GoogleMap, marker: GoogleMarker) => void;
-  close: () => void;
-  [key: string]: any;
-}
+type GoogleMap = google.maps.Map;
+type GoogleMarker = google.maps.Marker;
+type GoogleInfoWindow = google.maps.InfoWindow;
+type GoogleLatLng = google.maps.LatLng;
 
 export default function PharmacyMap({ 
   pharmacies, 
   zipCode, 
   centerLat, 
   centerLng,
-  onMarkerClick 
+  onMarkerClick,
+  onZipCodeChange,
+  onRadiusChange,
+  searchRadius = 50
 }: PharmacyMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<Record<string, any> | null>(null);
-  const [markers, setMarkers] = useState<Record<string, any>[]>([]);
+  const [map, setMap] = useState<GoogleMap | null>(null);
+  const [markers, setMarkers] = useState<GoogleMarker[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [selectedMarker, setSelectedMarker] = useState<number | null>(null);
+  const [activeInfoWindow, setActiveInfoWindow] = useState<GoogleInfoWindow | null>(null);
+  const [localZipCode, setLocalZipCode] = useState(zipCode);
+  const [localRadius, setLocalRadius] = useState(searchRadius);
+  const [userLocationMarker, setUserLocationMarker] = useState<GoogleMarker | null>(null);
   const maxRetries = 3;
-
-  // Create a pharmacy marker icon
-  const createPharmacyMarker = (index: number, selected: boolean = false) => {
-    if (!window.google) return null;
-    
-    return {
-      path: PHARMACY_PIN_PATH,
-      fillColor: selected ? MARKER_COLORS.selected : MARKER_COLORS.primary,
-      fillOpacity: 1,
-      strokeColor: '#FFFFFF',
-      strokeWeight: 2,
-      scale: selected ? 2.2 : 2,
-      anchor: new window.google.maps.Point(12, 22),
-      labelOrigin: new window.google.maps.Point(12, 10),
-    };
-  };
 
   // Initialize the map
   useEffect(() => {
@@ -157,6 +112,17 @@ export default function PharmacyMap({
       } catch (err) {
         console.error('Error initializing map:', err);
         
+        // Display a more helpful error message based on the error type
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        
+        if (errorMessage.includes('API key')) {
+          setError('Google Maps API key is invalid or missing. Please check your environment configuration.');
+        } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+          setError('Network error. Please check your internet connection and try again.');
+        } else {
+          setError(`Failed to load the map: ${errorMessage}`);
+        }
+        
         // Implement retry logic
         if (retryCount < maxRetries) {
           setRetryCount(prev => prev + 1);
@@ -165,7 +131,6 @@ export default function PharmacyMap({
             initMap();
           }, 2000);
         } else {
-          setError('Failed to load the map after multiple attempts. Please try again later.');
           setLoading(false);
         }
       }
@@ -181,11 +146,43 @@ export default function PharmacyMap({
           if (marker) marker.setMap(null);
         });
         setMarkers([]);
+        
+        // Clear user location marker
+        if (userLocationMarker) {
+          userLocationMarker.setMap(null);
+          setUserLocationMarker(null);
+        }
       } catch (err) {
         console.error('Error cleaning up map:', err);
       }
     };
   }, [centerLat, centerLng, retryCount]);
+
+  // Add user location marker
+  useEffect(() => {
+    if (!map || !window.google || !centerLat || !centerLng) return;
+    
+    try {
+      // Clear existing user location marker
+      if (userLocationMarker) {
+        userLocationMarker.setMap(null);
+      }
+      
+      // Create a new user location marker
+      const position = new window.google.maps.LatLng(centerLat, centerLng);
+      const marker = new window.google.maps.Marker({
+        position,
+        map: map,
+        icon: createUserLocationMarker(),
+        title: 'Your Location',
+        zIndex: 1000 // Keep user location marker on top
+      });
+      
+      setUserLocationMarker(marker);
+    } catch (err) {
+      console.error('Error adding user location marker:', err);
+    }
+  }, [map, centerLat, centerLng]);
 
   // Add markers for pharmacies
   useEffect(() => {
@@ -197,6 +194,12 @@ export default function PharmacyMap({
     console.log("Adding markers for", pharmacies.length, "pharmacies");
 
     try {
+      // Close any active info window
+      if (activeInfoWindow) {
+        activeInfoWindow.close();
+        setActiveInfoWindow(null);
+      }
+
       // Clear existing markers
       markers.forEach(marker => {
         if (marker) marker.setMap(null);
@@ -204,6 +207,11 @@ export default function PharmacyMap({
       
       // Create bounds to fit all markers
       const bounds = new window.google.maps.LatLngBounds();
+      
+      // Add user location to bounds if available
+      if (centerLat && centerLng) {
+        bounds.extend({ lat: centerLat, lng: centerLng });
+      }
       
       // Create new markers
       const newMarkers = pharmacies.map((pharmacy, index) => {
@@ -227,24 +235,12 @@ export default function PharmacyMap({
         // Check if this marker is selected
         const isSelected = selectedMarker === pharmacy.pharmacyId;
         
-        // Create custom icon
-        const icon = {
-          path: PHARMACY_PIN_PATH,
-          fillColor: isSelected ? MARKER_COLORS.selected : MARKER_COLORS.primary,
-          fillOpacity: 1,
-          strokeColor: '#FFFFFF',
-          strokeWeight: 2,
-          scale: isSelected ? 2.2 : 2,
-          anchor: new window.google.maps.Point(12, 22),
-          labelOrigin: new window.google.maps.Point(12, 10),
-        };
-        
         // Create marker with custom icon
         const marker = new window.google.maps.Marker({
           position,
-          map,
+          map: map,
           title: pharmacy.name,
-          icon: icon,
+          icon: createPharmacyMarker(index, isSelected),
           label: {
             text: (index + 1).toString(),
             color: 'white',
@@ -252,7 +248,7 @@ export default function PharmacyMap({
             fontSize: '14px'
           },
           animation: window.google.maps.Animation.DROP,
-          zIndex: isSelected ? 1000 : 1 // Bring selected marker to front
+          zIndex: isSelected ? 999 : 1 // Bring selected marker to front
         });
         
         // Create info window with pharmacy details
@@ -268,33 +264,41 @@ export default function PharmacyMap({
                 ${pharmacy.driveUpWindow ? '<span class="text-xs bg-[#EFFDF6] text-[#006142] px-2 py-1 rounded">Drive-Up Window</span>' : ''}
                 ${pharmacy.handicapAccess ? '<span class="text-xs bg-[#EFFDF6] text-[#006142] px-2 py-1 rounded">Handicap Access</span>' : ''}
               </div>
+              ${pharmacy.price ? `<p class="text-xl font-bold text-[#006142] mt-2">$${pharmacy.price.toFixed(2)}</p>` : ''}
+              <button class="mt-3 bg-[#006142] text-white px-4 py-2 rounded-md hover:bg-[#22A307] transition-colors w-full text-center font-medium" id="get-coupon-btn-${pharmacy.pharmacyId}">Get Free Coupon</button>
             </div>
           `
         });
         
         // Add click listener
         marker.addListener('click', () => {
-          // Close all other info windows
-          markers.forEach(m => {
-            if (m && m !== marker) {
-              window.google.maps.event.clearListeners(m, 'closeclick');
-            }
-          });
+          // Close any active info window
+          if (activeInfoWindow) {
+            activeInfoWindow.close();
+          }
           
           // Open this info window
           infoWindow.open(map, marker);
+          setActiveInfoWindow(infoWindow);
           
           // Update selected marker
           setSelectedMarker(pharmacy.pharmacyId);
           
-          // Call the onMarkerClick callback if provided
-          if (onMarkerClick) {
-            onMarkerClick(pharmacy);
-          }
+          // Add event listener for the "Get Free Coupon" button
+          window.google.maps.event.addListenerOnce(infoWindow, 'domready', () => {
+            const button = document.getElementById(`get-coupon-btn-${pharmacy.pharmacyId}`);
+            if (button) {
+              button.addEventListener('click', () => {
+                if (onMarkerClick) {
+                  onMarkerClick(pharmacy);
+                }
+              });
+            }
+          });
         });
         
         return marker;
-      }).filter(Boolean) as Record<string, any>[];
+      }).filter(Boolean) as GoogleMarker[];
       
       console.log("Created", newMarkers.length, "markers");
       setMarkers(newMarkers);
@@ -314,7 +318,7 @@ export default function PharmacyMap({
       console.error('Error adding markers to map:', err);
       // Don't block rendering if there's an error with markers
     }
-  }, [map, pharmacies, onMarkerClick, selectedMarker]);
+  }, [map, pharmacies, onMarkerClick, selectedMarker, centerLat, centerLng]);
 
   // Update marker when a pharmacy is selected from the list
   useEffect(() => {
@@ -325,35 +329,20 @@ export default function PharmacyMap({
       if (pharmacy.pharmacyId === selectedMarker) {
         // Update the marker icon to show it's selected
         if (markers[index]) {
-          const icon = {
-            path: PHARMACY_PIN_PATH,
-            fillColor: MARKER_COLORS.selected,
-            fillOpacity: 1,
-            strokeColor: '#FFFFFF',
-            strokeWeight: 2,
-            scale: 2.2,
-            anchor: new window.google.maps.Point(12, 22),
-            labelOrigin: new window.google.maps.Point(12, 10),
-          };
+          markers[index].setIcon(createPharmacyMarker(index, true));
+          markers[index].setZIndex(999); // Bring to front
           
-          markers[index].setIcon(icon);
-          markers[index].setZIndex(1000); // Bring to front
+          // Center the map on this marker
+          const position = markers[index].getPosition();
+          if (position) {
+            map.setCenter(position);
+            map.setZoom(14);
+          }
         }
       } else {
         // Reset other markers
         if (markers[index]) {
-          const icon = {
-            path: PHARMACY_PIN_PATH,
-            fillColor: MARKER_COLORS.primary,
-            fillOpacity: 1,
-            strokeColor: '#FFFFFF',
-            strokeWeight: 2,
-            scale: 2,
-            anchor: new window.google.maps.Point(12, 22),
-            labelOrigin: new window.google.maps.Point(12, 10),
-          };
-          
-          markers[index].setIcon(icon);
+          markers[index].setIcon(createPharmacyMarker(index, false));
           markers[index].setZIndex(1);
         }
       }
@@ -367,33 +356,133 @@ export default function PharmacyMap({
     setLoading(true);
   };
 
+  // Handle ZIP code change
+  const handleZipCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate ZIP code format (5 digits)
+    if (!localZipCode || !/^\d{5}$/.test(localZipCode)) {
+      setError("Please enter a valid 5-digit ZIP code");
+      return;
+    }
+    
+    if (onZipCodeChange && localZipCode) {
+      console.log(`Submitting ZIP code update: ${localZipCode}`);
+      setLoading(true); // Show loading state while updating
+      setError(null); // Clear any previous errors
+      onZipCodeChange(localZipCode);
+    }
+  };
+
+  // Handle radius change
+  const handleRadiusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const radius = parseInt(e.target.value, 10);
+    setLocalRadius(radius);
+    if (onRadiusChange) {
+      console.log(`Updating search radius to: ${radius} miles`);
+      onRadiusChange(radius);
+    }
+  };
+
+  // Update local ZIP code when prop changes
+  useEffect(() => {
+    if (zipCode !== localZipCode) {
+      console.log(`ZIP code prop changed from ${localZipCode} to ${zipCode}`);
+      setLocalZipCode(zipCode);
+    }
+  }, [zipCode, localZipCode]);
+
+  // Update local radius when prop changes
+  useEffect(() => {
+    if (searchRadius !== localRadius) {
+      console.log(`Search radius prop changed from ${localRadius} to ${searchRadius}`);
+      setLocalRadius(searchRadius);
+    }
+  }, [searchRadius, localRadius]);
+
   return (
-    <div className="relative w-full h-full">
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      )}
-      
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-          <div className="text-red-500 text-center p-4">
-            <p>{error}</p>
-            <button 
-              className="mt-2 text-primary hover:underline"
-              onClick={handleRetry}
-            >
-              Retry
-            </button>
+    <div className="relative w-full h-full flex flex-col">
+      {/* Map Controls */}
+      <div className="bg-white p-3 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2">
+        <form onSubmit={handleZipCodeSubmit} className="flex items-center">
+          <label htmlFor="zipCode" className="sr-only">ZIP Code</label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              id="zipCode"
+              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#006142] focus:border-[#006142] block w-full pl-10 p-2.5"
+              placeholder="ZIP Code"
+              value={localZipCode}
+              onChange={(e) => setLocalZipCode(e.target.value)}
+              pattern="[0-9]{5}"
+              maxLength={5}
+            />
           </div>
+          <button
+            type="submit"
+            className="ml-2 text-white bg-[#006142] hover:bg-[#22A307] focus:ring-4 focus:outline-none focus:ring-[#EFFDF6] font-medium rounded-lg text-sm px-4 py-2.5"
+          >
+            Update
+          </button>
+        </form>
+        
+        <div className="flex items-center">
+          <label htmlFor="radius" className="mr-2 text-sm font-medium text-gray-700">Radius:</label>
+          <select
+            id="radius"
+            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#006142] focus:border-[#006142] block p-2.5"
+            value={localRadius}
+            onChange={handleRadiusChange}
+          >
+            <option value={5}>5 miles</option>
+            <option value={10}>10 miles</option>
+            <option value={25}>25 miles</option>
+            <option value={50}>50 miles</option>
+          </select>
         </div>
-      )}
+      </div>
       
-      <div 
-        ref={mapRef} 
-        className="w-full h-full min-h-[400px]"
-        aria-label={`Map showing pharmacies near ${zipCode}`}
-      />
+      {/* Map Container */}
+      <div className="relative flex-grow">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#006142]"></div>
+          </div>
+        )}
+        
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+            <div className="text-red-500 text-center p-4 max-w-md">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-red-500 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="mb-4">{error}</p>
+              <button 
+                className="px-4 py-2 bg-[#006142] text-white rounded-md hover:bg-[#22A307] transition-colors"
+                onClick={handleRetry}
+              >
+                Retry
+              </button>
+              {error.includes('API key') && (
+                <p className="mt-4 text-sm text-gray-600">
+                  Note: You need to set a valid Google Maps API key in your .env.local file.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        
+        <div 
+          ref={mapRef} 
+          className="w-full h-full min-h-[400px]"
+          aria-label={`Map showing pharmacies near ${zipCode}`}
+        />
+      </div>
     </div>
   );
 }

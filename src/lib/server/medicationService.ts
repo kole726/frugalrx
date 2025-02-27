@@ -23,9 +23,12 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
       throw new Error('API URL not configured');
     }
     
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    
     // Convert query to lowercase to ensure consistent API requests
     const normalizedQuery = query.toLowerCase();
-    console.log(`Searching for drugs with query: "${normalizedQuery}" at ${apiUrl}/drugs/names`);
+    console.log(`Searching for drugs with query: "${normalizedQuery}" at ${baseUrl}/drugs/names`);
     
     // Get authentication token
     let token;
@@ -38,8 +41,8 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     }
     
     // Make API request
-    console.log(`Making API request to ${apiUrl}/drugs/names with query: ${normalizedQuery}`);
-    const response = await fetch(`${apiUrl}/drugs/names`, {
+    console.log(`Making API request to ${baseUrl}/drugs/names with query: ${normalizedQuery}`);
+    const response = await fetch(`${baseUrl}/drugs/names`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -56,7 +59,7 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Drug search API error: ${response.status}`, errorText);
-      console.error(`Request details: query="${normalizedQuery}", endpoint=${apiUrl}/drugs/names`);
+      console.error(`Request details: query="${normalizedQuery}", endpoint=${baseUrl}/drugs/names`);
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
@@ -115,7 +118,12 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
       body.quantity = request.quantity;
     }
     
-    const response = await fetch(`${process.env.AMERICAS_PHARMACY_API_URL}${endpoint}`, {
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = process.env.AMERICAS_PHARMACY_API_URL?.endsWith('/') 
+      ? process.env.AMERICAS_PHARMACY_API_URL.slice(0, -1) 
+      : process.env.AMERICAS_PHARMACY_API_URL;
+    
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -145,8 +153,16 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
   try {
     const token = await getAuthToken();
     
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = process.env.AMERICAS_PHARMACY_API_URL?.endsWith('/') 
+      ? process.env.AMERICAS_PHARMACY_API_URL.slice(0, -1) 
+      : process.env.AMERICAS_PHARMACY_API_URL;
+    
+    const endpoint = '/drugprices/byGSN';
+    console.log(`Making API request to ${baseUrl}${endpoint} for GSN: ${gsn}`);
+    
     // For drug details, we'll use the byGSN endpoint with default coordinates
-    const response = await fetch(`${process.env.AMERICAS_PHARMACY_API_URL}/drugprices/byGSN`, {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -181,8 +197,16 @@ export async function testApiConnection(): Promise<boolean> {
     // Try to get an auth token
     const token = await getAuthToken();
     
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = process.env.AMERICAS_PHARMACY_API_URL?.endsWith('/') 
+      ? process.env.AMERICAS_PHARMACY_API_URL.slice(0, -1) 
+      : process.env.AMERICAS_PHARMACY_API_URL;
+    
+    const endpoint = '/drugs/names';
+    console.log(`Testing API connection to ${baseUrl}${endpoint}`);
+    
     // If we got a token, try a simple API call to verify it works
-    const response = await fetch(`${process.env.AMERICAS_PHARMACY_API_URL}/drugs/names`, {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -216,11 +240,17 @@ export async function getPharmacies(
   try {
     const token = await getAuthToken();
     
-    const url = new URL(`${process.env.AMERICAS_PHARMACY_API_URL}/pharmacies`);
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = process.env.AMERICAS_PHARMACY_API_URL?.endsWith('/') 
+      ? process.env.AMERICAS_PHARMACY_API_URL.slice(0, -1) 
+      : process.env.AMERICAS_PHARMACY_API_URL;
+    
+    const endpoint = '/pharmacies';
+    console.log(`Getting pharmacies from ${baseUrl}${endpoint} for coordinates: ${latitude}, ${longitude}`);
+    
+    const url = new URL(`${baseUrl}${endpoint}`);
     url.searchParams.append('lat', latitude.toString());
     url.searchParams.append('long', longitude.toString());
-    url.searchParams.append('hqmappingName', 'walkerrx');
-    url.searchParams.append('pharmacyCount', pharmacyCount.toString());
     
     const response = await fetch(url.toString(), {
       method: 'GET',
@@ -295,7 +325,16 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     
     // If no GSN, we'll need to use the drug name to get prices and extract info
     console.log(`Server: No GSN available, retrieving drug info by name: ${drugToUse.drugName}`);
-    const response = await fetch(`${process.env.AMERICAS_PHARMACY_API_URL}/drugprices/byName`, {
+    
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = process.env.AMERICAS_PHARMACY_API_URL?.endsWith('/') 
+      ? process.env.AMERICAS_PHARMACY_API_URL.slice(0, -1) 
+      : process.env.AMERICAS_PHARMACY_API_URL;
+    
+    const endpoint = '/drugprices/byName';
+    console.log(`Getting drug info by name from ${baseUrl}${endpoint} for drug: ${drugToUse.drugName}`);
+    
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -469,4 +508,4 @@ export async function compareMedications(
     console.error('Error comparing medications:', error);
     throw error;
   }
-} 
+}

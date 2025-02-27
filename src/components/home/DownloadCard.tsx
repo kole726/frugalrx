@@ -98,11 +98,12 @@ export default function DownloadCard() {
                   Get Digital Card
                 </button>
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white rounded-lg shadow-xl p-4 w-64 z-50 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="relative aspect-square">
+                  <div className="relative">
                     <Image
                       src="/images/qr/FrugalRx-QR-Code.svg"
                       alt="FrugalRx Digital Card QR Code"
-                      fill
+                      width={220}
+                      height={220}
                       className="object-contain"
                       priority
                       onError={(e) => {
