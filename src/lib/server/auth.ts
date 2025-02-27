@@ -74,11 +74,8 @@ function logTokenEvent(action: string, success: boolean, details?: Record<string
  * @returns A promise that resolves to an authentication token
  */
 export async function getAuthToken(): Promise<string> {
-  // Check if we have a valid cached token
-  const now = Date.now();
-  if (cachedToken && tokenExpiryTime && now < tokenExpiryTime) {
-    return cachedToken.access_token;
-  }
+  // Increment request counter
+  tokenRequestCount++;
   
   // In development, return a mock token
   if (process.env.NODE_ENV === 'development') {
@@ -86,7 +83,7 @@ export async function getAuthToken(): Promise<string> {
     console.log('[AUTH] Using mock token for development environment');
     
     // Set token expiry to 1 hour from now
-    tokenExpiryTime = now + 60 * 60 * 1000;
+    tokenExpiryTime = Date.now() + 60 * 60 * 1000;
     cachedToken = {
       token_type: 'Bearer',
       expires_in: 3600,
@@ -100,7 +97,7 @@ export async function getAuthToken(): Promise<string> {
   }
   
   try {
-    // In production, we would call the actual auth service
+    // In production, we need to call the actual auth service
     const authUrl = process.env.AMERICAS_PHARMACY_AUTH_URL;
     if (!authUrl) {
       const error = new Error('Missing AMERICAS_PHARMACY_AUTH_URL environment variable');
@@ -120,6 +117,12 @@ export async function getAuthToken(): Promise<string> {
       throw error;
     }
     
+    // Create form data for the token request
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'client_credentials');
+    formData.append('client_id', clientId);
+    formData.append('client_secret', clientSecret);
+    
     // Make the token request
     const response = await fetch(authUrl, {
       method: 'POST',
@@ -127,12 +130,7 @@ export async function getAuthToken(): Promise<string> {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json'
       },
-      body: new URLSearchParams({
-        'grant_type': 'client_credentials',
-        'client_id': clientId,
-        'client_secret': clientSecret,
-        'scope': 'api'
-      }).toString(),
+      body: formData.toString(),
       cache: 'no-store' // Ensure we don't use cached responses
     });
     
@@ -170,7 +168,7 @@ export async function getAuthToken(): Promise<string> {
     // Set expiry based on expires_in (seconds) from response, or default to 1 hour
     // Apply a 5-minute safety margin to avoid using tokens that are about to expire
     const safetyMarginMs = 5 * 60 * 1000; // 5 minutes in milliseconds
-    tokenExpiryTime = now + ((data.expires_in || 3600) * 1000) - safetyMarginMs;
+    tokenExpiryTime = Date.now() + ((data.expires_in || 3600) * 1000) - safetyMarginMs;
     
     // Log successful token retrieval
     logTokenEvent('Retrieved new token', true, { 
@@ -186,9 +184,9 @@ export async function getAuthToken(): Promise<string> {
     console.error('Error getting auth token:', error);
     
     // In development, fall back to mock token on error
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV !== 'production') {
       console.log('[AUTH] Falling back to mock token after error');
-      tokenExpiryTime = now + 60 * 60 * 1000;
+      tokenExpiryTime = Date.now() + 60 * 60 * 1000;
       cachedToken = {
         token_type: 'Bearer',
         expires_in: 3600,
@@ -209,6 +207,7 @@ export async function refreshAuthToken(): Promise<string> {
   // Clear the cache
   cachedToken = null;
   tokenExpiryTime = null;
+  tokenRefreshCount++;
   
   // Get a new token
   return getAuthToken();

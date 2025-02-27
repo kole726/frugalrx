@@ -16,95 +16,85 @@ interface DrugSearchResponse {
  */
 export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> {
   try {
-    // For now, use mock data in all environments until we resolve the API authentication issues
-    console.log(`Using mock drug search data for query: "${query}"`);
-    return getMockDrugSearchResults(query.toLowerCase());
-    
-    /* Commented out until we resolve the API authentication issues
-    // Validate API URL
-    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
-    if (!apiUrl) {
-      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
-      throw new Error('API URL not configured');
-    }
-    
-    // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-    
-    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
-    const endpoint = baseUrl.includes('/pricing/v1') ? '/drugs/names' : '/pricing/v1/drugs/names';
-    
-    // Convert query to lowercase to ensure consistent API requests
+    // Normalize the query
     const normalizedQuery = query.toLowerCase();
-    console.log(`Searching for drugs with query: "${normalizedQuery}" at ${baseUrl}${endpoint}`);
+    console.log(`Searching for drugs with query: "${normalizedQuery}"`);
     
-    // Get authentication token
-    let token;
-    try {
-      token = await getAuthToken();
-      console.log('Successfully obtained auth token for drug search');
-    } catch (authError) {
-      console.error('Authentication error:', authError);
-      
-      // In development, provide mock data instead of failing
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Using mock drug search data in development due to auth error');
-        return getMockDrugSearchResults(normalizedQuery);
-      }
-      
-      throw new Error(`Authentication failed: ${authError instanceof Error ? authError.message : 'Unknown error'}`);
-    }
-    
-    // Make API request
-    console.log(`Making API request to ${baseUrl}${endpoint} with query: ${normalizedQuery}`);
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        hqMappingName: 'walkerrx',
-        prefixText: normalizedQuery
-      }),
-      cache: 'no-store' // Ensure we don't use cached responses
-    });
+    // Try to use the real API first
+    if (process.env.NODE_ENV === 'production' && process.env.USE_MOCK_DATA !== 'true') {
+      try {
+        console.log('Attempting to use real API for drug search');
+        
+        // Validate API URL
+        const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+        if (!apiUrl) {
+          console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+          throw new Error('API URL not configured');
+        }
+        
+        // Ensure the URL is properly formatted by removing trailing slashes
+        const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+        
+        // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
+        const endpoint = baseUrl.includes('/pricing/v1') ? '/drugs/names' : '/pricing/v1/drugs/names';
+        
+        console.log(`Making API request to ${baseUrl}${endpoint} with query: ${normalizedQuery}`);
+        
+        // Get authentication token
+        const token = await getAuthToken();
+        console.log('Successfully obtained auth token for drug search');
+        
+        // Make API request
+        const response = await fetch(`${baseUrl}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            hqMappingName: 'walkerrx',
+            prefixText: normalizedQuery
+          }),
+          cache: 'no-store' // Ensure we don't use cached responses
+        });
 
-    // Handle response
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Drug search API error: ${response.status}`, errorText);
-      console.error(`Request details: query="${normalizedQuery}", endpoint=${baseUrl}${endpoint}`);
-      
-      // In development, provide mock data instead of failing
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Using mock drug search data in development due to API error');
-        return getMockDrugSearchResults(normalizedQuery);
-      }
-      
-      throw new Error(`API Error ${response.status}: ${errorText}`);
-    }
+        // Handle response
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Drug search API error: ${response.status}`, errorText);
+          console.error(`Request details: query="${normalizedQuery}", endpoint=${baseUrl}${endpoint}`);
+          throw new Error(`API Error ${response.status}: ${errorText}`);
+        }
 
-    const data = await response.json();
-    console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${normalizedQuery}"`);
-    
-    // Format the response to match the expected interface
-    if (Array.isArray(data)) {
-      return data.map(drugName => {
-        // Format drug name with proper capitalization (first letter uppercase, rest lowercase)
-        // The API returns drug names in ALL CAPS
-        const formattedName = typeof drugName === 'string' 
-          ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
-          : drugName;
-          
-        return {
-          drugName: formattedName
-        };
-      });
+        const data = await response.json();
+        console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${normalizedQuery}" from API`);
+        
+        // Format the response to match the expected interface
+        if (Array.isArray(data)) {
+          return data.map(drugName => {
+            // Format drug name with proper capitalization (first letter uppercase, rest lowercase)
+            // The API returns drug names in ALL CAPS
+            const formattedName = typeof drugName === 'string' 
+              ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
+              : drugName;
+              
+            return {
+              drugName: formattedName
+            };
+          });
+        }
+        
+        return data;
+      } catch (apiError) {
+        console.error('Error using real API for drug search:', apiError);
+        console.log('Falling back to mock data after API error');
+        // Fall back to mock data
+      }
     }
     
-    return data;
-    */
+    // Use mock data if API call failed or we're in development
+    console.log(`Using mock drug search data for query: "${normalizedQuery}"`);
+    return getMockDrugSearchResults(normalizedQuery);
   } catch (error) {
     console.error('Error searching drugs:', error);
     
