@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getAuthToken } from '@/lib/server/auth';
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * Test endpoint for verifying authentication token functionality
  * This endpoint makes a simple API request using the auth token

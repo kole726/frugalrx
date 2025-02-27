@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DrugInfo, PharmacyPrice } from '@/types/api';
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * API endpoint to get alternative medications (generics or therapeutic alternatives)
  * POST /api/drugs/alternatives

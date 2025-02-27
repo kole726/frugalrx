@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { MOCK_DRUG_DATA } from '@/lib/mockData';
 

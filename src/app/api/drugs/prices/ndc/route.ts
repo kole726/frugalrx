@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDrugPrices } from '@/lib/server/medicationService';
 import { DrugPriceRequest } from '@/types/api';
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * API endpoint to get drug prices by NDC code
  * POST /api/drugs/prices/ndc

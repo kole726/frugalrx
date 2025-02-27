@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // Mock data to use when API fails
 const MOCK_DRUG_DATA = {
   amoxicillin: {

@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { searchDrugs } from '@/lib/server/medicationService'
+import { APIError } from '@/types/api'
 
-interface APIError {
-  message: string;
-  status: number;
-}
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: Request,

@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getDrugInfoByName } from '@/lib/server/medicationService';
+import { DrugDetails, APIError } from '@/types/api';
+
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
 
 // Mock data for fallback
 const MOCK_DRUG_DATA = {

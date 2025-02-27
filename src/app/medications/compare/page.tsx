@@ -1,12 +1,22 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { searchMedications } from '@/services/medicationApi';
 import { MedicationComparison } from '@/components/medications';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 
+// Wrap the main component with Suspense
 export default function CompareMedicationsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center">Loading comparison tool...</div>}>
+      <CompareMedicationsContent />
+    </Suspense>
+  );
+}
+
+// Main component content
+function CompareMedicationsContent() {
   const searchParams = useSearchParams();
   const initialMedication = searchParams.get('initial');
   

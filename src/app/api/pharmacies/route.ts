@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { getPharmacies } from '@/lib/server/medicationService'
 import { Pharmacy } from '@/types/pharmacy'
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 // Default coordinates for Austin, TX
 const DEFAULT_LATITUDE = 30.4014;
 const DEFAULT_LONGITUDE = -97.7525;

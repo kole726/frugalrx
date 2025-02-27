@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getDrugDetailsByGsn } from '@/lib/server/medicationService'
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic'
+
 interface APIError {
   message: string;
   status: number;

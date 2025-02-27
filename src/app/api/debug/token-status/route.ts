@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getTokenStatus, forceTokenRefresh } from '@/lib/server/auth';
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 // Simple API key check for protection
 // In a production environment, use a more secure authentication method
 const API_DEBUG_KEY = process.env.API_DEBUG_KEY || 'debug-frugal-rx-token';

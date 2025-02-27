@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { compareMedications } from '@/lib/server/medicationService';
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 /**
  * API endpoint to compare multiple medications
  * POST /api/drugs/compare

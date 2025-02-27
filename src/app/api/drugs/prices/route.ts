@@ -1,12 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getDrugPrices } from '@/lib/server/medicationService'
-import { DrugPriceRequest } from '@/types/api'
+import { DrugPriceRequest, APIError } from '@/types/api'
 import { MOCK_PHARMACY_PRICES } from '@/lib/mockData'
 
-interface APIError {
-  message: string;
-  status: number;
-}
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic'
 
 // Map of zip codes to default coordinates
 const zipCodeCoordinates: Record<string, { latitude: number; longitude: number }> = {

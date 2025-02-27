@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { testApiConnection } from '@/lib/server/medicationService';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const isConnected = await testApiConnection();
