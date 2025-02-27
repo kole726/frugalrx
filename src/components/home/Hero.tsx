@@ -41,13 +41,13 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative bg-gradient-to-b from-[#EFFDF6] to-white pt-20 pb-24">
+    <section className="relative bg-gradient-to-b from-[#EFFDF6] to-white pt-16 md:pt-20 pb-16 md:pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#2C3E50] mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#2C3E50] mb-4 md:mb-6 leading-tight">
             We Help You Save Up to 80% on Prescriptions
           </h1>
-          <p className="text-xl text-gray-600 mb-12">
+          <p className="text-lg sm:text-xl text-gray-600 mb-8 md:mb-12">
             Because Meds Shouldn't Break the Bank
           </p>
 
@@ -61,18 +61,18 @@ export default function Hero() {
           </div>
 
           {/* Stats */}
-          <div className="mt-16 grid grid-cols-3 gap-8">
-            <div>
-              <div className="text-[#006B52] font-bold text-2xl">59,000+</div>
-              <div className="text-gray-600">Participating Pharmacies</div>
+          <div className="mt-12 md:mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8">
+            <div className="bg-white/50 p-4 rounded-lg shadow-sm">
+              <div className="text-[#006B52] font-bold text-xl md:text-2xl">59,000+</div>
+              <div className="text-gray-600 text-sm md:text-base">Participating Pharmacies</div>
             </div>
-            <div>
-              <div className="text-[#006B52] font-bold text-2xl">1M+</div>
-              <div className="text-gray-600">Customers Served</div>
+            <div className="bg-white/50 p-4 rounded-lg shadow-sm">
+              <div className="text-[#006B52] font-bold text-xl md:text-2xl">1M+</div>
+              <div className="text-gray-600 text-sm md:text-base">Customers Served</div>
             </div>
-            <div>
-              <div className="text-[#006B52] font-bold text-2xl">$500M+</div>
-              <div className="text-gray-600">Customer Savings</div>
+            <div className="bg-white/50 p-4 rounded-lg shadow-sm">
+              <div className="text-[#006B52] font-bold text-xl md:text-2xl">$500M+</div>
+              <div className="text-gray-600 text-sm md:text-base">Customer Savings</div>
             </div>
           </div>
         </div>

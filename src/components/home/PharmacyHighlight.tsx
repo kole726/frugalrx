@@ -214,25 +214,25 @@ export default function PharmacyHighlight() {
   };
 
   return (
-    <section className="py-24 bg-gradient-to-b from-white to-[#E1F4EA]">
+    <section className="py-16 md:py-24 bg-gradient-to-b from-white to-[#E1F4EA]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#2C3E50] mb-4">
+        <div className="text-center mb-10 md:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#2C3E50] mb-3 md:mb-4">
             Accepted at Over 59,000 Pharmacies
           </h2>
-          <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-gray-500 max-w-2xl mx-auto">
             Use your FrugalRx card at major pharmacy chains and independent drugstores nationwide
           </p>
         </div>
 
         {/* Pharmacy Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-6 md:gap-8">
           {pharmacies.map((pharmacy) => (
             <div
               key={pharmacy.name}
-              className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)] transition-shadow"
+              className="flex flex-col items-center justify-center p-3 sm:p-6 bg-white rounded-xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)] transition-shadow"
             >
-              <div className="relative w-32 h-16 grayscale hover:grayscale-0 transition-all duration-300">
+              <div className="relative w-20 sm:w-32 h-12 sm:h-16 grayscale hover:grayscale-0 transition-all duration-300">
                 <Image
                   src={pharmacy.logo}
                   alt={`${pharmacy.name} logo`}
@@ -245,147 +245,128 @@ export default function PharmacyHighlight() {
         </div>
 
         {/* Pharmacy Locator Section */}
-        <div className="mt-16 bg-white rounded-2xl shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)] overflow-hidden">
-          <div className="p-8 text-center">
-            <h3 className="text-2xl font-bold text-[#2C3E50] mb-4">
-              Find Participating Pharmacies Near You
+        <div className="mt-10 md:mt-16 bg-white rounded-2xl shadow-[0_4px_20px_-5px_rgba(0,0,0,0.08)] overflow-hidden">
+          <div className="p-4 sm:p-8 text-center">
+            <h3 className="text-xl sm:text-2xl font-bold text-[#2C3E50] mb-2 sm:mb-4">
+              Find Pharmacies Near You
             </h3>
-            <p className="text-gray-500 mb-6">
-              Enter your location to find the closest pharmacies that accept FrugalRx
+            <p className="text-sm sm:text-base text-gray-500 mb-6 max-w-2xl mx-auto">
+              Enter your ZIP code to find participating pharmacies in your area
             </p>
             
-            <div className="max-w-md mx-auto">
-              <form onSubmit={handleSearch} className="flex mb-3">
-                <div className="relative flex-1">
-                  <MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Enter ZIP code"
-                    value={zipCode}
-                    onChange={(e) => setZipCode(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <button 
-                  type="submit"
-                  className="bg-primary hover:bg-primary/90 text-white px-6 py-2 rounded-r-lg font-semibold transition-colors"
-                  disabled={loading || locationLoading}
-                >
-                  {loading ? "Searching..." : "Search"}
-                </button>
-              </form>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto">
+              <div className="relative w-full sm:w-auto sm:flex-1">
+                <form onSubmit={handleSearch} className="flex w-full">
+                  <div className="relative flex-1">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <MapPinIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Enter ZIP code"
+                      className="block w-full pl-10 pr-3 py-2 sm:py-3 border border-gray-300 rounded-l-lg focus:ring-primary focus:border-primary text-sm sm:text-base"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value)}
+                      maxLength={5}
+                      pattern="[0-9]{5}"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="bg-primary hover:bg-primary/90 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-r-lg font-medium text-sm sm:text-base flex-shrink-0"
+                    disabled={loading}
+                  >
+                    {loading ? "Searching..." : "Search"}
+                  </button>
+                </form>
+              </div>
               
               <button
-                type="button"
                 onClick={handleGetLocation}
-                disabled={locationLoading || loading}
-                className="flex items-center justify-center w-full py-2 px-4 border border-gray-200 rounded-lg text-primary hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-center gap-2 text-primary hover:text-primary/80 font-medium py-2 px-3 border border-primary/20 rounded-lg hover:bg-primary/5 transition-colors w-full sm:w-auto text-sm sm:text-base"
+                disabled={locationLoading}
               >
-                <MapIcon className="w-5 h-5 mr-2" />
-                {locationLoading ? "Getting your location..." : "Use my current location"}
+                <MapIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+                {locationLoading ? "Locating..." : "Use My Location"}
               </button>
             </div>
             
             {error && (
-              <div className="mt-4 text-red-500">{error}</div>
+              <div className="mt-4 text-red-500 text-sm sm:text-base">{error}</div>
             )}
           </div>
-
-          {/* Map and Pharmacy Results */}
-          {pharmaciesList.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Map */}
-              <div className="h-[400px] md:h-auto">
-                {showMap && mapCenter && (
-                  <>
-                    {mapError ? (
-                      <div className="flex items-center justify-center h-full bg-gray-100">
-                        <div className="text-center p-6">
-                          <p className="text-red-500 mb-2">{mapError}</p>
-                          <button 
-                            onClick={() => {
-                              setMapError(null);
-                              forceTokenRefresh().then(() => {
-                                // Re-trigger the map rendering
-                                setShowMap(false);
-                                setTimeout(() => setShowMap(true), 100);
-                              });
-                            }}
-                            className="text-primary hover:underline"
-                          >
-                            Retry Loading Map
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <PharmacyMap 
-                        pharmacies={pharmaciesList}
-                        zipCode={zipCode}
-                        centerLat={mapCenter.lat}
-                        centerLng={mapCenter.lng}
-                        onMarkerClick={handleMarkerClick}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-              
+          
+          {/* Map and Pharmacy List */}
+          {showMap && pharmaciesList.length > 0 && (
+            <div className="flex flex-col lg:flex-row">
               {/* Pharmacy List */}
-              <div className="px-8 pb-8 max-h-[500px] overflow-y-auto">
-                <h4 className="text-lg font-semibold mb-4 sticky top-0 bg-white py-2">
-                  Pharmacies near {zipCode}
-                </h4>
-                <div className="space-y-4">
-                  {pharmaciesList.map((pharmacy, index) => (
-                    <div 
-                      id={`pharmacy-${pharmacy.pharmacyId}`}
-                      key={pharmacy.pharmacyId} 
-                      className={`border border-gray-100 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer ${selectedPharmacy?.pharmacyId === pharmacy.pharmacyId ? 'ring-2 ring-primary bg-green-50/30' : ''}`}
-                      onClick={() => setSelectedPharmacy(pharmacy)}
-                    >
-                      <div className="flex items-start">
-                        <div className={`text-white rounded-full w-6 h-6 flex items-center justify-center mr-3 flex-shrink-0 ${selectedPharmacy?.pharmacyId === pharmacy.pharmacyId ? 'bg-primary scale-110' : 'bg-primary'}`}>
-                          {index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <h5 className="font-semibold text-primary">{pharmacy.name}</h5>
-                          <p className="text-gray-600">{pharmacy.address}, {pharmacy.city}, {pharmacy.state} {pharmacy.postalCode}</p>
-                          <div className="flex justify-between mt-2">
-                            <span className="text-sm text-gray-500">
-                              {pharmacy.distance ? `${pharmacy.distance.toFixed(1)} miles away` : ""}
-                            </span>
-                            <a href={`tel:${pharmacy.phone}`} className="text-sm text-primary hover:underline">
-                              {formatPhoneNumber(pharmacy.phone)}
-                            </a>
+              <div className="w-full lg:w-1/3 border-r border-gray-100 max-h-[400px] lg:max-h-[600px] overflow-y-auto">
+                <div className="p-4">
+                  <h4 className="font-semibold text-gray-700 mb-2 text-sm sm:text-base">
+                    {pharmaciesList.length} Pharmacies Found
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    {pharmaciesList.map((pharmacy) => (
+                      <div
+                        key={pharmacy.pharmacyId}
+                        id={`pharmacy-${pharmacy.pharmacyId}`}
+                        className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                          selectedPharmacy?.pharmacyId === pharmacy.pharmacyId
+                            ? "bg-green-50 border border-green-200"
+                            : "hover:bg-gray-50 border border-gray-100"
+                        }`}
+                        onClick={() => setSelectedPharmacy(pharmacy)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h5 className="font-semibold text-[#006142] text-sm sm:text-base">{pharmacy.name}</h5>
+                            <p className="text-gray-600 text-xs sm:text-sm mt-1">
+                              {pharmacy.address}, {pharmacy.city}
+                            </p>
+                            <p className="text-gray-500 text-xs mt-1">
+                              {pharmacy.distance.toFixed(1)} miles away
+                            </p>
                           </div>
-                          {(pharmacy.open24H || pharmacy.driveUpWindow || pharmacy.handicapAccess) && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {pharmacy.open24H && (
-                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Open 24 Hours</span>
-                              )}
-                              {pharmacy.driveUpWindow && (
-                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Drive-Up Window</span>
-                              )}
-                              {pharmacy.handicapAccess && (
-                                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">Handicap Access</span>
-                              )}
-                            </div>
-                          )}
+                          <div className="flex flex-col items-end">
+                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                              Accepts FrugalRx
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            /* Map Preview - Shown when no pharmacies are loaded yet */
-            <div className="relative h-64 bg-[#F8FAFC]">
-              <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                {loading || locationLoading ? 
-                  "Searching for pharmacies..." : 
-                  "Enter a ZIP code or use your current location to find pharmacies near you"
-                }
+              
+              {/* Map */}
+              <div className="w-full lg:w-2/3 h-[300px] sm:h-[400px] lg:h-[600px] relative">
+                {mapError ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                    <div className="text-red-500 text-center p-4 max-w-md">
+                      <p className="text-sm sm:text-base">{mapError}</p>
+                      <button 
+                        className="mt-2 text-primary hover:underline text-sm"
+                        onClick={() => {
+                          setMapError(null);
+                          setShowMap(true);
+                        }}
+                      >
+                        Retry Loading Map
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <PharmacyMap
+                    pharmacies={pharmaciesList}
+                    zipCode={zipCode}
+                    centerLat={mapCenter?.lat}
+                    centerLng={mapCenter?.lng}
+                    onMarkerClick={handleMarkerClick}
+                  />
+                )}
               </div>
             </div>
           )}
