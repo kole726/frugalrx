@@ -124,12 +124,15 @@ export async function getAuthToken(): Promise<string> {
     const response = await fetch(authUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json'
       },
-      body: JSON.stringify({
-        clientId: clientId,
-        clientSecret: clientSecret,
-      }),
+      body: new URLSearchParams({
+        'grant_type': 'client_credentials',
+        'client_id': clientId,
+        'client_secret': clientSecret,
+        'scope': 'default'
+      }).toString(),
       cache: 'no-store' // Ensure we don't use cached responses
     });
     
