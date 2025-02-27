@@ -41,7 +41,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative bg-gradient-to-b from-[#EFFDF6] to-white py-24">
+    <section className="relative bg-gradient-to-b from-[#EFFDF6] to-white pt-20 pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#2C3E50] mb-6">

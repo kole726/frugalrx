@@ -13,9 +13,7 @@ export default function Home() {
   return (
     <main>
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-[#EFFDF6] to-white">
-        <Hero />
-      </section>
+      <Hero />
 
       {/* TrendingSavings Section */}
       <section className="relative bg-white">
