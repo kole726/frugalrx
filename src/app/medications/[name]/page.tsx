@@ -80,11 +80,13 @@ export default function MedicationPage({ params }: Props) {
         try {
           // If we have a GSN, fetch drug details directly
           if (gsn) {
+            console.log(`Fetching drug details for GSN: ${gsn}`)
             const details = await getDrugDetailsByGsn(parseInt(gsn, 10))
+            console.log(`Received drug details by GSN:`, details)
             setDrugDetails(details)
             
             // Create a drug info object from the details
-            setDrugInfo({
+            const drugInfoObj = {
               brandName: details.brandName || drugName,
               genericName: details.genericName || drugName,
               gsn: parseInt(gsn, 10),
@@ -94,13 +96,16 @@ export default function MedicationPage({ params }: Props) {
               strength: details.dosage || "Various strengths available",
               storage: details.storage || "Store according to package instructions.",
               manufacturer: details.contraindications || "Please consult with your healthcare provider for contraindication information."
-            })
+            }
+            
+            console.log(`Setting drug info from GSN:`, drugInfoObj)
+            setDrugInfo(drugInfoObj)
           } else {
             // Otherwise, search for the drug by name
             console.log(`Fetching drug info for: ${drugName} by name`)
             const info = await getDrugInfo(drugName)
-            setDrugDetails(info)
             console.log(`Received drug details:`, info)
+            setDrugDetails(info)
             
             // Create a drug info object from the details
             const drugInfoObj = {

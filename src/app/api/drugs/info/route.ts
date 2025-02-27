@@ -39,6 +39,7 @@ export async function GET(request: Request) {
     const drugName = url.searchParams.get('name');
     
     if (!drugName) {
+      console.error('API: Missing drug name parameter');
       return NextResponse.json(
         { error: 'Drug name is required' },
         { status: 400 }
@@ -53,9 +54,21 @@ export async function GET(request: Request) {
       // Log the drug info we're returning
       console.log(`API: Returning drug info for ${drugName}:`, drugInfo);
       
-      return NextResponse.json(drugInfo);
+      // Ensure all fields are present
+      const completeInfo = {
+        brandName: drugInfo.brandName || drugName,
+        genericName: drugInfo.genericName || drugName,
+        description: drugInfo.description || `${drugName} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
+        sideEffects: drugInfo.sideEffects || "Side effects may vary. Please consult with your healthcare provider for detailed information.",
+        dosage: drugInfo.dosage || "Various strengths available",
+        storage: drugInfo.storage || "Store according to package instructions.",
+        contraindications: drugInfo.contraindications || "Please consult with your healthcare provider for contraindication information."
+      };
+      
+      console.log(`API: Returning complete drug info for ${drugName}:`, completeInfo);
+      return NextResponse.json(completeInfo);
     } catch (apiError) {
-      console.error('API error, falling back to mock data:', apiError);
+      console.error('API: Error fetching drug info, falling back to mock data:', apiError);
       
       // Fall back to mock data if API fails
       const drugNameLower = drugName.toLowerCase();
@@ -70,6 +83,7 @@ export async function GET(request: Request) {
       } else {
         // Create a generic mock drug based on the name
         const formattedName = drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase();
+        console.log(`API: Creating generic mock drug for ${formattedName}`);
         mockDrug = {
           brandName: formattedName,
           genericName: formattedName,

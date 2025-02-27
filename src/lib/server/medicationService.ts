@@ -253,14 +253,14 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     
     // Normalize drug name to lowercase
     const normalizedDrugName = drugName.toLowerCase();
-    console.log(`Getting drug info for: "${normalizedDrugName}"`);
+    console.log(`Server: Getting drug info for: "${normalizedDrugName}"`);
     
     // First, search for the drug to get its GSN
-    console.log(`Searching for drug with name: ${normalizedDrugName}`);
+    console.log(`Server: Searching for drug with name: ${normalizedDrugName}`);
     const searchResults = await searchDrugs(normalizedDrugName);
     
     if (!Array.isArray(searchResults) || searchResults.length === 0) {
-      console.error(`No drug found with name: ${normalizedDrugName}`);
+      console.error(`Server: No drug found with name: ${normalizedDrugName}`);
       throw new Error(`Drug not found: ${drugName}`);
     }
     
@@ -270,16 +270,31 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     );
     
     const drugToUse = exactMatch || searchResults[0];
-    console.log(`Using drug: ${drugToUse.drugName} for info lookup`);
+    console.log(`Server: Using drug: ${drugToUse.drugName} for info lookup`);
     
     // If we have a GSN, use it to get detailed information
     if (drugToUse.gsn) {
+      console.log(`Server: Retrieving drug details by GSN: ${drugToUse.gsn}`);
       const details = await getDrugDetailsByGsn(drugToUse.gsn);
-      console.log(`Retrieved drug details by GSN for ${drugToUse.drugName}:`, details);
-      return details;
+      console.log(`Server: Retrieved drug details by GSN for ${drugToUse.drugName}:`, details);
+      
+      // Format the response to match the DrugDetails interface
+      const formattedDetails = {
+        brandName: details.brandName || drugToUse.drugName,
+        genericName: details.genericName || drugToUse.drugName,
+        description: details.description || `${drugToUse.drugName} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
+        sideEffects: details.sideEffects || "Please consult with your healthcare provider for information about side effects.",
+        dosage: details.dosage || "Various strengths available",
+        storage: details.storage || "Store according to package instructions.",
+        contraindications: details.contraindications || "Please consult with your healthcare provider for contraindication information."
+      };
+      
+      console.log(`Server: Formatted drug details by GSN for ${drugToUse.drugName}:`, formattedDetails);
+      return formattedDetails;
     }
     
     // If no GSN, we'll need to use the drug name to get prices and extract info
+    console.log(`Server: No GSN available, retrieving drug info by name: ${drugToUse.drugName}`);
     const response = await fetch(`${process.env.AMERICAS_PHARMACY_API_URL}/drugprices/byName`, {
       method: 'POST',
       headers: {
@@ -295,11 +310,12 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     });
 
     if (!response.ok) {
+      console.error(`Server: API error when getting drug info by name: ${response.status}`);
       throw new Error(`${response.status}`);
     }
 
     const data = await response.json();
-    console.log(`Retrieved drug info for ${drugToUse.drugName} from prices API:`, data);
+    console.log(`Server: Retrieved drug info for ${drugToUse.drugName} from prices API:`, data);
     
     // Extract drug information from the response
     // Format the drug name with proper capitalization
@@ -318,10 +334,10 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
       contraindications: data.contraindications || "Please consult with your healthcare provider for contraindication information."
     };
     
-    console.log(`Formatted drug details for ${drugToUse.drugName}:`, drugDetails);
+    console.log(`Server: Formatted drug details for ${drugToUse.drugName}:`, drugDetails);
     return drugDetails;
   } catch (error) {
-    console.error('Error getting drug info by name:', error);
+    console.error('Server: Error getting drug info by name:', error);
     throw new Error(`Failed to get drug info: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 } 

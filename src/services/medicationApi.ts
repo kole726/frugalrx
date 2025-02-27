@@ -172,7 +172,7 @@ export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
       contraindications: data.contraindications || "Please consult with your healthcare provider for contraindication information."
     };
     
-    console.log(`Client: Successfully processed drug info for "${normalizedDrugName}"`);
+    console.log(`Client: Successfully processed drug info for "${normalizedDrugName}":`, formattedData);
     return formattedData;
   } catch (error) {
     console.error('Client: Error fetching drug info, using mock data:', error);
