@@ -100,7 +100,7 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
         {onSearch && (
           <button 
             type="submit"
-            className="bg-[#FF1B75] hover:bg-[#FF1B75]/90 text-white px-3 sm:px-8 py-2 sm:py-3 rounded-full font-semibold sm:ml-2 flex-shrink-0 text-sm sm:text-base whitespace-nowrap"
+            className="bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white px-3 sm:px-8 py-2 sm:py-3 rounded-full font-semibold sm:ml-2 flex-shrink-0 text-sm sm:text-base whitespace-nowrap"
           >
             Search
           </button>

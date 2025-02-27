@@ -415,7 +415,7 @@ export default function MedicationPage({ params }: Props) {
                       </div>
                       <button
                         type="submit"
-                        className="bg-[#006B52] text-white px-4 py-2 rounded-r-lg hover:bg-[#005743] transition-colors"
+                        className="bg-[#3B82F6] text-white px-4 py-2 rounded-r-lg hover:bg-[#3B82F6]/90 transition-colors"
                       >
                         Search
                       </button>
