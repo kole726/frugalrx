@@ -72,25 +72,27 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
 
   return (
     <div ref={wrapperRef} className="relative">
-      <form onSubmit={onSearch} className="bg-white rounded-full shadow-lg p-2 flex items-center">
-        <MagnifyingGlassIcon className="h-6 w-6 text-gray-400 ml-3" />
-        <input
-          type="text"
-          placeholder="Enter medication name..."
-          className="flex-1 px-4 py-3 focus:outline-none text-xl text-gray-900 font-medium"
-          value={searchTerm}
-          onChange={(e) => {
-            setSearchTerm(e.target.value)
-            setShowSuggestions(true)
-            onChange(e.target.value)
-          }}
-          onFocus={() => setShowSuggestions(true)}
-          required
-        />
+      <form onSubmit={onSearch} className="bg-white rounded-full shadow-lg p-2 flex flex-row items-center">
+        <div className="flex items-center flex-1 min-w-0">
+          <MagnifyingGlassIcon className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400 ml-2 sm:ml-3 flex-shrink-0" />
+          <input
+            type="text"
+            placeholder="Enter medication name..."
+            className="flex-1 px-2 sm:px-4 py-2 sm:py-3 focus:outline-none text-sm sm:text-xl text-gray-900 font-medium w-full min-w-0 truncate"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value)
+              setShowSuggestions(true)
+              onChange(e.target.value)
+            }}
+            onFocus={() => setShowSuggestions(true)}
+            required
+          />
+        </div>
         {onSearch && (
           <button 
             type="submit"
-            className="bg-[#FF1B75] hover:bg-[#FF1B75]/90 text-white px-8 py-3 rounded-full font-semibold ml-2"
+            className="bg-[#FF1B75] hover:bg-[#FF1B75]/90 text-white px-3 sm:px-8 py-2 sm:py-3 rounded-full font-semibold sm:ml-2 flex-shrink-0 text-sm sm:text-base whitespace-nowrap"
           >
             Search
           </button>
@@ -100,17 +102,17 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
       {showSuggestions && searchTerm && searchTerm.length > 1 && (
         <div className="absolute w-full mt-2 bg-white rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
           {isLoading ? (
-            <div className="p-4 text-center text-gray-500 text-lg">Loading...</div>
+            <div className="p-3 sm:p-4 text-center text-gray-500 text-sm sm:text-base">Loading...</div>
           ) : suggestions.length > 0 ? (
             <ul className="py-1">
               {suggestions.map((suggestion, index) => (
                 <li
                   key={index}
-                  className="px-6 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  className="px-3 sm:px-6 py-2 sm:py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                   onClick={() => handleSuggestionClick(suggestion)}
                 >
                   <div className="flex items-start">
-                    <span className="text-lg text-gray-900 font-medium">
+                    <span className="text-sm sm:text-lg text-gray-900 font-medium">
                       {suggestion.drugName}
                     </span>
                   </div>
@@ -118,13 +120,13 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
               ))}
             </ul>
           ) : (
-            <div className="p-4 text-center text-gray-500 text-lg">No medications found</div>
+            <div className="p-3 sm:p-4 text-center text-gray-500 text-sm sm:text-base">No medications found</div>
           )}
         </div>
       )}
 
       {error && (
-        <div className="p-4 text-center text-red-500 text-lg">{error}</div>
+        <div className="p-2 sm:p-4 text-center text-red-500 text-sm sm:text-base">{error}</div>
       )}
     </div>
   )
