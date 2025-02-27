@@ -186,6 +186,8 @@ export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
       return MOCK_DRUG_DATA.lisinopril;
     } else if (drugNameLower.includes('atorvastatin') || drugNameLower.includes('lipitor')) {
       return MOCK_DRUG_DATA.atorvastatin;
+    } else if (drugNameLower.includes('vyvanse')) {
+      return MOCK_DRUG_DATA.vyvanse;
     }
     
     // Create a generic drug info object based on the drug name instead of defaulting to amoxicillin
@@ -274,6 +276,15 @@ const MOCK_DRUG_DATA: Record<string, DrugDetails> = {
     dosage: "10mg, 20mg, 40mg, 80mg tablets",
     storage: "Store at room temperature away from moisture and heat.",
     contraindications: "Do not use if you have liver disease or if you are pregnant."
+  },
+  vyvanse: {
+    brandName: "Vyvanse",
+    genericName: "Lisdexamfetamine",
+    description: "Vyvanse (lisdexamfetamine) is a central nervous system stimulant used to treat attention deficit hyperactivity disorder (ADHD) in adults and children 6 years of age and older. It is also used to treat moderate to severe binge eating disorder in adults. Vyvanse is a federally controlled substance (CII) because it can be abused or lead to dependence.",
+    sideEffects: "Common side effects include decreased appetite, insomnia, dry mouth, increased heart rate, anxiety, irritability, and weight loss. More serious side effects may include heart problems, psychiatric issues, circulation problems, and slowed growth in children.",
+    dosage: "10mg, 20mg, 30mg, 40mg, 50mg, 60mg, 70mg capsules",
+    storage: "Store at room temperature in a cool, dry place away from direct sunlight. Keep away from moisture and heat.",
+    contraindications: "Do not use if you have heart problems, high blood pressure, hyperthyroidism, glaucoma, or if you are taking MAO inhibitors."
   }
 };
 
