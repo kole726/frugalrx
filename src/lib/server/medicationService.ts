@@ -240,4 +240,76 @@ export async function getPharmacies(
     console.error('Error getting pharmacies:', error);
     throw new Error(`Failed to get pharmacies: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+}
+
+/**
+ * Get detailed information about a medication by name
+ * @param drugName The name of the medication
+ * @returns Detailed information about the medication
+ */
+export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> {
+  try {
+    const token = await getAuthToken();
+    
+    // Normalize drug name to lowercase
+    const normalizedDrugName = drugName.toLowerCase();
+    console.log(`Getting drug info for: "${normalizedDrugName}"`);
+    
+    // First, search for the drug to get its GSN
+    console.log(`Searching for drug with name: ${normalizedDrugName}`);
+    const searchResults = await searchDrugs(normalizedDrugName);
+    
+    if (!Array.isArray(searchResults) || searchResults.length === 0) {
+      console.error(`No drug found with name: ${normalizedDrugName}`);
+      throw new Error(`Drug not found: ${drugName}`);
+    }
+    
+    // Find the exact match or closest match
+    const exactMatch = searchResults.find(
+      drug => drug.drugName.toLowerCase() === normalizedDrugName
+    );
+    
+    const drugToUse = exactMatch || searchResults[0];
+    console.log(`Using drug: ${drugToUse.drugName} for info lookup`);
+    
+    // If we have a GSN, use it to get detailed information
+    if (drugToUse.gsn) {
+      return await getDrugDetailsByGsn(drugToUse.gsn);
+    }
+    
+    // If no GSN, we'll need to use the drug name to get prices and extract info
+    const response = await fetch(`${process.env.AMERICAS_PHARMACY_API_URL}/drugprices/byName`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        hqMappingName: 'walkerrx',
+        drugName: drugToUse.drugName,
+        latitude: 30.4014,  // Default latitude
+        longitude: -97.7525 // Default longitude
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Format the response to match the DrugDetails interface
+    return {
+      brandName: data.brandName || drugToUse.drugName,
+      genericName: data.genericName || drugToUse.drugName,
+      description: data.description || `Information about ${drugToUse.drugName}`,
+      sideEffects: data.sideEffects || "Please consult with your healthcare provider for information about side effects.",
+      dosage: data.dosage || "Various strengths available",
+      storage: data.storage || "Store according to package instructions.",
+      contraindications: data.contraindications || "Please consult with your healthcare provider for contraindication information."
+    };
+  } catch (error) {
+    console.error('Error getting drug info by name:', error);
+    throw new Error(`Failed to get drug info: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 } 
