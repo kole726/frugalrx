@@ -74,6 +74,7 @@ export default function MedicationPage({ params }: Props) {
         setUsingMockData(false)
 
         const drugName = decodeURIComponent(params.name)
+        console.log(`Fetching drug data for: ${drugName}`)
         
         // Try to fetch real data from API
         try {
@@ -101,15 +102,15 @@ export default function MedicationPage({ params }: Props) {
             
             // Create a drug info object from the details
             setDrugInfo({
-              brandName: info.brandName,
-              genericName: info.genericName,
+              brandName: info.brandName || drugName,
+              genericName: info.genericName || drugName,
               gsn: 0, // We don't have a GSN in this case
               ndcCode: '',
-              description: info.description,
-              sideEffects: info.sideEffects,
-              strength: info.dosage,
-              storage: info.storage,
-              manufacturer: info.contraindications
+              description: info.description || `Information about ${drugName}`,
+              sideEffects: info.sideEffects || "Please consult with your healthcare provider for information about side effects.",
+              strength: info.dosage || "Various strengths available",
+              storage: info.storage || "Store according to package instructions.",
+              manufacturer: info.contraindications || "Please consult with your healthcare provider for contraindication information."
             })
           }
 
@@ -169,7 +170,7 @@ export default function MedicationPage({ params }: Props) {
           // Convert drug name to lowercase for matching
           const drugNameLower = drugName.toLowerCase();
           
-          // Find a matching mock drug or use a default
+          // Find a matching mock drug or create a generic one based on the drug name
           let mockDrug = null;
           if (drugNameLower.includes('amoxicillin')) {
             mockDrug = MOCK_DRUG_DATA.amoxicillin;
@@ -178,8 +179,17 @@ export default function MedicationPage({ params }: Props) {
           } else if (drugNameLower.includes('atorvastatin') || drugNameLower.includes('lipitor')) {
             mockDrug = MOCK_DRUG_DATA.atorvastatin;
           } else {
-            // Use amoxicillin as default mock data
-            mockDrug = MOCK_DRUG_DATA.amoxicillin;
+            // Create a generic mock drug based on the name instead of defaulting to amoxicillin
+            const formattedName = drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase();
+            mockDrug = {
+              brandName: formattedName,
+              genericName: formattedName,
+              description: `${formattedName} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
+              sideEffects: "Side effects may vary. Please consult with your healthcare provider for detailed information.",
+              dosage: "Various strengths available",
+              storage: "Store according to package instructions.",
+              contraindications: "Please consult with your healthcare provider for contraindication information."
+            };
           }
           
           // Set mock drug info

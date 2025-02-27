@@ -176,9 +176,19 @@ export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
       return MOCK_DRUG_DATA.atorvastatin;
     }
     
-    // Default to amoxicillin if no match
-    console.warn(`Client: No mock data for "${drugNameLower}", defaulting to amoxicillin`);
-    return MOCK_DRUG_DATA.amoxicillin;
+    // Create a generic drug info object based on the drug name instead of defaulting to amoxicillin
+    const formattedName = drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase();
+    console.log(`Client: Creating generic drug info for "${formattedName}"`);
+    
+    return {
+      brandName: formattedName,
+      genericName: formattedName,
+      description: `${formattedName} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
+      sideEffects: "Side effects may vary. Please consult with your healthcare provider for detailed information.",
+      dosage: "Various strengths available",
+      storage: "Store according to package instructions.",
+      contraindications: "Please consult with your healthcare provider for contraindication information."
+    };
   }
 }
 
