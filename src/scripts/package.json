@@ -1,0 +1,14 @@
+{
+  "name": "drug-api-test",
+  "version": "1.0.0",
+  "description": "Test script for drug API communication",
+  "main": "test-drug-api.js",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-json-modules -r dotenv/config test-drug-api.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "node-fetch": "^3.3.2"
+  }
+} 

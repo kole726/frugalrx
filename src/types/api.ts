@@ -1,6 +1,7 @@
 export interface DrugPriceRequest {
   drugName?: string;
   gsn?: number;
+  ndcCode?: string | number;
   latitude: number;
   longitude: number;
   radius?: number;
@@ -54,6 +55,13 @@ export interface DrugDetails {
   dosage: string;
   storage: string;
   contraindications: string;
+  admin?: string;        // Administration information
+  disclaimer?: string;   // Disclaimer information
+  interaction?: string;  // Drug interactions
+  missedD?: string;      // Missed dose information
+  monitor?: string;      // Monitoring requirements
+  side?: string;         // Alternative field for side effects
+  store?: string;        // Alternative field for storage
 }
 
 export interface APIError {

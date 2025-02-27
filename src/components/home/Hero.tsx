@@ -32,11 +32,11 @@ export default function Hero() {
       // Always convert medication name to lowercase for URLs
       const normalizedMedication = medication.toLowerCase()
       
-      // Navigate to the medications page with GSN if available
+      // Navigate to the drug detail page with GSN if available
       if (selectedMedication?.gsn) {
-        router.push(`/medications/${encodeURIComponent(normalizedMedication)}?gsn=${selectedMedication.gsn}`)
+        router.push(`/drug/${encodeURIComponent(normalizedMedication)}?gsn=${selectedMedication.gsn}`)
       } else {
-        router.push(`/medications/${encodeURIComponent(normalizedMedication)}`)
+        router.push(`/drug/${encodeURIComponent(normalizedMedication)}`)
       }
     } catch (error) {
       console.error('Error during search:', error)

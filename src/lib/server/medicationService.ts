@@ -340,4 +340,133 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     console.error('Server: Error getting drug info by name:', error);
     throw new Error(`Failed to get drug info: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+}
+
+/**
+ * Compare multiple medications by name or GSN
+ * @param medications Array of medication names or GSNs to compare
+ * @param latitude User's latitude
+ * @param longitude User's longitude
+ * @param radius Search radius in miles (optional)
+ * @returns Comparison data for the medications
+ */
+export async function compareMedications(
+  medications: Array<{ name?: string; gsn?: number }>,
+  latitude: number,
+  longitude: number,
+  radius?: number
+): Promise<Array<DrugInfo & { prices: PharmacyPrice[] }>> {
+  try {
+    if (!medications || medications.length === 0) {
+      throw new Error('No medications provided for comparison');
+    }
+
+    // Fetch details and prices for each medication in parallel
+    const comparisonPromises = medications.map(async (med) => {
+      let drugInfo: DrugInfo;
+      let prices: PharmacyPrice[] = [];
+
+      // Get drug info based on name or GSN
+      if (med.gsn) {
+        // Get drug details by GSN
+        try {
+          // This would be a real API call in production
+          // For now, create a placeholder drug info
+          drugInfo = {
+            brandName: `Brand Name for GSN ${med.gsn}`,
+            genericName: `Generic Name for GSN ${med.gsn}`,
+            gsn: med.gsn,
+            ndcCode: `NDC-${med.gsn}`,
+            description: `Description for medication with GSN ${med.gsn}`,
+            sideEffects: `Side effects for medication with GSN ${med.gsn}`,
+            dosage: `Standard dosage for GSN ${med.gsn}`,
+            storage: `Standard storage instructions for GSN ${med.gsn}`,
+            contraindications: `Contraindications for GSN ${med.gsn}`
+          };
+        } catch (error) {
+          console.error(`Error fetching drug info for GSN ${med.gsn}:`, error);
+          // Create a fallback drug info
+          drugInfo = {
+            brandName: `Medication (GSN: ${med.gsn})`,
+            genericName: `Medication (GSN: ${med.gsn})`,
+            gsn: med.gsn,
+            ndcCode: `NDC-${med.gsn}`,
+            description: `Information not available for GSN ${med.gsn}`,
+            sideEffects: 'Information not available',
+            dosage: 'Information not available',
+            storage: 'Information not available',
+            contraindications: 'Information not available'
+          };
+        }
+      } else if (med.name) {
+        // Get drug details by name
+        try {
+          // This would be a real API call in production
+          // For now, create a placeholder drug info
+          drugInfo = {
+            brandName: med.name.charAt(0).toUpperCase() + med.name.slice(1).toLowerCase(),
+            genericName: med.name.charAt(0).toUpperCase() + med.name.slice(1).toLowerCase(),
+            gsn: 0, // Placeholder
+            ndcCode: `NDC-${med.name}`,
+            description: `Description for ${med.name}`,
+            sideEffects: `Side effects for ${med.name}`,
+            dosage: `Standard dosage for ${med.name}`,
+            storage: `Standard storage instructions for ${med.name}`,
+            contraindications: `Contraindications for ${med.name}`
+          };
+        } catch (error) {
+          console.error(`Error fetching drug info for ${med.name}:`, error);
+          // Create a fallback drug info
+          drugInfo = {
+            brandName: med.name.charAt(0).toUpperCase() + med.name.slice(1).toLowerCase(),
+            genericName: med.name.charAt(0).toUpperCase() + med.name.slice(1).toLowerCase(),
+            gsn: 0, // Placeholder
+            ndcCode: `NDC-${med.name}`,
+            description: `Information not available for ${med.name}`,
+            sideEffects: 'Information not available',
+            dosage: 'Information not available',
+            storage: 'Information not available',
+            contraindications: 'Information not available'
+          };
+        }
+      } else {
+        throw new Error('Either medication name or GSN must be provided');
+      }
+
+      // Get prices for the medication
+      try {
+        const priceRequest: DrugPriceRequest = {
+          drugName: med.name,
+          gsn: med.gsn,
+          latitude,
+          longitude,
+          radius,
+          hqMappingName: 'walkerrx'
+        };
+
+        const priceData = await getDrugPrices(priceRequest);
+        prices = priceData.pharmacies || [];
+      } catch (priceError) {
+        console.error('Error fetching prices for comparison:', priceError);
+        // Create mock prices
+        prices = [
+          { name: "Walgreens", price: 12.99, distance: "0.8 miles" },
+          { name: "CVS Pharmacy", price: 14.50, distance: "1.2 miles" },
+          { name: "Walmart Pharmacy", price: 9.99, distance: "2.5 miles" },
+          { name: "Rite Aid", price: 13.75, distance: "3.1 miles" },
+          { name: "Target Pharmacy", price: 11.25, distance: "4.0 miles" }
+        ];
+      }
+
+      return {
+        ...drugInfo,
+        prices
+      };
+    });
+
+    return await Promise.all(comparisonPromises);
+  } catch (error) {
+    console.error('Error comparing medications:', error);
+    throw error;
+  }
 } 

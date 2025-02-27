@@ -27,6 +27,10 @@ export async function GET(request: Request) {
     let latitude = parseFloat(searchParams.get('latitude') || '0');
     let longitude = parseFloat(searchParams.get('longitude') || '0');
     const count = parseInt(searchParams.get('count') || '10');
+    const pharmacyType = searchParams.get('type'); // Filter by pharmacy type (retail, mail-order, etc.)
+    const open24Hours = searchParams.get('open24Hours') === 'true'; // Filter for 24-hour pharmacies
+    const hasDelivery = searchParams.get('delivery') === 'true'; // Filter for pharmacies with delivery
+    const acceptsInsurance = searchParams.get('insurance') === 'true'; // Filter for pharmacies that accept insurance
     
     // If we have a zip code but no coordinates, try to get coordinates from the zip code
     if (zipCode && (!latitude || !longitude)) {
@@ -55,7 +59,7 @@ export async function GET(request: Request) {
     const pharmacies = await getPharmacies(latitude, longitude, count);
     
     // Add latitude and longitude to each pharmacy for mapping
-    const enhancedPharmacies = pharmacies.map((pharmacy: Pharmacy) => {
+    let enhancedPharmacies = pharmacies.map((pharmacy: Pharmacy) => {
       // If the pharmacy already has coordinates, use those
       if (pharmacy.latitude && pharmacy.longitude) {
         return pharmacy;
@@ -70,9 +74,33 @@ export async function GET(request: Request) {
       return {
         ...pharmacy,
         latitude: latitude + randomLat,
-        longitude: longitude + randomLng
+        longitude: longitude + randomLng,
+        // Add default values for new fields if they don't exist
+        type: pharmacy.type || 'retail',
+        open24Hours: pharmacy.open24Hours || false,
+        hasDelivery: pharmacy.hasDelivery || false,
+        acceptsInsurance: pharmacy.acceptsInsurance || true
       };
     });
+    
+    // Apply filters if provided
+    if (pharmacyType) {
+      enhancedPharmacies = enhancedPharmacies.filter(pharmacy => 
+        pharmacy.type && pharmacy.type.toLowerCase() === pharmacyType.toLowerCase()
+      );
+    }
+    
+    if (open24Hours) {
+      enhancedPharmacies = enhancedPharmacies.filter(pharmacy => pharmacy.open24Hours);
+    }
+    
+    if (hasDelivery) {
+      enhancedPharmacies = enhancedPharmacies.filter(pharmacy => pharmacy.hasDelivery);
+    }
+    
+    if (acceptsInsurance) {
+      enhancedPharmacies = enhancedPharmacies.filter(pharmacy => pharmacy.acceptsInsurance);
+    }
     
     return NextResponse.json(enhancedPharmacies);
   } catch (error) {

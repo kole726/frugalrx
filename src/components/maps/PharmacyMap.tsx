@@ -10,13 +10,14 @@ interface Pharmacy {
   city: string;
   state: string;
   postalCode: string;
-  phone: string;
+  phone?: string;
   distance: number;
   latitude?: number;
   longitude?: number;
   open24H?: boolean;
   driveUpWindow?: boolean;
   handicapAccess?: boolean;
+  price?: number;
 }
 
 interface PharmacyMapProps {
@@ -263,9 +264,9 @@ export default function PharmacyMap({
               <p class="text-sm text-gray-600 mt-1">${pharmacy.distance.toFixed(1)} miles away</p>
               ${pharmacy.phone ? `<p class="text-sm text-[#006142] mt-1"><a href="tel:${pharmacy.phone}">${formatPhoneNumber(pharmacy.phone)}</a></p>` : ''}
               <div class="mt-2 flex flex-wrap gap-1">
-                ${pharmacy.open24H ? '<span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Open 24 Hours</span>' : ''}
-                ${pharmacy.driveUpWindow ? '<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Drive-Up Window</span>' : ''}
-                ${pharmacy.handicapAccess ? '<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">Handicap Access</span>' : ''}
+                ${pharmacy.open24H ? '<span class="text-xs bg-[#EFFDF6] text-[#006142] px-2 py-1 rounded">Open 24 Hours</span>' : ''}
+                ${pharmacy.driveUpWindow ? '<span class="text-xs bg-[#EFFDF6] text-[#006142] px-2 py-1 rounded">Drive-Up Window</span>' : ''}
+                ${pharmacy.handicapAccess ? '<span class="text-xs bg-[#EFFDF6] text-[#006142] px-2 py-1 rounded">Handicap Access</span>' : ''}
               </div>
             </div>
           `

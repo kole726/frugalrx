@@ -12,6 +12,20 @@ export default function Navigation() {
         How It Works
       </Link>
       
+      <Link 
+        href="/medications/demo"
+        className="text-gray-600 hover:text-primary font-medium"
+      >
+        Medication Features
+      </Link>
+      
+      <Link 
+        href="/medications/compare"
+        className="text-gray-600 hover:text-primary font-medium"
+      >
+        Compare Medications
+      </Link>
+      
       {/* Download Card Dropdown */}
       <div className="relative group">
         <button className="bg-accent hover:bg-accent/90 text-white px-6 py-2.5 rounded-full font-medium">

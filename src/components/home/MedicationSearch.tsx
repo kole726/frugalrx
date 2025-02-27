@@ -83,8 +83,8 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
       const normalizedDrugName = suggestion.drugName.toLowerCase()
       
       const url = suggestion.gsn 
-        ? `/medications/${encodeURIComponent(normalizedDrugName)}?gsn=${suggestion.gsn}`
-        : `/medications/${encodeURIComponent(normalizedDrugName)}`;
+        ? `/drug/${encodeURIComponent(normalizedDrugName)}?gsn=${suggestion.gsn}`
+        : `/drug/${encodeURIComponent(normalizedDrugName)}`;
       window.location.href = url;
     }
   }

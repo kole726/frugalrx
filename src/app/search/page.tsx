@@ -1,114 +1,86 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { getDrugPrices, getDrugInfo } from '@/services/medicationApi'
-import PharmacyList from '@/components/search/PharmacyList'
-import DrugInfo from '@/components/search/DrugInfo'
-import SearchFilters from '@/components/search/SearchFilters'
-import LoadingState from '@/components/search/LoadingState'
-import { DrugInfo as DrugInfoType, PharmacyPrice, APIError, DrugPriceRequest } from '@/types/api'
+import { searchMedications } from '@/services/medicationApi'
+import MedicationSearchResults from '@/components/medication/MedicationSearchResults'
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [drugInfo, setDrugInfo] = useState<DrugInfoType | null>(null)
-  const [pharmacyPrices, setPharmacyPrices] = useState<PharmacyPrice[]>([])
-  const [filters, setFilters] = useState({
-    radius: 10,
-    sortBy: 'price',
-    chainOnly: false,
-  })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [results, setResults] = useState<Array<{ drugName: string; gsn?: number }>>([])
+  const languageCode = searchParams.get('lang') || 'en'
 
   useEffect(() => {
-    const fetchResults = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-
-        const medication = searchParams.get('medication')
-        const location = searchParams.get('location')
-
-        if (!medication || !location) {
-          throw new Error('Missing search parameters')
-        }
-
-        const coords = await getCoordinatesFromZip(location)
-
-        const prices = await getDrugPrices({
-          drugName: medication,
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          radius: filters.radius,
-          hqMappingName: 'walkerrx',
-          maximumPharmacies: 50
-        } as DrugPriceRequest)
-
-        setPharmacyPrices(prices.pharmacies || [])
-
-        // Try to get drug info by name
-        try {
-          const info = await getDrugInfo(medication)
-          if (info) {
-            const drugInfoData: DrugInfoType = {
-              brandName: info.brandName,
-              genericName: info.genericName,
-              gsn: 0, // Placeholder since we don't have GSN
-              ndcCode: '', // Placeholder since we don't have NDC
-              description: info.description,
-              sideEffects: info.sideEffects,
-              dosage: info.dosage,
-              storage: info.storage,
-              contraindications: info.contraindications,
-              prices: prices.pharmacies
-            }
-            setDrugInfo(drugInfoData)
-          }
-        } catch (infoError) {
-          console.warn('Could not fetch drug info:', infoError)
-        }
-      } catch (error: unknown) {
-        const apiError = error as APIError;
-        setError(apiError.message || 'An error occurred')
-      } finally {
-        setIsLoading(false)
-      }
+    const query = searchParams.get('q')
+    if (query) {
+      setSearchQuery(query)
+      handleSearch(query)
     }
+  }, [searchParams])
 
-    fetchResults()
-  }, [searchParams, filters.radius])
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) return
 
-  if (isLoading) return <LoadingState />
-  if (error) return <div className="text-red-500 text-center p-4">{error}</div>
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      const searchResults = await searchMedications(query)
+      setResults(searchResults)
+    } catch (err) {
+      console.error('Error searching medications:', err)
+      setError('Failed to search medications. Please try again later.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    handleSearch(searchQuery)
+    
+    // Update URL with search query
+    const url = new URL(window.location.href)
+    url.searchParams.set('q', searchQuery)
+    window.history.pushState({}, '', url.toString())
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Sidebar */}
-        <div className="lg:col-span-1">
-          <SearchFilters 
-            filters={filters} 
-            onChange={setFilters} 
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Search Medications</h1>
+        
+        <form onSubmit={handleSubmit} className="flex w-full max-w-3xl">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Enter medication name..."
+            className="flex-grow px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-          {drugInfo && <DrugInfo info={drugInfo} />}
-        </div>
-
-        {/* Main Content */}
-        <div className="lg:col-span-2">
-          <PharmacyList 
-            pharmacies={pharmacyPrices}
-            sortBy={filters.sortBy}
-            chainOnly={filters.chainOnly}
-          />
-        </div>
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-6 py-3 rounded-r-lg hover:bg-blue-700 transition-colors"
+          >
+            Search
+          </button>
+        </form>
       </div>
+
+      {error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-red-700 mb-2">Error</h2>
+          <p className="text-red-600">{error}</p>
+        </div>
+      ) : (
+        <MedicationSearchResults 
+          results={results} 
+          isLoading={isLoading} 
+          languageCode={languageCode}
+        />
+      )}
     </div>
   )
-}
-
-async function getCoordinatesFromZip(_zipCode: string) {
-  return {
-    latitude: 37.7749,
-    longitude: -122.4194
-  }
 } 

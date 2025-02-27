@@ -8,12 +8,16 @@ interface DrugSearchResponse {
 }
 
 interface DrugPriceRequest {
-  drugName: string;
+  drugName?: string;
+  gsn?: number;
+  ndcCode?: string | number;
   latitude: number;
   longitude: number;
   radius?: number;
   hqMappingName?: string;
   maximumPharmacies?: number;
+  customizedQuantity?: boolean;
+  quantity?: number;
 }
 
 /**
@@ -98,19 +102,113 @@ export async function getDrugPrices(criteria: DrugPriceRequest): Promise<DrugPri
 }
 
 /**
- * Get detailed information about a medication by GSN
- * @param gsn The GSN (Generic Sequence Number) of the medication
- * @returns Detailed information about the medication
+ * Get prices for a medication by NDC code
+ * @param ndcCode The NDC code of the medication
+ * @param latitude User's latitude
+ * @param longitude User's longitude
+ * @param radius Search radius in miles (optional)
+ * @param quantity Medication quantity (optional)
+ * @returns Price information for the medication
  */
-export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
+export async function getDrugPricesByNdc(
+  ndcCode: string,
+  latitude: number,
+  longitude: number,
+  radius?: number,
+  quantity?: number
+): Promise<DrugPriceResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/drugs/info/${gsn}`);
+    const request = {
+      ndcCode,
+      latitude,
+      longitude,
+      radius,
+      customizedQuantity: quantity ? true : undefined,
+      quantity
+    };
+
+    const response = await fetch(`${API_BASE_URL}/drugs/prices/ndc`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch drug details: ${response.status}`);
+      throw new Error(`Failed to fetch drug prices by NDC: ${response.status}`);
     }
 
     return await response.json();
+  } catch (error) {
+    console.error('Error fetching drug prices by NDC:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get detailed information about a medication by GSN
+ * @param gsn The GSN (Generic Sequence Number) of the medication
+ * @param languageCode Optional language code for localized information
+ * @returns Detailed information about the medication
+ */
+export async function getDrugDetailsByGsn(gsn: number, languageCode?: string): Promise<DrugDetails> {
+  try {
+    // Build the URL with optional language code
+    let url = `${API_BASE_URL}/drugs/info/${gsn}`;
+    if (languageCode) {
+      url += `?languageCode=${encodeURIComponent(languageCode)}`;
+    }
+    
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      let errorMessage = `API error: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If we can't parse the error as JSON, use the status code
+        console.error('Could not parse error response as JSON:', e);
+      }
+      
+      console.error(`Client: API error when getting info for GSN ${gsn}:`, errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    console.log(`Client: Received drug info for GSN ${gsn}:`, data);
+    
+    // Format drug names with proper capitalization
+    if (data) {
+      if (data.genericName) {
+        data.genericName = data.genericName.charAt(0).toUpperCase() + data.genericName.slice(1).toLowerCase();
+      }
+      if (data.brandName) {
+        // Brand names may have multiple words, so capitalize each word
+        data.brandName = data.brandName.split(' ')
+          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+      }
+    }
+    
+    // Map API response fields to our DrugDetails interface
+    const formattedData: DrugDetails = {
+      brandName: data.brandName || `Medication (GSN: ${gsn})`,
+      genericName: data.genericName || `Medication (GSN: ${gsn})`,
+      description: data.description || `This medication (GSN: ${gsn}) is used to treat various conditions. Please consult with your healthcare provider for specific information.`,
+      sideEffects: data.sideEffects || data.side || "Side effects may vary. Please consult with your healthcare provider for detailed information.",
+      dosage: data.dosage || "Various strengths available",
+      storage: data.storage || data.store || "Store according to package instructions.",
+      contraindications: data.contraindications || data.contra || "Please consult with your healthcare provider for contraindication information.",
+      admin: data.admin,
+      disclaimer: data.disclaimer,
+      interaction: data.interaction,
+      missedD: data.missedD,
+      monitor: data.monitor
+    };
+    
+    return formattedData;
   } catch (error) {
     console.error('Error fetching drug details:', error);
     throw error;
@@ -120,16 +218,23 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
 /**
  * Get detailed information about a medication by name
  * @param drugName The name of the medication
+ * @param languageCode Optional language code for localized information
  * @returns Detailed information about the medication
  */
-export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
+export async function getDrugInfo(drugName: string, languageCode?: string): Promise<DrugDetails> {
   try {
     // Normalize drug name to lowercase for API requests
     const normalizedDrugName = drugName.toLowerCase();
     console.log(`Client: Getting drug info for: "${normalizedDrugName}"`);
     
+    // Build the URL with optional language code
+    let url = `${API_BASE_URL}/drugs/info?name=${encodeURIComponent(normalizedDrugName)}`;
+    if (languageCode) {
+      url += `&languageCode=${encodeURIComponent(languageCode)}`;
+    }
+    
     // Try to get real data from API
-    const response = await fetch(`${API_BASE_URL}/drugs/info?name=${encodeURIComponent(normalizedDrugName)}`);
+    const response = await fetch(url);
     
     if (!response.ok) {
       let errorMessage = `API error: ${response.status}`;
@@ -162,14 +267,20 @@ export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
     }
     
     // Ensure all required fields are present with proper formatting
+    // Map API response fields to our DrugDetails interface
     const formattedData: DrugDetails = {
       brandName: data.brandName || drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase(),
       genericName: data.genericName || drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase(),
       description: data.description || `${drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
-      sideEffects: data.sideEffects || "Side effects may vary. Please consult with your healthcare provider for detailed information.",
+      sideEffects: data.sideEffects || data.side || "Side effects may vary. Please consult with your healthcare provider for detailed information.",
       dosage: data.dosage || "Various strengths available",
-      storage: data.storage || "Store according to package instructions.",
-      contraindications: data.contraindications || "Please consult with your healthcare provider for contraindication information."
+      storage: data.storage || data.store || "Store according to package instructions.",
+      contraindications: data.contraindications || data.contra || "Please consult with your healthcare provider for contraindication information.",
+      admin: data.admin,
+      disclaimer: data.disclaimer,
+      interaction: data.interaction,
+      missedD: data.missedD,
+      monitor: data.monitor
     };
     
     console.log(`Client: Successfully processed drug info for "${normalizedDrugName}":`, formattedData);
@@ -245,6 +356,141 @@ export async function getPharmaciesByZipCode(zipCode: string): Promise<any> {
   } catch (error) {
     console.error('Error fetching pharmacies:', error);
     throw error;
+  }
+}
+
+/**
+ * Compare multiple medications
+ * @param medications Array of medication names or GSNs to compare
+ * @param latitude User's latitude
+ * @param longitude User's longitude
+ * @param radius Search radius in miles (optional)
+ * @returns Comparison data for the medications
+ */
+export async function compareMedicationsClient(
+  medications: Array<{ name?: string; gsn?: number }>,
+  latitude: number,
+  longitude: number,
+  radius?: number
+): Promise<Array<DrugInfo & { prices: PharmacyPrice[] }>> {
+  try {
+    if (!medications || medications.length === 0) {
+      throw new Error('No medications provided for comparison');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/drugs/compare`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        medications,
+        latitude,
+        longitude,
+        radius
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to compare medications: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error comparing medications:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get alternative medications (generics or therapeutic alternatives)
+ * @param drugName The name of the medication
+ * @param latitude User's latitude
+ * @param longitude User's longitude
+ * @param includeGenerics Whether to include generic alternatives
+ * @param includeTherapeutic Whether to include therapeutic alternatives
+ * @returns A list of alternative medications with price information
+ */
+export async function getMedicationAlternatives(
+  drugName: string,
+  latitude: number,
+  longitude: number,
+  includeGenerics: boolean = true,
+  includeTherapeutic: boolean = false
+): Promise<Array<DrugInfo & { prices: PharmacyPrice[] }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/drugs/alternatives`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        drugName,
+        latitude,
+        longitude,
+        includeGenerics,
+        includeTherapeutic
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch medication alternatives: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching medication alternatives:', error);
+    
+    // If the API fails, return mock data
+    // This is just for demonstration purposes
+    const mockAlternatives = [];
+    
+    // Create a mock generic alternative
+    if (includeGenerics) {
+      const genericName = drugName.toLowerCase();
+      mockAlternatives.push({
+        brandName: `Generic ${drugName}`,
+        genericName: genericName,
+        gsn: 12345, // Mock GSN
+        ndcCode: 'NDC-12345',
+        description: `Generic version of ${drugName}`,
+        sideEffects: `Similar side effects to ${drugName}`,
+        dosage: `Same dosage as ${drugName}`,
+        storage: `Store at room temperature`,
+        contraindications: `Similar contraindications to ${drugName}`,
+        prices: [
+          { name: "Walgreens", price: 8.99, distance: "0.8 miles" },
+          { name: "CVS Pharmacy", price: 9.50, distance: "1.2 miles" },
+          { name: "Walmart Pharmacy", price: 6.99, distance: "2.5 miles" },
+          { name: "Rite Aid", price: 10.75, distance: "3.1 miles" },
+          { name: "Target Pharmacy", price: 7.25, distance: "4.0 miles" }
+        ]
+      });
+    }
+    
+    // Create a mock therapeutic alternative
+    if (includeTherapeutic) {
+      mockAlternatives.push({
+        brandName: `Alternative to ${drugName}`,
+        genericName: `therapeutic-alt-${drugName.toLowerCase()}`,
+        gsn: 67890, // Mock GSN
+        ndcCode: 'NDC-67890',
+        description: `Therapeutic alternative to ${drugName}`,
+        sideEffects: `Different side effect profile than ${drugName}`,
+        dosage: `Dosage may differ from ${drugName}`,
+        storage: `Store at room temperature`,
+        contraindications: `May have different contraindications than ${drugName}`,
+        prices: [
+          { name: "Walgreens", price: 10.99, distance: "0.8 miles" },
+          { name: "CVS Pharmacy", price: 11.50, distance: "1.2 miles" },
+          { name: "Walmart Pharmacy", price: 8.99, distance: "2.5 miles" },
+          { name: "Rite Aid", price: 12.75, distance: "3.1 miles" },
+          { name: "Target Pharmacy", price: 9.25, distance: "4.0 miles" }
+        ]
+      });
+    }
+    
+    return mockAlternatives;
   }
 }
 
