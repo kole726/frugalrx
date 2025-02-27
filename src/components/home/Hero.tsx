@@ -29,7 +29,7 @@ export default function Hero() {
     if (!medication) return
     
     try {
-      // Convert medication name to lowercase before navigation
+      // Always convert medication name to lowercase for URLs
       const normalizedMedication = medication.toLowerCase()
       
       // Navigate to the medications page with GSN if available

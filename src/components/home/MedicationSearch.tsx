@@ -41,7 +41,13 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
         // Always use our API route
         const results = await searchMedications(debouncedSearch);
         
-        setSuggestions(results);
+        // Format drug names with proper capitalization (first letter uppercase, rest lowercase)
+        const formattedResults = results.map(result => ({
+          ...result,
+          drugName: result.drugName.charAt(0).toUpperCase() + result.drugName.slice(1).toLowerCase()
+        }));
+        
+        setSuggestions(formattedResults);
       } catch (error) {
         console.error('Error fetching suggestions:', error)
         setError('Failed to fetch medications. Please try again.')
@@ -65,13 +71,15 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
   }, [])
 
   const handleSuggestionClick = (suggestion: DrugSuggestion) => {
+    // Display the drug name with proper capitalization in the search box
     setSearchTerm(suggestion.drugName)
+    // Pass the properly formatted name to the parent component, but ensure GSN is preserved
     onChange(suggestion.drugName, suggestion.gsn)
     setShowSuggestions(false)
     
     // If onSearch is not provided, handle navigation directly
     if (!onSearch && typeof window !== 'undefined') {
-      // Convert drug name to lowercase before navigation
+      // Always convert drug name to lowercase for URLs
       const normalizedDrugName = suggestion.drugName.toLowerCase()
       
       const url = suggestion.gsn 
@@ -103,7 +111,7 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
         {onSearch && (
           <button 
             type="submit"
-            className="bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white px-3 sm:px-8 py-2 sm:py-3 rounded-full font-semibold sm:ml-2 flex-shrink-0 text-sm sm:text-base whitespace-nowrap"
+            className="bg-[#FF6B8B] hover:bg-[#FF6B8B]/90 text-white px-3 sm:px-8 py-2 sm:py-3 rounded-full font-semibold sm:ml-2 flex-shrink-0 text-sm sm:text-base whitespace-nowrap"
           >
             Search
           </button>
