@@ -65,9 +65,17 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     
     // Format the response to match the expected interface
     if (Array.isArray(data)) {
-      return data.map(drugName => ({
-        drugName: drugName
-      }));
+      return data.map(drugName => {
+        // Format drug name with proper capitalization (first letter uppercase, rest lowercase)
+        // The API returns drug names in ALL CAPS
+        const formattedName = typeof drugName === 'string' 
+          ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
+          : drugName;
+          
+        return {
+          drugName: formattedName
+        };
+      });
     }
     
     return data;

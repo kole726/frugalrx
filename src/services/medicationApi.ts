@@ -45,7 +45,26 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
 
     const data = await response.json();
     console.log(`Client: Found ${data.length} results for "${normalizedQuery}"`);
-    return data;
+    
+    // Process the drug names to ensure proper capitalization
+    // The API returns drug names in ALL CAPS, so we need to format them properly
+    const formattedResults = Array.isArray(data) ? data.map(item => {
+      // If the item is a string, convert it to an object with drugName property
+      const drugItem = typeof item === 'string' 
+        ? { drugName: item } 
+        : item;
+      
+      // Format the drug name with proper capitalization
+      // First letter uppercase, rest lowercase
+      if (drugItem.drugName) {
+        drugItem.drugName = drugItem.drugName.charAt(0).toUpperCase() + 
+                           drugItem.drugName.slice(1).toLowerCase();
+      }
+      
+      return drugItem;
+    }) : data;
+    
+    return formattedResults;
   } catch (error) {
     console.error('Client: Error searching medications:', error);
     throw error;
@@ -105,7 +124,7 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
  */
 export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
   try {
-    // Normalize drug name to lowercase
+    // Normalize drug name to lowercase for API requests
     const normalizedDrugName = drugName.toLowerCase();
     console.log(`Client: Getting drug info for: "${normalizedDrugName}"`);
     
@@ -127,6 +146,20 @@ export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
     }
     
     const data = await response.json();
+    
+    // Format drug names with proper capitalization
+    if (data) {
+      if (data.genericName) {
+        data.genericName = data.genericName.charAt(0).toUpperCase() + data.genericName.slice(1).toLowerCase();
+      }
+      if (data.brandName) {
+        // Brand names may have multiple words, so capitalize each word
+        data.brandName = data.brandName.split(' ')
+          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+      }
+    }
+    
     console.log(`Client: Successfully retrieved drug info for "${normalizedDrugName}"`);
     return data;
   } catch (error) {
