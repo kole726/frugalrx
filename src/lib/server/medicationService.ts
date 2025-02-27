@@ -35,26 +35,29 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
         // Ensure the URL is properly formatted by removing trailing slashes
         const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
         
-        // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
-        const endpoint = baseUrl.includes('/pricing/v1') ? '/drugs/names' : '/pricing/v1/drugs/names';
+        // Define the endpoint according to the API documentation: GET /v1/drugs/{prefixText}
+        // Make sure we're using the correct path format
+        const basePath = baseUrl.includes('/v1') ? '' : '/v1';
+        const endpoint = `${basePath}/drugs/${encodeURIComponent(normalizedQuery)}`;
         
-        console.log(`Making API request to ${baseUrl}${endpoint} with query: ${normalizedQuery}`);
+        console.log(`Making API request to ${baseUrl}${endpoint}`);
         
         // Get authentication token
         const token = await getAuthToken();
         console.log('Successfully obtained auth token for drug search');
         
-        // Make API request
-        const response = await fetch(`${baseUrl}${endpoint}`, {
-          method: 'POST',
+        // Create URL with optional query parameters
+        const url = new URL(`${baseUrl}${endpoint}`);
+        url.searchParams.append('count', '20'); // Optional: limit results to 20
+        url.searchParams.append('hqAlias', 'walkerrx'); // Optional: specify the hq code
+        
+        // Make API request using GET method as specified in the documentation
+        const response = await fetch(url.toString(), {
+          method: 'GET', // Using GET as specified in the API docs
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            'Accept': 'application/json',
           },
-          body: JSON.stringify({
-            hqMappingName: 'walkerrx',
-            prefixText: normalizedQuery
-          }),
           cache: 'no-store' // Ensure we don't use cached responses
         });
 
@@ -70,6 +73,7 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
         console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${normalizedQuery}" from API`);
         
         // Format the response to match the expected interface
+        // According to the API docs, the response is an array of strings
         if (Array.isArray(data)) {
           return data.map(drugName => {
             // Format drug name with proper capitalization (first letter uppercase, rest lowercase)
@@ -284,22 +288,25 @@ export async function testApiConnection(): Promise<boolean> {
       ? apiUrl.slice(0, -1) 
       : apiUrl;
     
-    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
-    const endpoint = baseUrl.includes('/pricing/v1') ? '/drugs/names' : '/pricing/v1/drugs/names';
+    // Define the endpoint according to the API documentation
+    const basePath = baseUrl.includes('/v1') ? '' : '/v1';
+    const testQuery = 'a'; // Simple prefix to test
+    const endpoint = `${basePath}/drugs/${encodeURIComponent(testQuery)}`;
     
     console.log(`Testing API connection to ${baseUrl}${endpoint}`);
     
+    // Create URL with optional query parameters
+    const url = new URL(`${baseUrl}${endpoint}`);
+    url.searchParams.append('count', '1'); // Only need one result for testing
+    url.searchParams.append('hqAlias', 'walkerrx');
+    
     // If we got a token, try a simple API call to verify it works
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      method: 'POST',
+    const response = await fetch(url.toString(), {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: JSON.stringify({
-        hqMappingName: 'walkerrx',
-        prefixText: 'a'  // Simple prefix to test
-      }),
     });
 
     if (!response.ok) {
