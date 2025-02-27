@@ -26,9 +26,12 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
+    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
+    const endpoint = baseUrl.includes('/pricing/v1') ? '/drugs/names' : '/pricing/v1/drugs/names';
+    
     // Convert query to lowercase to ensure consistent API requests
     const normalizedQuery = query.toLowerCase();
-    console.log(`Searching for drugs with query: "${normalizedQuery}" at ${baseUrl}/drugs/names`);
+    console.log(`Searching for drugs with query: "${normalizedQuery}" at ${baseUrl}${endpoint}`);
     
     // Get authentication token
     let token;
@@ -41,8 +44,8 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     }
     
     // Make API request
-    console.log(`Making API request to ${baseUrl}/drugs/names with query: ${normalizedQuery}`);
-    const response = await fetch(`${baseUrl}/drugs/names`, {
+    console.log(`Making API request to ${baseUrl}${endpoint} with query: ${normalizedQuery}`);
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -59,7 +62,7 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Drug search API error: ${response.status}`, errorText);
-      console.error(`Request details: query="${normalizedQuery}", endpoint=${baseUrl}/drugs/names`);
+      console.error(`Request details: query="${normalizedQuery}", endpoint=${baseUrl}${endpoint}`);
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
@@ -97,6 +100,13 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
   try {
     const token = await getAuthToken();
     
+    // Validate API URL
+    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    if (!apiUrl) {
+      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      throw new Error('API URL not configured');
+    }
+    
     // Determine which endpoint to use based on the request
     let endpoint = '/drugprices/byName';
     const body: Record<string, string | number | boolean | undefined> = {
@@ -119,11 +129,15 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     }
     
     // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = process.env.AMERICAS_PHARMACY_API_URL?.endsWith('/') 
-      ? process.env.AMERICAS_PHARMACY_API_URL.slice(0, -1) 
-      : process.env.AMERICAS_PHARMACY_API_URL;
+    const baseUrl = apiUrl.endsWith('/') 
+      ? apiUrl.slice(0, -1) 
+      : apiUrl;
     
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
+    const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
+    
+    console.log(`Making API request to ${baseUrl}${fullEndpoint} for drug prices`);
+    const response = await fetch(`${baseUrl}${fullEndpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -133,7 +147,9 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     });
 
     if (!response.ok) {
-      throw new Error(`${response.status}`);
+      const errorText = await response.text();
+      console.error(`Drug prices API error: ${response.status}`, errorText);
+      throw new Error(`${response.status}: ${errorText || 'Unknown error'}`);
     }
 
     const data = await response.json();
@@ -153,12 +169,19 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
   try {
     const token = await getAuthToken();
     
-    // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = process.env.AMERICAS_PHARMACY_API_URL?.endsWith('/') 
-      ? process.env.AMERICAS_PHARMACY_API_URL.slice(0, -1) 
-      : process.env.AMERICAS_PHARMACY_API_URL;
+    // Validate API URL
+    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    if (!apiUrl) {
+      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      throw new Error('API URL not configured');
+    }
     
-    const endpoint = '/drugprices/byGSN';
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    
+    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
+    const endpoint = baseUrl.includes('/pricing/v1') ? '/drugprices/byGSN' : '/pricing/v1/drugprices/byGSN';
+    
     console.log(`Making API request to ${baseUrl}${endpoint} for GSN: ${gsn}`);
     
     // For drug details, we'll use the byGSN endpoint with default coordinates
@@ -177,7 +200,10 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
     });
 
     if (!response.ok) {
-      throw new Error(`${response.status}`);
+      const errorText = await response.text();
+      console.error(`Drug details API error: ${response.status}`, errorText);
+      console.error(`Request details: GSN=${gsn}, endpoint=${baseUrl}${endpoint}`);
+      throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
@@ -194,15 +220,24 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
  */
 export async function testApiConnection(): Promise<boolean> {
   try {
+    // Validate API URL
+    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    if (!apiUrl) {
+      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      return false;
+    }
+    
     // Try to get an auth token
     const token = await getAuthToken();
     
     // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = process.env.AMERICAS_PHARMACY_API_URL?.endsWith('/') 
-      ? process.env.AMERICAS_PHARMACY_API_URL.slice(0, -1) 
-      : process.env.AMERICAS_PHARMACY_API_URL;
+    const baseUrl = apiUrl.endsWith('/') 
+      ? apiUrl.slice(0, -1) 
+      : apiUrl;
     
-    const endpoint = '/drugs/names';
+    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
+    const endpoint = baseUrl.includes('/pricing/v1') ? '/drugs/names' : '/pricing/v1/drugs/names';
+    
     console.log(`Testing API connection to ${baseUrl}${endpoint}`);
     
     // If we got a token, try a simple API call to verify it works
@@ -217,6 +252,11 @@ export async function testApiConnection(): Promise<boolean> {
         prefixText: 'a'  // Simple prefix to test
       }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`API connection test failed with status ${response.status}:`, errorText);
+    }
 
     return response.ok;
   } catch (error) {
@@ -240,12 +280,21 @@ export async function getPharmacies(
   try {
     const token = await getAuthToken();
     
-    // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = process.env.AMERICAS_PHARMACY_API_URL?.endsWith('/') 
-      ? process.env.AMERICAS_PHARMACY_API_URL.slice(0, -1) 
-      : process.env.AMERICAS_PHARMACY_API_URL;
+    // Validate API URL
+    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    if (!apiUrl) {
+      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      throw new Error('API URL not configured');
+    }
     
-    const endpoint = '/pharmacies';
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = apiUrl.endsWith('/') 
+      ? apiUrl.slice(0, -1) 
+      : apiUrl;
+    
+    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
+    const endpoint = baseUrl.includes('/pricing/v1') ? '/pharmacies' : '/pricing/v1/pharmacies';
+    
     console.log(`Getting pharmacies from ${baseUrl}${endpoint} for coordinates: ${latitude}, ${longitude}`);
     
     const url = new URL(`${baseUrl}${endpoint}`);
@@ -261,7 +310,9 @@ export async function getPharmacies(
     });
 
     if (!response.ok) {
-      throw new Error(`${response.status}`);
+      const errorText = await response.text();
+      console.error(`Pharmacy API error: ${response.status}`, errorText);
+      throw new Error(`API Error ${response.status}: ${errorText || 'Unknown error'}`);
     }
 
     const data = await response.json();
@@ -326,12 +377,19 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     // If no GSN, we'll need to use the drug name to get prices and extract info
     console.log(`Server: No GSN available, retrieving drug info by name: ${drugToUse.drugName}`);
     
-    // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = process.env.AMERICAS_PHARMACY_API_URL?.endsWith('/') 
-      ? process.env.AMERICAS_PHARMACY_API_URL.slice(0, -1) 
-      : process.env.AMERICAS_PHARMACY_API_URL;
+    // Validate API URL
+    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    if (!apiUrl) {
+      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      throw new Error('API URL not configured');
+    }
     
-    const endpoint = '/drugprices/byName';
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    
+    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
+    const endpoint = baseUrl.includes('/pricing/v1') ? '/drugprices/byName' : '/pricing/v1/drugprices/byName';
+    
     console.log(`Getting drug info by name from ${baseUrl}${endpoint} for drug: ${drugToUse.drugName}`);
     
     const response = await fetch(`${baseUrl}${endpoint}`, {
@@ -349,8 +407,10 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     });
 
     if (!response.ok) {
-      console.error(`Server: API error when getting drug info by name: ${response.status}`);
-      throw new Error(`${response.status}`);
+      const errorText = await response.text();
+      console.error(`Server: API error when getting drug info by name: ${response.status}`, errorText);
+      console.error(`Request details: drugName=${drugToUse.drugName}, endpoint=${baseUrl}${endpoint}`);
+      throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
