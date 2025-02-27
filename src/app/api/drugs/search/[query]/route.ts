@@ -30,9 +30,12 @@ export async function GET(
       console.error('Auth token error:', authError);
     }
     
+    // Normalize the query to lowercase
+    const normalizedQuery = params.query.toLowerCase();
+    
     // Perform the search
-    console.log('Attempting to search drugs with query:', params.query);
-    const drugs = await searchDrugs(params.query);
+    console.log('Attempting to search drugs with query:', normalizedQuery);
+    const drugs = await searchDrugs(normalizedQuery);
     console.log('Search results:', drugs);
     
     // Return the results

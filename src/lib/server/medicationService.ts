@@ -23,7 +23,9 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
       throw new Error('API URL not configured');
     }
     
-    console.log(`Searching for drugs with query: "${query}" at ${apiUrl}/drugs/names`);
+    // Convert query to lowercase to ensure consistent API requests
+    const normalizedQuery = query.toLowerCase();
+    console.log(`Searching for drugs with query: "${normalizedQuery}" at ${apiUrl}/drugs/names`);
     
     // Get authentication token
     let token;
@@ -43,7 +45,7 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
       },
       body: JSON.stringify({
         hqMappingName: 'walkerrx',
-        prefixText: query
+        prefixText: normalizedQuery
       }),
       cache: 'no-store' // Ensure we don't use cached responses
     });
@@ -56,7 +58,7 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     }
 
     const data = await response.json();
-    console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${query}"`);
+    console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${normalizedQuery}"`);
     
     // Format the response to match the expected interface
     if (Array.isArray(data)) {

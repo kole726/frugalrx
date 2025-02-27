@@ -23,7 +23,8 @@ interface DrugPriceRequest {
  */
 export async function searchMedications(query: string): Promise<DrugSearchResponse[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/drugs/search/${encodeURIComponent(query)}`);
+    // Convert query to lowercase before encoding to ensure consistent URL format
+    const response = await fetch(`${API_BASE_URL}/drugs/search/${encodeURIComponent(query.toLowerCase())}`);
     
     if (!response.ok) {
       const errorData = await response.json();
@@ -90,8 +91,11 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
  */
 export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
   try {
+    // Normalize drug name to lowercase
+    const normalizedDrugName = drugName.toLowerCase();
+    
     // Try to get real data from API
-    const response = await fetch(`${API_BASE_URL}/drugs/info?name=${encodeURIComponent(drugName)}`);
+    const response = await fetch(`${API_BASE_URL}/drugs/info?name=${encodeURIComponent(normalizedDrugName)}`);
     
     if (!response.ok) {
       throw new Error(`API error: ${response.status}`);
