@@ -134,7 +134,12 @@ function getMockDrugSearchResults(query: string): DrugSearchResponse[] {
     { drugName: 'Hydrochlorothiazide', gsn: 3245 },
     { drugName: 'Sertraline', gsn: 4356 },
     { drugName: 'Simvastatin', gsn: 5467 },
-    { drugName: 'Vyvanse', gsn: 6578 }
+    { drugName: 'Vyvanse', gsn: 6578 },
+    { drugName: 'Triamcinolone', gsn: 7689 },
+    { drugName: 'Trimethoprim', gsn: 8790 },
+    { drugName: 'Triamterene', gsn: 9801 },
+    { drugName: 'Triptorelin', gsn: 1012 },
+    { drugName: 'Trifluoperazine', gsn: 2123 }
   ];
   
   // Filter medications based on the query

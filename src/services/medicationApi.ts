@@ -35,7 +35,7 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     const isDevelopment = process.env.NODE_ENV === 'development';
     const apiEndpoint = isDevelopment 
       ? `${API_BASE_URL}/test-mock/drugs/search?q=${encodeURIComponent(normalizedQuery)}`
-      : `${API_BASE_URL}/drugs/search/${encodeURIComponent(normalizedQuery)}`;
+      : `${API_BASE_URL}/drugs/search?q=${encodeURIComponent(normalizedQuery)}`;
     
     console.log(`Using API endpoint: ${apiEndpoint}`);
     const response = await fetch(apiEndpoint);
