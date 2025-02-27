@@ -71,9 +71,12 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
     
     // If onSearch is not provided, handle navigation directly
     if (!onSearch && typeof window !== 'undefined') {
+      // Convert drug name to lowercase before navigation
+      const normalizedDrugName = suggestion.drugName.toLowerCase()
+      
       const url = suggestion.gsn 
-        ? `/medications/${encodeURIComponent(suggestion.drugName)}?gsn=${suggestion.gsn}`
-        : `/medications/${encodeURIComponent(suggestion.drugName)}`;
+        ? `/medications/${encodeURIComponent(normalizedDrugName)}?gsn=${suggestion.gsn}`
+        : `/medications/${encodeURIComponent(normalizedDrugName)}`;
       window.location.href = url;
     }
   }
