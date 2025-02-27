@@ -49,6 +49,10 @@ export async function GET(request: Request) {
       // Try to get real data from the API
       console.log(`API: Getting drug info for: ${drugName}`);
       const drugInfo = await getDrugInfoByName(drugName);
+      
+      // Log the drug info we're returning
+      console.log(`API: Returning drug info for ${drugName}:`, drugInfo);
+      
       return NextResponse.json(drugInfo);
     } catch (apiError) {
       console.error('API error, falling back to mock data:', apiError);
@@ -65,10 +69,11 @@ export async function GET(request: Request) {
         mockDrug = MOCK_DRUG_DATA.atorvastatin;
       } else {
         // Create a generic mock drug based on the name
+        const formattedName = drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase();
         mockDrug = {
-          brandName: drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase(),
-          genericName: drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase(),
-          description: `${drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
+          brandName: formattedName,
+          genericName: formattedName,
+          description: `${formattedName} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
           sideEffects: "Side effects may vary. Please consult with your healthcare provider for detailed information.",
           dosage: "Various strengths available",
           storage: "Store according to package instructions.",
@@ -76,6 +81,7 @@ export async function GET(request: Request) {
         };
       }
       
+      console.log(`API: Returning mock drug info for ${drugName}:`, mockDrug);
       return NextResponse.json(mockDrug);
     }
   } catch (error) {

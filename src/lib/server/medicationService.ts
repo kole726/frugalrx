@@ -274,7 +274,9 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     
     // If we have a GSN, use it to get detailed information
     if (drugToUse.gsn) {
-      return await getDrugDetailsByGsn(drugToUse.gsn);
+      const details = await getDrugDetailsByGsn(drugToUse.gsn);
+      console.log(`Retrieved drug details by GSN for ${drugToUse.drugName}:`, details);
+      return details;
     }
     
     // If no GSN, we'll need to use the drug name to get prices and extract info
@@ -297,17 +299,27 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     }
 
     const data = await response.json();
+    console.log(`Retrieved drug info for ${drugToUse.drugName} from prices API:`, data);
+    
+    // Extract drug information from the response
+    // Format the drug name with proper capitalization
+    const formattedDrugName = drugToUse.drugName.split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
     
     // Format the response to match the DrugDetails interface
-    return {
-      brandName: data.brandName || drugToUse.drugName,
-      genericName: data.genericName || drugToUse.drugName,
-      description: data.description || `Information about ${drugToUse.drugName}`,
+    const drugDetails = {
+      brandName: data.brandName || formattedDrugName,
+      genericName: data.genericName || formattedDrugName,
+      description: data.description || `${formattedDrugName} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
       sideEffects: data.sideEffects || "Please consult with your healthcare provider for information about side effects.",
       dosage: data.dosage || "Various strengths available",
       storage: data.storage || "Store according to package instructions.",
       contraindications: data.contraindications || "Please consult with your healthcare provider for contraindication information."
     };
+    
+    console.log(`Formatted drug details for ${drugToUse.drugName}:`, drugDetails);
+    return drugDetails;
   } catch (error) {
     console.error('Error getting drug info by name:', error);
     throw new Error(`Failed to get drug info: ${error instanceof Error ? error.message : 'Unknown error'}`);

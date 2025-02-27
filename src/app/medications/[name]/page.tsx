@@ -85,23 +85,25 @@ export default function MedicationPage({ params }: Props) {
             
             // Create a drug info object from the details
             setDrugInfo({
-              brandName: details.brandName,
-              genericName: details.genericName,
+              brandName: details.brandName || drugName,
+              genericName: details.genericName || drugName,
               gsn: parseInt(gsn, 10),
               ndcCode: '',
-              description: details.description,
-              sideEffects: details.sideEffects,
-              strength: details.dosage,
-              storage: details.storage,
-              manufacturer: details.contraindications
+              description: details.description || `Information about ${drugName}`,
+              sideEffects: details.sideEffects || "Please consult with your healthcare provider for information about side effects.",
+              strength: details.dosage || "Various strengths available",
+              storage: details.storage || "Store according to package instructions.",
+              manufacturer: details.contraindications || "Please consult with your healthcare provider for contraindication information."
             })
           } else {
             // Otherwise, search for the drug by name
+            console.log(`Fetching drug info for: ${drugName} by name`)
             const info = await getDrugInfo(drugName)
             setDrugDetails(info)
+            console.log(`Received drug details:`, info)
             
             // Create a drug info object from the details
-            setDrugInfo({
+            const drugInfoObj = {
               brandName: info.brandName || drugName,
               genericName: info.genericName || drugName,
               gsn: 0, // We don't have a GSN in this case
@@ -111,7 +113,10 @@ export default function MedicationPage({ params }: Props) {
               strength: info.dosage || "Various strengths available",
               storage: info.storage || "Store according to package instructions.",
               manufacturer: info.contraindications || "Please consult with your healthcare provider for contraindication information."
-            })
+            }
+            
+            console.log(`Setting drug info:`, drugInfoObj)
+            setDrugInfo(drugInfoObj)
           }
 
           // Fetch pharmacy prices

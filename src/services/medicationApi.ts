@@ -146,6 +146,7 @@ export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
     }
     
     const data = await response.json();
+    console.log(`Client: Received drug info for "${normalizedDrugName}":`, data);
     
     // Format drug names with proper capitalization
     if (data) {
@@ -160,8 +161,19 @@ export async function getDrugInfo(drugName: string): Promise<DrugDetails> {
       }
     }
     
-    console.log(`Client: Successfully retrieved drug info for "${normalizedDrugName}"`);
-    return data;
+    // Ensure all required fields are present with proper formatting
+    const formattedData: DrugDetails = {
+      brandName: data.brandName || drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase(),
+      genericName: data.genericName || drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase(),
+      description: data.description || `${drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
+      sideEffects: data.sideEffects || "Side effects may vary. Please consult with your healthcare provider for detailed information.",
+      dosage: data.dosage || "Various strengths available",
+      storage: data.storage || "Store according to package instructions.",
+      contraindications: data.contraindications || "Please consult with your healthcare provider for contraindication information."
+    };
+    
+    console.log(`Client: Successfully processed drug info for "${normalizedDrugName}"`);
+    return formattedData;
   } catch (error) {
     console.error('Client: Error fetching drug info, using mock data:', error);
     
