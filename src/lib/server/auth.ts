@@ -130,8 +130,7 @@ export async function getAuthToken(): Promise<string> {
       body: new URLSearchParams({
         'grant_type': 'client_credentials',
         'client_id': clientId,
-        'client_secret': clientSecret,
-        'scope': 'default'
+        'client_secret': clientSecret
       }).toString(),
       cache: 'no-store' // Ensure we don't use cached responses
     });
