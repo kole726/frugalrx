@@ -30,8 +30,55 @@ interface PharmacyMapProps {
 // Define a type for the Google Maps API
 declare global {
   interface Window {
-    google: any;
+    google: {
+      maps: Record<string, any>;
+    };
   }
+}
+
+// Google Maps type definitions
+interface GoogleMapOptions {
+  center: GoogleLatLng;
+  zoom: number;
+  mapTypeId?: string;
+  [key: string]: any;
+}
+
+interface GoogleLatLng {
+  lat(): number;
+  lng(): number;
+  [key: string]: any;
+}
+
+interface GoogleMarkerOptions {
+  position: GoogleLatLng;
+  map: GoogleMap | null;
+  icon?: string;
+  title?: string;
+  [key: string]: any;
+}
+
+interface GoogleMarker {
+  setMap: (map: GoogleMap | null) => void;
+  addListener: (event: string, callback: () => void) => void;
+  [key: string]: any;
+}
+
+interface GoogleMap {
+  setCenter: (latLng: GoogleLatLng) => void;
+  setZoom: (zoom: number) => void;
+  [key: string]: any;
+}
+
+interface GoogleInfoWindowOptions {
+  content: string;
+  [key: string]: any;
+}
+
+interface GoogleInfoWindow {
+  open: (map: GoogleMap, marker: GoogleMarker) => void;
+  close: () => void;
+  [key: string]: any;
 }
 
 export default function PharmacyMap({ 
@@ -42,8 +89,8 @@ export default function PharmacyMap({
   onMarkerClick 
 }: PharmacyMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<any>(null);
-  const [markers, setMarkers] = useState<any[]>([]);
+  const [map, setMap] = useState<Record<string, any> | null>(null);
+  const [markers, setMarkers] = useState<Record<string, any>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
@@ -246,7 +293,7 @@ export default function PharmacyMap({
         });
         
         return marker;
-      }).filter(Boolean) as any[];
+      }).filter(Boolean) as Record<string, any>[];
       
       console.log("Created", newMarkers.length, "markers");
       setMarkers(newMarkers);

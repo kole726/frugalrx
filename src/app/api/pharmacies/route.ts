@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getPharmacies } from '@/lib/server/medicationService'
+import { Pharmacy } from '@/types/pharmacy'
 
 // Default coordinates for Austin, TX
 const DEFAULT_LATITUDE = 30.4014;
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
     const pharmacies = await getPharmacies(latitude, longitude, count);
     
     // Add latitude and longitude to each pharmacy for mapping
-    const enhancedPharmacies = pharmacies.map((pharmacy: any, index: number) => {
+    const enhancedPharmacies = pharmacies.map((pharmacy: Pharmacy) => {
       // If the pharmacy already has coordinates, use those
       if (pharmacy.latitude && pharmacy.longitude) {
         return pharmacy;
