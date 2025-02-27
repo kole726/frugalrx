@@ -29,11 +29,11 @@ export default function Hero() {
     if (!medication) return
     
     try {
-      // Navigate to the drug page with GSN if available
+      // Navigate to the medications page with GSN if available
       if (selectedMedication?.gsn) {
-        router.push(`/drug/${encodeURIComponent(medication)}?gsn=${selectedMedication.gsn}`)
+        router.push(`/medications/${encodeURIComponent(medication)}?gsn=${selectedMedication.gsn}`)
       } else {
-        router.push(`/drug/${encodeURIComponent(medication)}`)
+        router.push(`/medications/${encodeURIComponent(medication)}`)
       }
     } catch (error) {
       console.error('Error during search:', error)

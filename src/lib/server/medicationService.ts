@@ -16,9 +16,26 @@ interface DrugSearchResponse {
  */
 export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> {
   try {
-    const token = await getAuthToken();
+    // Validate API URL
+    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    if (!apiUrl) {
+      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      throw new Error('API URL not configured');
+    }
     
-    const response = await fetch(`${process.env.AMERICAS_PHARMACY_API_URL}/drugs/names`, {
+    console.log(`Searching for drugs with query: "${query}" at ${apiUrl}/drugs/names`);
+    
+    // Get authentication token
+    let token;
+    try {
+      token = await getAuthToken();
+    } catch (authError) {
+      console.error('Authentication error:', authError);
+      throw new Error(`Authentication failed: ${authError instanceof Error ? authError.message : 'Unknown error'}`);
+    }
+    
+    // Make API request
+    const response = await fetch(`${apiUrl}/drugs/names`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -28,13 +45,18 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
         hqMappingName: 'walkerrx',
         prefixText: query
       }),
+      cache: 'no-store' // Ensure we don't use cached responses
     });
 
+    // Handle response
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Drug search API error: ${response.status}`, errorText);
       throw new Error(`${response.status}`);
     }
 
     const data = await response.json();
+    console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${query}"`);
     
     // Format the response to match the expected interface
     if (Array.isArray(data)) {

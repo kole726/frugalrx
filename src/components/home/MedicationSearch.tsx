@@ -68,6 +68,14 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
     setSearchTerm(suggestion.drugName)
     onChange(suggestion.drugName, suggestion.gsn)
     setShowSuggestions(false)
+    
+    // If onSearch is not provided, handle navigation directly
+    if (!onSearch && typeof window !== 'undefined') {
+      const url = suggestion.gsn 
+        ? `/medications/${encodeURIComponent(suggestion.drugName)}?gsn=${suggestion.gsn}`
+        : `/medications/${encodeURIComponent(suggestion.drugName)}`;
+      window.location.href = url;
+    }
   }
 
   return (

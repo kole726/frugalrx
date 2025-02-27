@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDrugPrices } from '@/lib/server/medicationService'
 import { DrugPriceRequest } from '@/types/api'
+import { MOCK_PHARMACY_PRICES } from '@/lib/mockData'
 
 interface APIError {
   message: string;
@@ -67,6 +68,33 @@ export async function POST(request: Request) {
     console.error('Server error in drug prices API:', error);
     return NextResponse.json(
       { error: `Failed to fetch drug prices: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    // Get the parameters from the URL query
+    const url = new URL(request.url);
+    const drugName = url.searchParams.get('drugName');
+    
+    if (!drugName) {
+      return NextResponse.json(
+        { error: 'Drug name is required' },
+        { status: 400 }
+      );
+    }
+    
+    // For now, we'll just return mock data
+    // In a real app, this would call the actual API
+    return NextResponse.json({
+      pharmacies: MOCK_PHARMACY_PRICES
+    });
+  } catch (error) {
+    console.error('Error in drug prices API:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
