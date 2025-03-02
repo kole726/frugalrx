@@ -32,7 +32,7 @@ export async function GET() {
     const baseUrl = apiUrl.replace(/\/+$/, '');
     
     // Test endpoint - using the drugs/names endpoint with a simple prefix
-    const endpoint = `${baseUrl}/pricing/v1/drugs/names`;
+    const endpoint = `${baseUrl}/drugs/names`;
     
     console.log(`Testing API connection to ${endpoint}`);
     

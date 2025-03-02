@@ -279,8 +279,8 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
-    const endpoint = baseUrl.includes('/pricing/v1') ? '/drugprices/byGSN' : '/pricing/v1/drugprices/byGSN';
+    // Define the endpoint - removed the v1 prefix to avoid duplication since baseUrl already includes the necessary path components
+    const endpoint = '/drugprices/byGSN';
     
     console.log(`Making API request to ${baseUrl}${endpoint} for GSN: ${gsn}`);
     
@@ -444,8 +444,8 @@ export async function getPharmacies(
       ? apiUrl.slice(0, -1) 
       : apiUrl;
     
-    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
-    const endpoint = baseUrl.includes('/pricing/v1') ? '/pharmacies' : '/pricing/v1/pharmacies';
+    // Define the endpoint - removed the v1 prefix to avoid duplication since baseUrl already includes the necessary path components
+    const endpoint = '/pharmacies';
     
     console.log(`Getting pharmacies from ${baseUrl}${endpoint} for coordinates: ${latitude}, ${longitude}`);
     
@@ -554,8 +554,8 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
       // Ensure the URL is properly formatted by removing trailing slashes
       const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
       
-      // Define the endpoint - the baseUrl already includes '/pricing'
-      const endpoint = '/v1/drugprices/byName';
+      // Define the endpoint - removed the v1 prefix to avoid duplication since baseUrl already includes the necessary path components
+      const endpoint = '/drugprices/byName';
       
       console.log(`Getting drug info by name from ${baseUrl}${endpoint} for drug: ${drugToUse.drugName}`);
       
