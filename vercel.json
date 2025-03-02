@@ -11,7 +11,7 @@
     "AMERICAS_PHARMACY_AUTH_URL": "https://medimpact.okta.com/oauth2/aus107c5yrHDu55K8297/v1/token",
     "AMERICAS_PHARMACY_CLIENT_ID": "0oatgei47wp1CfkaQ297",
     "AMERICAS_PHARMACY_CLIENT_SECRET": "pMQW2VhwqCiCcG2sWtEEsTW5b3rbMkMHaI5oChXjJDa2f3e5jzkjzKIV-IgJmObc",
-    "AMERICAS_PHARMACY_API_URL": "https://api.americaspharmacy.com",
+    "AMERICAS_PHARMACY_API_URL": "https://api.americaspharmacy.com/pricing/v1",
     "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyCaDKBhYjsRGTs3EldvZIJYV0fqieza6z4",
     "API_DEBUG_KEY": "debug-frugal-rx-token-2023",
     "USE_MOCK_DATA": "false"
