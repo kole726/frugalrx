@@ -30,6 +30,9 @@ let tokenRefreshHistory: Array<{
 // Mock token for development - Updated with kid header
 const MOCK_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZydWdhbHJ4LWRldi1rZXktMjAyNCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkZydWdhbFJ4IERldmVsb3BlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxOTE2MjM5MDIyLCJzY29wZSI6ImNjZHMucmVhZCJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
+// Production token kid value
+const PRODUCTION_KID = 'frugalrx-prod-key-2024';
+
 /**
  * Format a timestamp for logging
  */
@@ -71,6 +74,42 @@ function logTokenEvent(action: string, success: boolean, details?: Record<string
     console.log(`[AUTH ${timestamp}] ${action}:`, details || '');
   } else {
     console.error(`[AUTH ${timestamp}] ${action} FAILED:`, error || '', details || '');
+  }
+}
+
+// Function to add kid header to JWT token if missing
+function ensureKidHeader(token: string): string {
+  try {
+    // Split the token into parts
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      console.error('[AUTH] Invalid token format, cannot add kid header');
+      return token;
+    }
+
+    // Decode the header
+    const headerJson = Buffer.from(parts[0], 'base64').toString();
+    const header = JSON.parse(headerJson);
+
+    // If kid already exists, return the original token
+    if (header.kid) {
+      return token;
+    }
+
+    // Add kid to the header
+    header.kid = PRODUCTION_KID;
+    
+    // Encode the modified header
+    const modifiedHeader = Buffer.from(JSON.stringify(header)).toString('base64')
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
+
+    // Reconstruct the token
+    return `${modifiedHeader}.${parts[1]}.${parts[2]}`;
+  } catch (error) {
+    console.error('[AUTH] Error adding kid header to token:', error);
+    return token;
   }
 }
 
@@ -127,6 +166,7 @@ export async function getAuthToken(): Promise<string> {
     formData.append('grant_type', 'client_credentials');
     formData.append('client_id', clientId);
     formData.append('client_secret', clientSecret);
+    formData.append('scope', 'ccds.read');
     
     // Make the token request
     const response = await fetch(authUrl, {
@@ -163,11 +203,19 @@ export async function getAuthToken(): Promise<string> {
       throw error;
     }
     
+    // Ensure the token has the kid header
+    const tokenWithKid = ensureKidHeader(data.access_token);
+    
+    // Log if the token was modified
+    if (tokenWithKid !== data.access_token) {
+      console.log('[AUTH] Added kid header to token');
+    }
+    
     // Cache the token
     cachedToken = {
       token_type: data.token_type || 'Bearer',
       expires_in: data.expires_in || 3600,
-      access_token: data.access_token
+      access_token: tokenWithKid
     };
     
     // Set expiry based on expires_in (seconds) from response, or default to 1 hour
@@ -178,11 +226,12 @@ export async function getAuthToken(): Promise<string> {
     // Log successful token retrieval
     logTokenEvent('Retrieved new token', true, { 
       expiryTime: tokenExpiryTime,
-      tokenLength: data.access_token.length,
-      expiresIn: data.expires_in
+      tokenLength: tokenWithKid.length,
+      expiresIn: data.expires_in,
+      hasKidHeader: true
     });
     
-    return data.access_token;
+    return tokenWithKid;
   } catch (error) {
     // Log the error and rethrow
     lastTokenError = error instanceof Error ? error : new Error(String(error));
