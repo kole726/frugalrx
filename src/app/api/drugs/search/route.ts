@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { searchDrugs } from '@/lib/server/medicationService'
 import { findGsnByDrugName } from '@/lib/drug-gsn-mapping'
-import { APIError } from '@/types/api'
-import { getAuthToken } from '@/lib/server/auth'
+import { getMockDrugSearchResults } from '@/lib/mockData'
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
@@ -10,7 +9,7 @@ export const dynamic = 'force-dynamic'
 // Set CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
@@ -25,48 +24,73 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const query = url.searchParams.get('q');
     
-    if (!query || query.length < 2) {
+    if (!query) {
+      console.error('API: Missing search query');
       return NextResponse.json(
-        { results: [] },
-        { headers: corsHeaders }
+        { error: 'Search query is required' },
+        { 
+          status: 400,
+          headers: corsHeaders
+        }
+      );
+    }
+    
+    // Validate query length
+    if (query.length < 2) {
+      console.error('API: Search query too short:', query);
+      return NextResponse.json(
+        { error: 'Search query must be at least 2 characters' },
+        { 
+          status: 400,
+          headers: corsHeaders
+        }
       );
     }
     
     console.log(`API: Searching for drugs with query: "${query}"`);
     
-    // Search for drugs using the API
-    const results = await searchDrugs(query);
-    
-    // Enhance results with GSN from our mapping if not already present
-    const enhancedResults = results.map(drug => {
-      // If the drug already has a GSN, use it
-      if (drug.gsn) {
+    try {
+      // Get drug results from the API
+      const results = await searchDrugs(query);
+      
+      // Enhance results with GSN mapping for drugs that don't have a GSN
+      const enhancedResults = results.map(drug => {
+        if (!drug.gsn) {
+          const gsn = findGsnByDrugName(drug.drugName);
+          if (gsn) {
+            console.log(`API: Enhanced ${drug.drugName} with GSN ${gsn} from local mapping`);
+            return { ...drug, gsn };
+          }
+        }
         return drug;
-      }
+      });
       
-      // Try to find a GSN from our mapping
-      const gsn = findGsnByDrugName(drug.drugName);
-      if (gsn) {
-        console.log(`API: Found GSN ${gsn} for ${drug.drugName} from local mapping`);
-        return {
-          ...drug,
-          gsn
-        };
-      }
+      console.log(`API: Found ${enhancedResults.length} results for "${query}"`);
       
-      return drug;
-    });
-    
-    console.log(`API: Returning ${enhancedResults.length} drug results with GSN mapping`);
-    return NextResponse.json(
-      { results: enhancedResults },
-      { headers: corsHeaders }
-    );
+      return NextResponse.json(
+        { results: enhancedResults },
+        { headers: corsHeaders }
+      );
+    } catch (apiError) {
+      console.error('API: Error searching drugs, falling back to mock data:', apiError);
+      
+      // Fall back to mock data if API fails
+      const mockResults = getMockDrugSearchResults(query);
+      
+      console.log(`API: Returning ${mockResults.length} mock results for "${query}"`);
+      return NextResponse.json(
+        { results: mockResults },
+        { headers: corsHeaders }
+      );
+    }
   } catch (error) {
-    console.error('API: Error in drug search:', error);
+    console.error('Error in drug search API:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500, headers: corsHeaders }
+      { 
+        status: 500,
+        headers: corsHeaders
+      }
     );
   }
 } 
