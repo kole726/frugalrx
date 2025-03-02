@@ -34,8 +34,8 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Define the endpoint for drug names search
-    const endpoint = '/drugs/names';
+    // Define the endpoint for drug names search - the baseUrl already includes '/pricing'
+    const endpoint = '/v1/drugs/names';
     
     console.log(`Server: Searching for drugs at ${baseUrl}${endpoint}`);
     
@@ -553,8 +553,8 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
       // Ensure the URL is properly formatted by removing trailing slashes
       const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
       
-      // Define the endpoint - ensure it includes the pricing path if not already in the baseUrl
-      const endpoint = '/drugprices/byName';
+      // Define the endpoint - the baseUrl already includes '/pricing'
+      const endpoint = '/v1/drugprices/byName';
       
       console.log(`Getting drug info by name from ${baseUrl}${endpoint} for drug: ${drugToUse.drugName}`);
       
@@ -565,7 +565,7 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          hqMappingName: 'walkerrx',
+          hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
           drugName: drugToUse.drugName,
           latitude: 30.4014,  // Default latitude
           longitude: -97.7525 // Default longitude
@@ -756,7 +756,8 @@ export async function getDetailedDrugInfo(gsn: number): Promise<DrugDetails> {
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
     // Define the endpoint according to the API documentation
-    const endpoint = `/druginfo/${gsn}`;
+    // The baseUrl already includes '/pricing', so we just need to add the rest of the path
+    const endpoint = `/v1/druginfo/${gsn}`;
     
     console.log(`Making API request to ${baseUrl}${endpoint} for detailed drug info with GSN: ${gsn}`);
     
@@ -928,8 +929,8 @@ export async function searchDrugsByPrefix(
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Define the endpoint for drug search by prefix
-    const endpoint = `/drugs/${encodeURIComponent(prefixText)}`;
+    // Define the endpoint for drug search by prefix - the baseUrl already includes '/pricing'
+    const endpoint = `/v1/drugs/${encodeURIComponent(prefixText)}`;
     
     // Build the URL with query parameters
     const url = new URL(`${baseUrl}${endpoint}`);
