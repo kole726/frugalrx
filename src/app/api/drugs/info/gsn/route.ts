@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDetailedDrugInfo } from '@/lib/server/medicationService';
 import { DrugDetails, APIError } from '@/types/api';
 import { getMockDrugInfoByGsn, MOCK_DRUG_DATA_BY_GSN } from '@/lib/mockData';
+import { useMockDataFor } from '@/config/environment';
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,16 @@ export async function GET(request: Request) {
         { error: 'Invalid GSN parameter' },
         { status: 400 }
       );
+    }
+    
+    // Check if we should use mock data
+    const useMockData = useMockDataFor('DRUG_INFO');
+    
+    if (useMockData) {
+      console.log(`API: Using mock data for GSN: ${gsn}`);
+      const mockDrug = getMockDrugInfoByGsn(gsn);
+      console.log(`API: Returning mock drug info for GSN ${gsn}:`, mockDrug);
+      return NextResponse.json(mockDrug);
     }
     
     try {

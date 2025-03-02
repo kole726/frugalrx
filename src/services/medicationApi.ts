@@ -1,5 +1,6 @@
 import { DrugInfo, DrugDetails, PharmacyPrice, DrugPriceResponse } from '@/types/api';
 import { findGsnByDrugName } from '@/lib/drug-gsn-mapping';
+import { MOCK_DRUG_DATA, MOCK_DRUG_DATA_BY_GSN } from '@/lib/mockData';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
@@ -139,69 +140,53 @@ export async function getDrugPricesByNdc(
 
 /**
  * Get detailed information about a medication by GSN
- * @param gsn The GSN (Generic Sequence Number) of the medication
- * @param languageCode Optional language code for localized information
+ * @param gsn The Generic Sequence Number of the medication
  * @returns Detailed information about the medication
  */
-export async function getDrugDetailsByGsn(gsn: number, languageCode?: string): Promise<DrugDetails> {
+export async function getDetailedDrugInfo(gsn: number): Promise<any> {
   try {
-    // Build the URL with optional language code
-    let url = `${API_BASE_URL}/drugs/info/${gsn}`;
-    if (languageCode) {
-      url += `?languageCode=${encodeURIComponent(languageCode)}`;
-    }
+    console.log(`Client: Getting detailed drug info for GSN: ${gsn}`);
     
-    const response = await fetch(url);
+    // Make the API request to our Next.js API route
+    const response = await fetch(`/api/drugs/info/gsn?gsn=${gsn}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      cache: 'no-store' // Ensure we don't use cached responses
+    });
 
     if (!response.ok) {
-      let errorMessage = `API error: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch (e) {
-        // If we can't parse the error as JSON, use the status code
-        console.error('Could not parse error response as JSON:', e);
-      }
-      
-      console.error(`Client: API error when getting info for GSN ${gsn}:`, errorMessage);
-      throw new Error(errorMessage);
+      const errorText = await response.text();
+      console.error(`Client: Drug info API error: ${response.status}`, errorText);
+      throw new Error(`${response.status}: ${errorText || 'Unknown error'}`);
     }
 
     const data = await response.json();
     console.log(`Client: Received drug info for GSN ${gsn}:`, data);
     
-    // Format drug names with proper capitalization
-    if (data) {
-      if (data.genericName) {
-        data.genericName = data.genericName.charAt(0).toUpperCase() + data.genericName.slice(1).toLowerCase();
-      }
-      if (data.brandName) {
-        // Brand names may have multiple words, so capitalize each word
-        data.brandName = data.brandName.split(' ')
-          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ');
-      }
+    return data;
+  } catch (error) {
+    console.error('Client: Error getting detailed drug info:', error);
+    
+    // Fall back to mock data if available
+    if (process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true' || process.env.NEXT_PUBLIC_USE_MOCK_DRUG_INFO === 'true') {
+      console.log(`Client: Falling back to mock data for GSN: ${gsn}`);
+      
+      // Use mock data from our predefined set
+      const mockData = MOCK_DRUG_DATA_BY_GSN[gsn] || {
+        brandName: `Medication ${gsn}`,
+        genericName: `Generic Medication ${gsn}`,
+        description: `This is a medication with GSN ${gsn}. Please consult with your healthcare provider for specific information.`,
+        sideEffects: "Side effects may vary. Please consult with your healthcare provider for detailed information.",
+        dosage: "Various strengths available",
+        storage: "Store according to package instructions.",
+        contraindications: "Please consult with your healthcare provider for contraindication information."
+      };
+      
+      return mockData;
     }
     
-    // Map API response fields to our DrugDetails interface
-    const formattedData: DrugDetails = {
-      brandName: data.brandName || `Medication (GSN: ${gsn})`,
-      genericName: data.genericName || `Medication (GSN: ${gsn})`,
-      description: data.description || `This medication (GSN: ${gsn}) is used to treat various conditions. Please consult with your healthcare provider for specific information.`,
-      sideEffects: data.sideEffects || data.side || "Side effects may vary. Please consult with your healthcare provider for detailed information.",
-      dosage: data.dosage || "Various strengths available",
-      storage: data.storage || data.store || "Store according to package instructions.",
-      contraindications: data.contraindications || data.contra || "Please consult with your healthcare provider for contraindication information.",
-      admin: data.admin,
-      disclaimer: data.disclaimer,
-      interaction: data.interaction,
-      missedD: data.missedD,
-      monitor: data.monitor
-    };
-    
-    return formattedData;
-  } catch (error) {
-    console.error('Error fetching drug details:', error);
     throw error;
   }
 }
@@ -460,67 +445,6 @@ export async function getMedicationAlternatives(
     return mockAlternatives;
   }
 }
-
-/**
- * Get detailed drug information by GSN using the proper drug info endpoint
- * @param gsn The GSN of the drug
- * @returns Detailed drug information
- */
-export async function getDetailedDrugInfo(gsn: number): Promise<any> {
-  try {
-    const response = await fetch(`/api/drugs/info/gsn?gsn=${gsn}`);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API error: ${response.status} - ${errorText || 'Unknown error'}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching detailed drug info:', error);
-    throw error;
-  }
-}
-
-// Mock data to use when API fails
-const MOCK_DRUG_DATA: Record<string, DrugDetails> = {
-  amoxicillin: {
-    brandName: "Amoxil",
-    genericName: "Amoxicillin",
-    description: "Amoxicillin is a penicillin antibiotic that fights bacteria. It is used to treat many different types of infection caused by bacteria, such as tonsillitis, bronchitis, pneumonia, and infections of the ear, nose, throat, skin, or urinary tract.",
-    sideEffects: "Common side effects include nausea, vomiting, diarrhea, stomach pain, headache, rash, and allergic reactions.",
-    dosage: "250mg, 500mg, 875mg tablets or capsules",
-    storage: "Store at room temperature away from moisture, heat, and light.",
-    contraindications: "Do not use if you are allergic to penicillin antibiotics."
-  },
-  lisinopril: {
-    brandName: "Prinivil, Zestril",
-    genericName: "Lisinopril",
-    description: "Lisinopril is an ACE inhibitor that is used to treat high blood pressure (hypertension) in adults and children who are at least 6 years old. It is also used to treat heart failure in adults, or to improve survival after a heart attack.",
-    sideEffects: "Common side effects include headache, dizziness, cough, and low blood pressure.",
-    dosage: "5mg, 10mg, 20mg, 40mg tablets",
-    storage: "Store at room temperature away from moisture and heat.",
-    contraindications: "Do not use if you are pregnant or have a history of angioedema."
-  },
-  atorvastatin: {
-    brandName: "Lipitor",
-    genericName: "Atorvastatin",
-    description: "Atorvastatin is used to lower blood levels of \"bad\" cholesterol (low-density lipoprotein, or LDL), to increase levels of \"good\" cholesterol (high-density lipoprotein, or HDL), and to lower triglycerides.",
-    sideEffects: "Common side effects include joint pain, diarrhea, urinary tract infections, and muscle pain.",
-    dosage: "10mg, 20mg, 40mg, 80mg tablets",
-    storage: "Store at room temperature away from moisture and heat.",
-    contraindications: "Do not use if you have liver disease or if you are pregnant."
-  },
-  vyvanse: {
-    brandName: "Vyvanse",
-    genericName: "Lisdexamfetamine",
-    description: "Vyvanse (lisdexamfetamine) is a central nervous system stimulant used to treat attention deficit hyperactivity disorder (ADHD) in adults and children 6 years of age and older. It is also used to treat moderate to severe binge eating disorder in adults. Vyvanse is a federally controlled substance (CII) because it can be abused or lead to dependence.",
-    sideEffects: "Common side effects include decreased appetite, insomnia, dry mouth, increased heart rate, anxiety, irritability, and weight loss. More serious side effects may include heart problems, psychiatric issues, circulation problems, and slowed growth in children.",
-    dosage: "10mg, 20mg, 30mg, 40mg, 50mg, 60mg, 70mg capsules",
-    storage: "Store at room temperature in a cool, dry place away from direct sunlight. Keep away from moisture and heat.",
-    contraindications: "Do not use if you have heart problems, high blood pressure, hyperthyroidism, glaucoma, or if you are taking MAO inhibitors."
-  }
-};
 
 // Mock pharmacy prices
 const MOCK_PHARMACY_PRICES: PharmacyPrice[] = [

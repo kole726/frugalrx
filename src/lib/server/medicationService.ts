@@ -687,7 +687,9 @@ export async function getDetailedDrugInfo(gsn: number): Promise<DrugDetails> {
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
     // Define the endpoint according to the API documentation: GET /v1/druginfo/{gsn}
-    const endpoint = `/v1/druginfo/${gsn}`;
+    // Check if the baseUrl already includes the /v1 path
+    const basePath = baseUrl.includes('/v1') ? '' : '/v1';
+    const endpoint = `${basePath}/druginfo/${gsn}`;
     
     console.log(`Making API request to ${baseUrl}${endpoint} for detailed drug info with GSN: ${gsn}`);
     
@@ -727,6 +729,13 @@ export async function getDetailedDrugInfo(gsn: number): Promise<DrugDetails> {
     return drugDetails;
   } catch (error) {
     console.error('Error getting detailed drug info:', error);
+    
+    // If we're allowed to fall back to mock data, do so
+    if (process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true' || shouldUseMockDataFor('DRUG_INFO')) {
+      console.log(`Falling back to mock data for GSN: ${gsn}`);
+      return getMockDrugInfoByGsn(gsn);
+    }
+    
     throw new Error(`Failed to get drug details: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
