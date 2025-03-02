@@ -31,10 +31,12 @@ export async function GET(request: Request) {
       );
     }
     
-    // Check if we should use mock data
-    const useMockData = useMockDataFor('DRUG_INFO');
+    // Check if we should use mock data - this is not a React hook, it's a regular function
+    // from our environment config, so we can safely use it here
+    const shouldUseMockData = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' || 
+                             process.env.NEXT_PUBLIC_USE_MOCK_DRUG_INFO === 'true';
     
-    if (useMockData) {
+    if (shouldUseMockData) {
       console.log(`API: Using mock data for GSN: ${gsn}`);
       const mockDrug = getMockDrugInfoByGsn(gsn);
       console.log(`API: Returning mock drug info for GSN ${gsn}:`, mockDrug);

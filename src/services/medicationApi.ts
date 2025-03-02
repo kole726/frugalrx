@@ -446,6 +446,43 @@ export async function getMedicationAlternatives(
   }
 }
 
+/**
+ * Get detailed drug information by GSN
+ * This is maintained for backward compatibility
+ * @param gsn The GSN (Generic Sequence Number) of the medication
+ * @param languageCode Optional language code for localized information
+ * @returns Detailed information about the medication
+ */
+export async function getDrugDetailsByGsn(gsn: number, languageCode?: string): Promise<DrugDetails> {
+  try {
+    console.log(`Client: Getting drug details by GSN: ${gsn}`);
+    
+    // Use the new getDetailedDrugInfo function
+    const detailedInfo = await getDetailedDrugInfo(gsn);
+    
+    // Format the response to match the expected interface
+    const formattedData: DrugDetails = {
+      brandName: detailedInfo.brandName || `Medication (GSN: ${gsn})`,
+      genericName: detailedInfo.genericName || `Medication (GSN: ${gsn})`,
+      description: detailedInfo.description || `This medication (GSN: ${gsn}) is used to treat various conditions. Please consult with your healthcare provider for specific information.`,
+      sideEffects: detailedInfo.sideEffects || "Side effects may vary. Please consult with your healthcare provider for detailed information.",
+      dosage: detailedInfo.dosage || "Various strengths available",
+      storage: detailedInfo.storage || "Store according to package instructions.",
+      contraindications: detailedInfo.contraindications || "Please consult with your healthcare provider for contraindication information.",
+      admin: detailedInfo.admin,
+      disclaimer: detailedInfo.disclaimer,
+      interaction: detailedInfo.interaction,
+      missedD: detailedInfo.missedD,
+      monitor: detailedInfo.monitor
+    };
+    
+    return formattedData;
+  } catch (error) {
+    console.error('Error fetching drug details:', error);
+    throw error;
+  }
+}
+
 // Mock pharmacy prices
 const MOCK_PHARMACY_PRICES: PharmacyPrice[] = [
   { name: "Walgreens", price: 12.99, distance: "0.8 miles" },
