@@ -12,6 +12,13 @@ export const USE_MOCK_DATA =
   process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' || 
   (isDevelopment && process.env.NEXT_PUBLIC_USE_REAL_API !== 'true');
 
+// Log the actual value for debugging
+if (isDevelopment) {
+  console.log('[CONFIG] USE_MOCK_DATA:', USE_MOCK_DATA);
+  console.log('[CONFIG] NEXT_PUBLIC_USE_REAL_API:', process.env.NEXT_PUBLIC_USE_REAL_API);
+  console.log('[CONFIG] NEXT_PUBLIC_USE_MOCK_DATA:', process.env.NEXT_PUBLIC_USE_MOCK_DATA);
+}
+
 // API configuration
 export const API_CONFIG = {
   // Base URL for the external API

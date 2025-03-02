@@ -88,19 +88,29 @@ function ensureKidHeader(token: string): string {
     }
 
     // Decode the header
-    const headerJson = Buffer.from(parts[0], 'base64').toString();
-    const header = JSON.parse(headerJson);
-
-    // If kid already exists, return the original token
-    if (header.kid) {
+    const headerBase64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
+    const headerJson = Buffer.from(headerBase64, 'base64').toString();
+    let header;
+    
+    try {
+      header = JSON.parse(headerJson);
+    } catch (e) {
+      console.error('[AUTH] Error parsing token header:', e);
       return token;
     }
 
-    // Add kid to the header
+    // If kid already exists and matches our expected value, return the original token
+    if (header.kid === PRODUCTION_KID) {
+      return token;
+    }
+
+    // Add or update kid in the header
     header.kid = PRODUCTION_KID;
+    console.log('[AUTH] Adding/updating kid header to token');
     
     // Encode the modified header
-    const modifiedHeader = Buffer.from(JSON.stringify(header)).toString('base64')
+    const modifiedHeader = Buffer.from(JSON.stringify(header))
+      .toString('base64')
       .replace(/=/g, '')
       .replace(/\+/g, '-')
       .replace(/\//g, '_');
@@ -128,16 +138,20 @@ export async function getAuthToken(): Promise<string> {
     
     // Set token expiry to 1 hour from now
     tokenExpiryTime = Date.now() + 60 * 60 * 1000;
+    
+    // Ensure the mock token has the kid header
+    const tokenWithKid = ensureKidHeader(MOCK_TOKEN);
+    
     cachedToken = {
       token_type: 'Bearer',
       expires_in: 3600,
-      access_token: MOCK_TOKEN
+      access_token: tokenWithKid
     };
     
     // Log token event
     logTokenEvent('Generated mock token', true, { expiryTime: tokenExpiryTime });
     
-    return MOCK_TOKEN;
+    return tokenWithKid;
   }
   
   try {
@@ -241,12 +255,16 @@ export async function getAuthToken(): Promise<string> {
     if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
       console.log('[AUTH] Falling back to mock token after error');
       tokenExpiryTime = Date.now() + 60 * 60 * 1000;
+      
+      // Ensure the mock token has the kid header
+      const tokenWithKid = ensureKidHeader(MOCK_TOKEN);
+      
       cachedToken = {
         token_type: 'Bearer',
         expires_in: 3600,
-        access_token: MOCK_TOKEN
+        access_token: tokenWithKid
       };
-      return MOCK_TOKEN;
+      return tokenWithKid;
     }
     
     throw error;
