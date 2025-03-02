@@ -29,13 +29,66 @@ yarn dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Environment Variables
+## Environment Configuration
 
-Create a `.env.local` file with:
+The application uses environment variables to control its behavior in different environments (development, production, etc.). 
 
-```bash
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
+### Setup
+
+1. Copy `.env.example` to `.env.local`:
+   ```bash
+   cp .env.example .env.local
+   ```
+
+2. Edit `.env.local` to set your environment-specific values:
+   ```
+   # API credentials (required for production)
+   AMERICAS_PHARMACY_CLIENT_ID=your_client_id_here
+   AMERICAS_PHARMACY_CLIENT_SECRET=your_client_secret_here
+   
+   # Mock data settings
+   NEXT_PUBLIC_USE_MOCK_DATA=true
+   ```
+
+### Mock Data vs. Real API
+
+The application can operate in two modes:
+
+1. **Mock Data Mode**: Uses locally stored mock data for development and testing
+2. **Real API Mode**: Connects to the Americas Pharmacy API for real data
+
+You can control this behavior with environment variables:
+
 ```
+# Global setting - true for mock data, false for real API
+NEXT_PUBLIC_USE_MOCK_DATA=true
+
+# Feature-specific overrides
+NEXT_PUBLIC_USE_MOCK_DRUG_SEARCH=true
+NEXT_PUBLIC_USE_MOCK_DRUG_INFO=true
+NEXT_PUBLIC_USE_MOCK_PHARMACY_PRICES=true
+
+# Force real API in development
+NEXT_PUBLIC_USE_REAL_API=false
+
+# Fall back to mock data if API fails
+NEXT_PUBLIC_FALLBACK_TO_MOCK=true
+```
+
+### Vercel Deployment
+
+When deploying to Vercel, set these environment variables in the Vercel dashboard:
+
+1. Go to your project in the Vercel dashboard
+2. Navigate to Settings > Environment Variables
+3. Add the required variables:
+   - `AMERICAS_PHARMACY_CLIENT_ID`
+   - `AMERICAS_PHARMACY_CLIENT_SECRET`
+   - `NEXT_PUBLIC_USE_MOCK_DATA` (set to `false` for production)
+
+### Environment Configuration File
+
+The application uses a centralized configuration file at `src/config/environment.ts` that loads and validates environment variables. This ensures consistent behavior across environments.
 
 ## Built With
 

@@ -2,6 +2,12 @@
 
 import { DrugPriceRequest, DrugInfo, DrugPrice, PharmacyPrice, DrugPriceResponse, DrugDetails, APIError } from '@/types/api';
 import { getAuthToken } from './auth';
+import { API_CONFIG, USE_MOCK_DATA, useMockDataFor } from '@/config/environment';
+import { 
+  MOCK_DRUG_SEARCH_RESULTS, 
+  getMockDrugInfo, 
+  getMockDrugInfoByGsn 
+} from '@/lib/mockData';
 
 // Define the interface for drug search response
 interface DrugSearchResponse {
@@ -20,91 +26,94 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     const normalizedQuery = query.toLowerCase();
     console.log(`Searching for drugs with query: "${normalizedQuery}"`);
     
-    // Try to use the real API first
-    if (process.env.NODE_ENV === 'production' && process.env.USE_MOCK_DATA !== 'true') {
-      try {
-        console.log('Attempting to use real API for drug search');
-        
-        // Validate API URL
-        const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
-        if (!apiUrl) {
-          console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
-          throw new Error('API URL not configured');
-        }
-        
-        // Ensure the URL is properly formatted by removing trailing slashes
-        const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-        
-        // Define the endpoint according to the API documentation: GET /v1/drugs/{prefixText}
-        // Make sure we're using the correct path format
-        const basePath = baseUrl.includes('/v1') ? '' : '/v1';
-        const endpoint = `${basePath}/drugs/${encodeURIComponent(normalizedQuery)}`;
-        
-        console.log(`Making API request to ${baseUrl}${endpoint}`);
-        
-        // Get authentication token
-        const token = await getAuthToken();
-        console.log('Successfully obtained auth token for drug search');
-        
-        // Create URL with optional query parameters
-        const url = new URL(`${baseUrl}${endpoint}`);
-        url.searchParams.append('count', '20'); // Optional: limit results to 20
-        url.searchParams.append('hqAlias', 'walkerrx'); // Optional: specify the hq code
-        
-        // Make API request using GET method as specified in the documentation
-        const response = await fetch(url.toString(), {
-          method: 'GET', // Using GET as specified in the API docs
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-          cache: 'no-store' // Ensure we don't use cached responses
-        });
-
-        // Handle response
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Drug search API error: ${response.status}`, errorText);
-          console.error(`Request details: query="${normalizedQuery}", endpoint=${baseUrl}${endpoint}`);
-          throw new Error(`API Error ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${normalizedQuery}" from API`);
-        
-        // Format the response to match the expected interface
-        // According to the API docs, the response is an array of strings
-        if (Array.isArray(data)) {
-          return data.map(drugName => {
-            // Format drug name with proper capitalization (first letter uppercase, rest lowercase)
-            // The API returns drug names in ALL CAPS
-            const formattedName = typeof drugName === 'string' 
-              ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
-              : drugName;
-              
-            return {
-              drugName: formattedName
-            };
-          });
-        }
-        
-        return data;
-      } catch (apiError) {
-        console.error('Error using real API for drug search:', apiError);
-        console.log('Falling back to mock data after API error');
-        // Fall back to mock data
-      }
+    // Check if we should use mock data for drug search
+    if (useMockDataFor('DRUG_SEARCH')) {
+      console.log('Using mock data for drug search');
+      return MOCK_DRUG_SEARCH_RESULTS.filter(drug => 
+        drug.drugName.toLowerCase().includes(normalizedQuery)
+      );
     }
     
-    // Use mock data if API call failed or we're in development
-    console.log(`Using mock drug search data for query: "${normalizedQuery}"`);
-    return getMockDrugSearchResults(normalizedQuery);
+    // Try to use the real API
+    try {
+      console.log('Attempting to use real API for drug search');
+      
+      // Validate API URL
+      const baseUrl = API_CONFIG.baseUrl;
+      if (!baseUrl) {
+        console.error('Missing API URL in configuration');
+        throw new Error('API URL not configured');
+      }
+      
+      // Ensure the URL is properly formatted by removing trailing slashes
+      const formattedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+      
+      // Define the endpoint according to the API documentation: GET /v1/drugs/{prefixText}
+      // Make sure we're using the correct path format
+      const basePath = formattedBaseUrl.includes('/v1') ? '' : '/v1';
+      const endpoint = `${basePath}/drugs/${encodeURIComponent(normalizedQuery)}`;
+      
+      console.log(`Making API request to ${formattedBaseUrl}${endpoint}`);
+      
+      // Get authentication token
+      const token = await getAuthToken();
+      console.log('Successfully obtained auth token for drug search');
+      
+      // Create URL with optional query parameters
+      const url = new URL(`${formattedBaseUrl}${endpoint}`);
+      url.searchParams.append('count', '20'); // Optional: limit results to 20
+      url.searchParams.append('hqAlias', 'walkerrx'); // Optional: specify the hq code
+      
+      // Make API request using GET method as specified in the documentation
+      const response = await fetch(url.toString(), {
+        method: 'GET', // Using GET as specified in the API docs
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        cache: 'no-store' // Ensure we don't use cached responses
+      });
+
+      // Handle response
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Drug search API error: ${response.status}`, errorText);
+        console.error(`Request details: query="${normalizedQuery}", endpoint=${formattedBaseUrl}${endpoint}`);
+        throw new Error(`API Error ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${normalizedQuery}" from API`);
+      
+      // Format the response to match the expected interface
+      // According to the API docs, the response is an array of strings
+      if (Array.isArray(data)) {
+        return data.map(drugName => {
+          // Format drug name with proper capitalization (first letter uppercase, rest lowercase)
+          // The API returns drug names in ALL CAPS
+          const formattedName = typeof drugName === 'string' 
+            ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
+            : drugName;
+            
+          return {
+            drugName: formattedName
+          };
+        });
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error using real API for drug search:', error);
+      console.log('Falling back to mock data for drug search');
+      
+      // Fall back to mock data
+      return MOCK_DRUG_SEARCH_RESULTS.filter(drug => 
+        drug.drugName.toLowerCase().includes(normalizedQuery)
+      );
+    }
   } catch (error) {
-    console.error('Error searching drugs:', error);
-    
-    // Always provide mock data as a fallback
-    console.log('Using mock drug search data as fallback');
-    return getMockDrugSearchResults(query.toLowerCase());
+    console.error('Error in searchDrugs:', error);
+    throw error;
   }
 }
 
@@ -511,75 +520,6 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     // Always fall back to mock data if there's an error
     return getMockDrugInfo(drugName.toLowerCase());
   }
-}
-
-/**
- * Get mock drug information for development and fallback
- * @param drugName The name of the medication (lowercase)
- * @returns Mock drug information
- */
-function getMockDrugInfo(drugName: string): DrugDetails {
-  // Check if we have predefined mock data for this drug
-  const mockDrugs: Record<string, DrugDetails> = {
-    amoxicillin: {
-      brandName: "Amoxil",
-      genericName: "Amoxicillin",
-      description: "Amoxicillin is a penicillin antibiotic that fights bacteria. It is used to treat many different types of infection caused by bacteria, such as tonsillitis, bronchitis, pneumonia, and infections of the ear, nose, throat, skin, or urinary tract.",
-      sideEffects: "Common side effects include nausea, vomiting, diarrhea, stomach pain, headache, rash, and allergic reactions.",
-      dosage: "250mg, 500mg, 875mg tablets or capsules",
-      storage: "Store at room temperature away from moisture, heat, and light.",
-      contraindications: "Do not use if you are allergic to penicillin antibiotics."
-    },
-    lisinopril: {
-      brandName: "Prinivil, Zestril",
-      genericName: "Lisinopril",
-      description: "Lisinopril is an ACE inhibitor that is used to treat high blood pressure (hypertension) in adults and children who are at least 6 years old. It is also used to treat heart failure in adults, or to improve survival after a heart attack.",
-      sideEffects: "Common side effects include headache, dizziness, cough, and low blood pressure.",
-      dosage: "5mg, 10mg, 20mg, 40mg tablets",
-      storage: "Store at room temperature away from moisture and heat.",
-      contraindications: "Do not use if you are pregnant or have a history of angioedema."
-    },
-    atorvastatin: {
-      brandName: "Lipitor",
-      genericName: "Atorvastatin",
-      description: "Atorvastatin is used to lower blood levels of \"bad\" cholesterol (low-density lipoprotein, or LDL), to increase levels of \"good\" cholesterol (high-density lipoprotein, or HDL), and to lower triglycerides.",
-      sideEffects: "Common side effects include joint pain, diarrhea, urinary tract infections, and muscle pain.",
-      dosage: "10mg, 20mg, 40mg, 80mg tablets",
-      storage: "Store at room temperature away from moisture and heat.",
-      contraindications: "Do not use if you have liver disease or if you are pregnant."
-    },
-    vyvanse: {
-      brandName: "Vyvanse",
-      genericName: "Lisdexamfetamine",
-      description: "Vyvanse (lisdexamfetamine) is a central nervous system stimulant used to treat attention deficit hyperactivity disorder (ADHD) in adults and children 6 years of age and older. It is also used to treat moderate to severe binge eating disorder in adults. Vyvanse is a federally controlled substance (CII) because it can be abused or lead to dependence.",
-      sideEffects: "Common side effects include decreased appetite, insomnia, dry mouth, increased heart rate, anxiety, irritability, and weight loss. More serious side effects may include heart problems, psychiatric issues, circulation problems, and slowed growth in children.",
-      dosage: "10mg, 20mg, 30mg, 40mg, 50mg, 60mg, 70mg capsules",
-      storage: "Store at room temperature in a cool, dry place away from direct sunlight. Keep away from moisture and heat.",
-      contraindications: "Do not use if you have heart problems, high blood pressure, hyperthyroidism, glaucoma, or if you are taking MAO inhibitors."
-    }
-  };
-  
-  // Return predefined mock data if available
-  if (mockDrugs[drugName]) {
-    console.log(`Server: Using predefined mock data for ${drugName}`);
-    return mockDrugs[drugName];
-  }
-  
-  // Generate generic mock data for any drug
-  const formattedDrugName = drugName.split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-  
-  console.log(`Server: Generating generic mock data for ${drugName}`);
-  return {
-    brandName: `Brand ${formattedDrugName}`,
-    genericName: formattedDrugName,
-    description: `${formattedDrugName} is a medication used to treat various conditions. Please consult with your healthcare provider for specific information.`,
-    sideEffects: "Side effects may vary. Please consult with your healthcare provider for detailed information.",
-    dosage: "Various strengths available",
-    storage: "Store at room temperature away from moisture and heat.",
-    contraindications: "Please consult with your healthcare provider for contraindication information."
-  };
 }
 
 /**

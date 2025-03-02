@@ -5,6 +5,8 @@
  * Enhanced with detailed logging for token expiration debugging
  */
 
+import { API_CONFIG, USE_MOCK_DATA } from '@/config/environment';
+
 interface AuthToken {
   token_type: string;
   expires_in: number;
@@ -46,6 +48,9 @@ function formatDate(timestamp: number): string {
  * Log token-related events with timestamps
  */
 function logTokenEvent(action: string, success: boolean, details?: Record<string, any>, error?: Error): void {
+  // Only log if logging is enabled
+  if (!API_CONFIG.enableLogging) return;
+  
   const timestamp = getTimestamp();
   
   // Add to history (limit to last 20 events)
@@ -77,8 +82,8 @@ export async function getAuthToken(): Promise<string> {
   // Increment request counter
   tokenRequestCount++;
   
-  // In development, return a mock token
-  if (process.env.NODE_ENV === 'development') {
+  // If we should use mock data, return a mock token
+  if (USE_MOCK_DATA) {
     // Log that we're using a mock token
     console.log('[AUTH] Using mock token for development environment');
     
@@ -98,9 +103,9 @@ export async function getAuthToken(): Promise<string> {
   
   try {
     // In production, we need to call the actual auth service
-    const authUrl = process.env.AMERICAS_PHARMACY_AUTH_URL;
+    const authUrl = API_CONFIG.authUrl;
     if (!authUrl) {
-      const error = new Error('Missing AMERICAS_PHARMACY_AUTH_URL environment variable');
+      const error = new Error('Missing auth URL in API configuration');
       logTokenEvent('Auth URL missing', false, {}, error);
       throw error;
     }
@@ -108,11 +113,11 @@ export async function getAuthToken(): Promise<string> {
     console.log(`[AUTH] Requesting token from ${authUrl}`);
     
     // Ensure we have client credentials
-    const clientId = process.env.AMERICAS_PHARMACY_CLIENT_ID;
-    const clientSecret = process.env.AMERICAS_PHARMACY_CLIENT_SECRET;
+    const clientId = API_CONFIG.clientId;
+    const clientSecret = API_CONFIG.clientSecret;
     
     if (!clientId || !clientSecret) {
-      const error = new Error('Missing client credentials in environment variables');
+      const error = new Error('Missing client credentials in API configuration');
       logTokenEvent('Client credentials missing', false, {}, error);
       throw error;
     }
@@ -183,8 +188,8 @@ export async function getAuthToken(): Promise<string> {
     lastTokenError = error instanceof Error ? error : new Error(String(error));
     console.error('Error getting auth token:', error);
     
-    // In development, fall back to mock token on error
-    if (process.env.NODE_ENV !== 'production') {
+    // Fall back to mock token on error if we're not in production
+    if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
       console.log('[AUTH] Falling back to mock token after error');
       tokenExpiryTime = Date.now() + 60 * 60 * 1000;
       cachedToken = {
