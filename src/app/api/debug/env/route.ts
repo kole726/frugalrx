@@ -1,46 +1,22 @@
 import { NextResponse } from 'next/server';
-import { testApiConnection } from '@/lib/server/medicationService';
-import { getTokenStatus } from '@/lib/server/auth';
 import { API_CONFIG, USE_MOCK_DATA } from '@/config/environment';
 
 export const dynamic = 'force-dynamic';
 
+// Set CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+// Handle OPTIONS requests for CORS preflight
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
 export async function GET() {
   try {
-    console.log('[API] Testing API connection...');
-    
-    // Test the API connection
-    let isConnected = false;
-    let connectionError = null;
-    
-    try {
-      isConnected = await testApiConnection();
-      console.log(`[API] Connection test result: ${isConnected ? 'Connected' : 'Disconnected'}`);
-    } catch (error) {
-      connectionError = error instanceof Error ? error.message : String(error);
-      console.error('[API] Connection test error:', connectionError);
-    }
-    
-    // Get token status
-    let tokenStatus;
-    try {
-      tokenStatus = await getTokenStatus();
-      console.log('[API] Successfully retrieved token status');
-    } catch (error) {
-      console.error('[API] Error getting token status:', error);
-      tokenStatus = { error: error instanceof Error ? error.message : String(error) };
-    }
-    
     // Get environment information
     const envInfo = {
       NODE_ENV: process.env.NODE_ENV,
@@ -55,13 +31,12 @@ export async function GET() {
     
     // Get API configuration (without sensitive information)
     const apiConfig = {
-      baseUrl: API_CONFIG.baseUrl,
-      authUrl: API_CONFIG.authUrl,
+      baseUrl: API_CONFIG.baseUrl ? 'Set' : 'Not set',
+      authUrl: API_CONFIG.authUrl ? 'Set' : 'Not set',
+      clientId: API_CONFIG.clientId ? 'Set' : 'Not set',
+      clientSecret: API_CONFIG.clientSecret ? 'Set (value hidden)' : 'Not set',
       hqMappingName: API_CONFIG.hqMappingName,
       enableLogging: API_CONFIG.enableLogging,
-      clientIdSet: !!API_CONFIG.clientId,
-      clientSecretSet: !!API_CONFIG.clientSecret,
-      // Don't include client credentials
     };
     
     // Check if server-side environment variables are set
@@ -74,25 +49,20 @@ export async function GET() {
     };
     
     return NextResponse.json({
-      status: isConnected ? 'connected' : 'disconnected',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV,
       useMockData: USE_MOCK_DATA,
-      connectionError,
-      tokenStatus,
       envInfo,
       apiConfig,
       serverEnvVars,
     }, { headers: corsHeaders });
   } catch (error) {
-    console.error('Error testing API connection:', error);
+    console.error('Error checking environment:', error);
     return NextResponse.json(
       { 
         status: 'error',
-        error: `Failed to test API connection: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        error: `Failed to check environment: ${error instanceof Error ? error.message : 'Unknown error'}`,
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV,
-        useMockData: USE_MOCK_DATA,
       },
       { status: 500, headers: corsHeaders }
     );

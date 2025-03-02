@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server'
-import { searchDrugs } from '@/lib/server/medicationService'
+import { NextRequest, NextResponse } from 'next/server'
+import { searchDrugsByPrefix } from '@/lib/server/medicationService'
 import { findGsnByDrugName } from '@/lib/drug-gsn-mapping'
-import { getMockDrugSearchResults } from '@/lib/mockData'
 import { shouldFallbackToMock } from '@/config/environment'
 
 // Mark this route as dynamic
@@ -19,16 +18,18 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-export async function GET(request: Request) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { prefix: string } }
+) {
   try {
-    // Get the search query from the URL
-    const url = new URL(request.url);
-    const query = url.searchParams.get('q');
+    // Get the prefix from the URL params
+    const prefix = params.prefix;
     
-    if (!query) {
-      console.error('API: Missing search query');
+    if (!prefix) {
+      console.error('API: Missing prefix parameter');
       return NextResponse.json(
-        { error: 'Search query is required' },
+        { error: 'Prefix parameter is required' },
         { 
           status: 400,
           headers: corsHeaders
@@ -36,11 +37,11 @@ export async function GET(request: Request) {
       );
     }
     
-    // Validate query length - API requires at least 3 characters
-    if (query.length < 3) {
-      console.error('API: Search query too short:', query);
+    // Validate prefix length - API requires at least 3 characters
+    if (prefix.length < 3) {
+      console.error('API: Prefix too short:', prefix);
       return NextResponse.json(
-        { error: 'Search query must be at least 3 characters' },
+        { error: 'Prefix must be at least 3 characters' },
         { 
           status: 400,
           headers: corsHeaders
@@ -48,11 +49,16 @@ export async function GET(request: Request) {
       );
     }
     
-    console.log(`API: Searching for drugs with query: "${query}"`);
+    // Get optional query parameters
+    const searchParams = request.nextUrl.searchParams;
+    const count = searchParams.get('count') ? parseInt(searchParams.get('count') as string, 10) : 10;
+    const hqAlias = searchParams.get('hqAlias') || undefined;
+    
+    console.log(`API: Searching for drugs with prefix: "${prefix}", count: ${count}, hqAlias: ${hqAlias || 'default'}`);
     
     try {
       // Get drug results from the API
-      const results = await searchDrugs(query);
+      const results = await searchDrugsByPrefix(prefix, count, hqAlias);
       
       // Enhance results with GSN mapping for drugs that don't have a GSN
       const enhancedResults = results.map(drug => {
@@ -66,23 +72,20 @@ export async function GET(request: Request) {
         return drug;
       });
       
-      console.log(`API: Found ${enhancedResults.length} results for "${query}"`);
+      console.log(`API: Found ${enhancedResults.length} results for prefix "${prefix}"`);
       
       return NextResponse.json(
         { results: enhancedResults },
         { headers: corsHeaders }
       );
     } catch (apiError) {
-      console.error('API: Error searching drugs:', apiError);
+      console.error('API: Error searching drugs by prefix:', apiError);
       
-      // Check if we should fall back to mock data
+      // If we should fall back to mock data, return an empty array
       if (shouldFallbackToMock()) {
         console.log('API: Falling back to mock data due to API error');
-        const mockResults = getMockDrugSearchResults(query);
-        
-        console.log(`API: Returning ${mockResults.length} mock results for "${query}"`);
         return NextResponse.json(
-          { results: mockResults },
+          { results: [] },
           { headers: corsHeaders }
         );
       }
@@ -90,7 +93,7 @@ export async function GET(request: Request) {
       // If we shouldn't fall back to mock data, return the error
       return NextResponse.json(
         { 
-          error: 'Failed to search for medications',
+          error: 'Failed to search for medications by prefix',
           details: apiError instanceof Error ? apiError.message : String(apiError)
         },
         { 
@@ -100,7 +103,7 @@ export async function GET(request: Request) {
       );
     }
   } catch (error) {
-    console.error('Error in drug search API:', error);
+    console.error('Error in drug search by prefix API:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { 

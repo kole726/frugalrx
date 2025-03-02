@@ -27,14 +27,14 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
 
   useEffect(() => {
     async function fetchSuggestions() {
-      if (!debouncedSearch || debouncedSearch.length < 2) {
-        setSuggestions([])
-        setError(null)
-        return
+      if (!debouncedSearch || debouncedSearch.length < 3) {
+        setSuggestions([]);
+        setError(null);
+        return;
       }
 
-      setIsLoading(true)
-      setError(null)
+      setIsLoading(true);
+      setError(null);
       try {
         console.log('Searching for:', debouncedSearch);
         

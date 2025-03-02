@@ -18,6 +18,12 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
   try {
     console.log(`Server: Searching for drugs with query: ${query}`);
     
+    // Ensure the query is at least 3 characters long
+    if (query.length < 3) {
+      console.log(`Server: Query "${query}" is too short, minimum 3 characters required`);
+      return [];
+    }
+    
     // Validate API URL
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
     if (!apiUrl) {
@@ -28,27 +34,30 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
-    const endpoint = baseUrl.includes('/pricing/v1') ? '/drugs/search' : '/pricing/v1/drugs/search';
+    // Define the endpoint for drug names search
+    const endpoint = '/drugs/names';
     
-    console.log(`Server: Searching for drugs at ${baseUrl}${endpoint} with query: ${query}`);
+    console.log(`Server: Searching for drugs at ${baseUrl}${endpoint}`);
     
     // Get authentication token
     const token = await getAuthToken();
     console.log('Successfully obtained auth token for drug search');
     
-    // Create URL with optional query parameters
-    const url = new URL(`${baseUrl}${endpoint}`);
-    url.searchParams.append('count', '20'); // Optional: limit results to 20
-    url.searchParams.append('hqAlias', 'walkerrx'); // Optional: specify the hq code
+    // Create request body with the required parameters
+    const requestBody = {
+      hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+      prefixText: query
+    };
     
-    // Make API request using GET method as specified in the documentation
-    const response = await fetch(url.toString(), {
-      method: 'GET', // Using GET as specified in the API docs
+    // Make API request using POST method as specified in the Postman collection
+    const response = await fetch(`${baseUrl}${endpoint}`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+      body: JSON.stringify(requestBody),
       cache: 'no-store' // Ensure we don't use cached responses
     });
 
@@ -64,7 +73,7 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${query}" from API`);
     
     // Format the response to match the expected interface
-    // According to the API docs, the response is an array of strings
+    // According to the Postman collection, the response is an array of strings
     if (Array.isArray(data)) {
       return data.map(drugName => {
         // Format drug name with proper capitalization (first letter uppercase, rest lowercase)
@@ -79,7 +88,7 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
       });
     }
     
-    return data;
+    return [];
   } catch (error) {
     console.error('Error in searchDrugs:', error);
     throw error;
@@ -123,13 +132,13 @@ function getMockDrugSearchResults(query: string): DrugSearchResponse[] {
 }
 
 /**
- * Get prices for a medication
- * @param request The drug price request
+ * Get prices for a medication at nearby pharmacies
+ * @param request The search criteria
  * @returns Price information for the medication
  */
 export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPriceResponse> {
   try {
-    const token = await getAuthToken();
+    console.log(`Server: Getting drug prices with request:`, request);
     
     // Validate API URL
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
@@ -138,56 +147,115 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
       throw new Error('API URL not configured');
     }
     
-    // Determine which endpoint to use based on the request
-    let endpoint = '/drugprices/byName';
-    const body: Record<string, string | number | boolean | undefined> = {
-      hqMappingName: 'walkerrx',
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    
+    // Determine the appropriate endpoint based on the request
+    let endpoint = '';
+    
+    if (request.drugName) {
+      endpoint = '/drugprices/byName';
+      console.log(`Server: Getting drug prices by name: ${request.drugName}`);
+      
+      // Normalize drug name - remove "Brand" prefix if present
+      // The API doesn't recognize "Brand" prefixes that might be added by our application
+      if (request.drugName.startsWith('Brand ')) {
+        request.drugName = request.drugName.replace('Brand ', '');
+        console.log(`Server: Normalized drug name to: ${request.drugName}`);
+      }
+      
+      // Ensure drug name is at least 3 characters
+      if (request.drugName.length < 3) {
+        console.error(`Server: Drug name "${request.drugName}" is too short, minimum 3 characters required`);
+        throw new Error('Drug name must be at least 3 characters');
+      }
+    } else if (request.gsn) {
+      endpoint = '/drugprices/byGSN';
+      console.log(`Server: Getting drug prices by GSN: ${request.gsn}`);
+    } else if (request.ndcCode) {
+      endpoint = '/drugprices/byNdcCode';
+      console.log(`Server: Getting drug prices by NDC: ${request.ndcCode}`);
+    } else {
+      throw new Error('Invalid request: must provide drugName, gsn, or ndcCode');
+    }
+    
+    // Get authentication token
+    const token = await getAuthToken();
+    console.log('Successfully obtained auth token for drug prices');
+    
+    // Create request body
+    const requestBody = {
+      hqMappingName: request.hqMappingName || process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
       latitude: request.latitude,
       longitude: request.longitude,
     };
     
-    if ('gsn' in request) {
-      endpoint = '/drugprices/byGSN';
-      body.gsn = request.gsn;
-    } else if ('drugName' in request) {
-      body.drugName = request.drugName;
+    // Add the appropriate identifier based on the endpoint
+    if (endpoint.includes('byName')) {
+      Object.assign(requestBody, { drugName: request.drugName });
+    } else if (endpoint.includes('byGSN')) {
+      Object.assign(requestBody, { gsn: request.gsn });
+    } else if (endpoint.includes('byNdcCode')) {
+      Object.assign(requestBody, { ndcCode: request.ndcCode });
     }
     
     // Add optional parameters if provided
-    if (request.customizedQuantity) {
-      body.customizedQuantity = request.customizedQuantity;
-      body.quantity = request.quantity;
+    if (request.customizedQuantity && request.quantity) {
+      Object.assign(requestBody, { 
+        customizedQuantity: request.customizedQuantity,
+        quantity: request.quantity
+      });
     }
     
-    // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = apiUrl.endsWith('/') 
-      ? apiUrl.slice(0, -1) 
-      : apiUrl;
+    // Add radius if provided
+    if (request.radius) {
+      Object.assign(requestBody, { radius: request.radius });
+    }
     
-    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
-    const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
+    console.log(`Server: Requesting drug prices from ${baseUrl}${endpoint}`, requestBody);
     
-    console.log(`Making API request to ${baseUrl}${fullEndpoint} for drug prices`);
-    const response = await fetch(`${baseUrl}${fullEndpoint}`, {
+    // Make API request
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(requestBody),
+      cache: 'no-store' // Ensure we don't use cached responses
     });
-
+    
+    // Handle response
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Drug prices API error: ${response.status}`, errorText);
-      throw new Error(`${response.status}: ${errorText || 'Unknown error'}`);
+      
+      // Check if this is a "drug not found" error
+      if (response.status === 400 && errorText.includes('Invalid drug name or drug name not found')) {
+        console.log(`Server: Drug "${request.drugName}" not found in the API`);
+        // Return empty results instead of throwing an error
+        return {
+          pharmacies: [],
+          drugInfo: null,
+          error: `Drug "${request.drugName}" not found`
+        };
+      }
+      
+      throw new Error(`API Error ${response.status}: ${errorText}`);
     }
-
+    
     const data = await response.json();
-    return data;
+    console.log(`Server: Received drug prices response with ${data.pharmacies?.length || 0} pharmacies`);
+    
+    // Format the response to match the expected interface
+    return {
+      pharmacies: data.pharmacies || [],
+      drugInfo: data.drugInfo || null
+    };
   } catch (error) {
-    console.error('Error getting drug prices:', error);
-    throw new Error(`Failed to get drug prices: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Error in getDrugPrices:', error);
+    throw error;
   }
 }
 
@@ -251,50 +319,99 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
  */
 export async function testApiConnection(): Promise<boolean> {
   try {
+    console.log('[API TEST] Starting API connection test...');
+    
     // Validate API URL
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
     if (!apiUrl) {
-      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
-      return false;
+      console.error('[API TEST] Missing AMERICAS_PHARMACY_API_URL environment variable');
+      throw new Error('Missing API URL configuration');
     }
     
+    console.log(`[API TEST] Using API URL: ${apiUrl}`);
+    
     // Try to get an auth token
+    console.log('[API TEST] Attempting to get authentication token...');
     const token = await getAuthToken();
+    console.log('[API TEST] Successfully obtained authentication token');
     
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') 
       ? apiUrl.slice(0, -1) 
       : apiUrl;
     
-    // Define the endpoint according to the API documentation
-    const basePath = baseUrl.includes('/v1') ? '' : '/v1';
-    const testQuery = 'a'; // Simple prefix to test
-    const endpoint = `${basePath}/drugs/${encodeURIComponent(testQuery)}`;
+    // Define the endpoint for drug names search
+    const endpoint = '/drugs/names';
     
-    console.log(`Testing API connection to ${baseUrl}${endpoint}`);
+    console.log(`[API TEST] Testing API connection to ${baseUrl}${endpoint}`);
     
-    // Create URL with optional query parameters
-    const url = new URL(`${baseUrl}${endpoint}`);
-    url.searchParams.append('count', '1'); // Only need one result for testing
-    url.searchParams.append('hqAlias', 'walkerrx');
+    // Create request body with the required parameters
+    const requestBody = {
+      hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+      prefixText: 'lip' // Using a longer prefix to ensure valid results
+    };
+    
+    console.log(`[API TEST] Making API request with parameters:`, {
+      hqMappingName: requestBody.hqMappingName,
+      prefixText: requestBody.prefixText
+    });
     
     // If we got a token, try a simple API call to verify it works
-    const response = await fetch(url.toString(), {
-      method: 'GET',
+    const response = await fetch(`${baseUrl}${endpoint}`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
+      body: JSON.stringify(requestBody),
     });
 
+    console.log(`[API TEST] API response status: ${response.status}`);
+    
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API connection test failed with status ${response.status}:`, errorText);
+      let errorText;
+      try {
+        errorText = await response.text();
+      } catch (e) {
+        errorText = `Could not read error response: ${e}`;
+      }
+      
+      console.error(`[API TEST] API connection test failed with status ${response.status}:`, errorText);
+      throw new Error(`API request failed with status ${response.status}`);
     }
 
-    return response.ok;
+    // Try to parse the response to ensure it's valid JSON
+    let data;
+    try {
+      data = await response.json();
+      console.log(`[API TEST] Successfully parsed API response`);
+    } catch (e) {
+      console.error(`[API TEST] Failed to parse API response:`, e);
+      throw new Error(`Failed to parse API response: ${e}`);
+    }
+    
+    const isValidResponse = Array.isArray(data);
+    
+    if (!isValidResponse) {
+      console.error('[API TEST] API connection test failed: Invalid response format', data);
+      throw new Error('Invalid API response format');
+    }
+    
+    console.log(`[API TEST] API connection test successful. Found ${data.length} results.`);
+    
+    // Log the first few results for verification
+    if (data.length > 0) {
+      console.log('[API TEST] First few results:');
+      data.slice(0, 5).forEach((item: any, index: number) => {
+        console.log(`  ${index + 1}. ${item.drugName || item}`);
+      });
+    }
+    
+    return true;
   } catch (error) {
-    console.error('API connection test failed:', error);
+    console.error('[API TEST] API connection test failed:', error);
+    // Return false instead of throwing to maintain compatibility
     return false;
   }
 }
@@ -364,8 +481,19 @@ export async function getPharmacies(
  */
 export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> {
   try {
-    // Normalize drug name to lowercase
-    const normalizedDrugName = drugName.toLowerCase();
+    if (!drugName || typeof drugName !== 'string') {
+      console.error(`Server: Invalid drug name provided: ${drugName}`);
+      throw new Error('Invalid drug name provided');
+    }
+
+    // Normalize drug name: trim whitespace and convert to lowercase
+    const normalizedDrugName = drugName.trim().toLowerCase();
+    
+    if (normalizedDrugName.length < 3) {
+      console.error(`Server: Drug name too short: "${normalizedDrugName}"`);
+      throw new Error('Drug name must be at least 3 characters long');
+    }
+    
     console.log(`Server: Getting drug info for: "${normalizedDrugName}"`);
     
     // First, search for the drug to get its GSN
@@ -425,8 +553,8 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
       // Ensure the URL is properly formatted by removing trailing slashes
       const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
       
-      // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
-      const endpoint = baseUrl.includes('/pricing/v1') ? '/drugprices/byName' : '/pricing/v1/drugprices/byName';
+      // Define the endpoint - ensure it includes the pricing path if not already in the baseUrl
+      const endpoint = '/drugprices/byName';
       
       console.log(`Getting drug info by name from ${baseUrl}${endpoint} for drug: ${drugToUse.drugName}`);
       
@@ -627,10 +755,8 @@ export async function getDetailedDrugInfo(gsn: number): Promise<DrugDetails> {
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Define the endpoint according to the API documentation: GET /v1/druginfo/{gsn}
-    // Check if the baseUrl already includes the /v1 path
-    const basePath = baseUrl.includes('/v1') ? '' : '/v1';
-    const endpoint = `${basePath}/druginfo/${gsn}`;
+    // Define the endpoint according to the API documentation
+    const endpoint = `/druginfo/${gsn}`;
     
     console.log(`Making API request to ${baseUrl}${endpoint} for detailed drug info with GSN: ${gsn}`);
     
@@ -671,5 +797,195 @@ export async function getDetailedDrugInfo(gsn: number): Promise<DrugDetails> {
   } catch (error) {
     console.error('Error getting detailed drug info:', error);
     throw new Error(`Failed to get drug details: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Get drug prices aggregated by pharmacy chain
+ * @param request The drug price request
+ * @returns Drug prices aggregated by pharmacy chain
+ */
+export async function getGroupDrugPrices(request: DrugPriceRequest): Promise<DrugPriceResponse> {
+  try {
+    console.log(`Server: Getting group drug prices with request:`, request);
+    
+    // Validate API URL
+    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    if (!apiUrl) {
+      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      throw new Error('API URL not configured');
+    }
+    
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    
+    // Define the endpoint for group drug prices
+    const endpoint = '/drugprices/groupdrugprices';
+    
+    console.log(`Server: Getting group drug prices from ${baseUrl}${endpoint}`);
+    
+    // Get authentication token
+    const token = await getAuthToken();
+    console.log('Successfully obtained auth token for group drug prices');
+    
+    // Create request body
+    const requestBody = {
+      hqMappingName: request.hqMappingName || process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+      latitude: request.latitude,
+      longitude: request.longitude,
+    };
+    
+    // Add the appropriate identifier based on the request
+    if (request.drugName) {
+      Object.assign(requestBody, { drugName: request.drugName });
+    } else if (request.gsn) {
+      Object.assign(requestBody, { gsn: request.gsn });
+    } else if (request.ndcCode) {
+      Object.assign(requestBody, { ndcCode: request.ndcCode });
+    } else {
+      throw new Error('Invalid request: must provide drugName, gsn, or ndcCode');
+    }
+    
+    // Add optional parameters if provided
+    if (request.customizedQuantity && request.quantity) {
+      Object.assign(requestBody, { 
+        customizedQuantity: request.customizedQuantity,
+        quantity: request.quantity
+      });
+    }
+    
+    if (request.radius) {
+      Object.assign(requestBody, { radius: request.radius });
+    }
+    
+    if (request.maximumPharmacies) {
+      Object.assign(requestBody, { maximumPharmacies: request.maximumPharmacies });
+    }
+    
+    console.log(`Server: Requesting group drug prices from ${baseUrl}${endpoint}`, requestBody);
+    
+    // Make API request
+    const response = await fetch(`${baseUrl}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+      cache: 'no-store' // Ensure we don't use cached responses
+    });
+    
+    // Handle response
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Group drug prices API error: ${response.status}`, errorText);
+      throw new Error(`API Error ${response.status}: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log(`Server: Received group drug prices response with ${data.pharmacies?.length || 0} pharmacy groups`);
+    
+    // Format the response to match the expected interface
+    return {
+      pharmacies: data.pharmacies || [],
+      drugInfo: data.drugInfo || null
+    };
+  } catch (error) {
+    console.error('Error in getGroupDrugPrices:', error);
+    throw error;
+  }
+}
+
+/**
+ * Search for drugs by name using the GET method
+ * @param prefixText The prefix text to search for
+ * @param count Optional number of results to return (default: 10)
+ * @param hqAlias Optional HQ alias
+ * @returns An array of drug search results
+ */
+export async function searchDrugsByPrefix(
+  prefixText: string,
+  count: number = 10,
+  hqAlias?: string
+): Promise<DrugSearchResponse[]> {
+  try {
+    console.log(`Server: Searching for drugs with prefix: ${prefixText}, count: ${count}`);
+    
+    // Ensure the prefix is at least 3 characters long
+    if (prefixText.length < 3) {
+      console.log(`Server: Prefix "${prefixText}" is too short, minimum 3 characters required`);
+      return [];
+    }
+    
+    // Validate API URL
+    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    if (!apiUrl) {
+      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      throw new Error('API URL not configured');
+    }
+    
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    
+    // Define the endpoint for drug search by prefix
+    const endpoint = `/drugs/${encodeURIComponent(prefixText)}`;
+    
+    // Build the URL with query parameters
+    const url = new URL(`${baseUrl}${endpoint}`);
+    url.searchParams.append('count', count.toString());
+    
+    if (hqAlias) {
+      url.searchParams.append('hqAlias', hqAlias);
+    } else if (process.env.AMERICAS_PHARMACY_HQ_MAPPING) {
+      url.searchParams.append('hqAlias', process.env.AMERICAS_PHARMACY_HQ_MAPPING);
+    }
+    
+    console.log(`Server: Searching for drugs at ${url.toString()}`);
+    
+    // Get authentication token
+    const token = await getAuthToken();
+    console.log('Successfully obtained auth token for drug search by prefix');
+    
+    // Make API request using GET method
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store' // Ensure we don't use cached responses
+    });
+    
+    // Handle response
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Drug search by prefix API error: ${response.status}`, errorText);
+      console.error(`Request details: prefix="${prefixText}", endpoint=${url.toString()}`);
+      throw new Error(`API Error ${response.status}: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${prefixText}" from API`);
+    
+    // Format the response to match the expected interface
+    if (Array.isArray(data)) {
+      return data.map(drugName => {
+        // Format drug name with proper capitalization (first letter uppercase, rest lowercase)
+        // The API returns drug names in ALL CAPS
+        const formattedName = typeof drugName === 'string' 
+          ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
+          : drugName;
+          
+        return {
+          drugName: formattedName
+        };
+      });
+    }
+    
+    return [];
+  } catch (error) {
+    console.error('Error in searchDrugsByPrefix:', error);
+    throw error;
   }
 }

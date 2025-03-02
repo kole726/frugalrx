@@ -55,6 +55,8 @@ export interface PharmacyPrice {
 
 export interface DrugPriceResponse {
   pharmacies: PharmacyPrice[];
+  drugInfo?: DrugInfo | null;
+  error?: string;
 }
 
 export interface DrugDetails {

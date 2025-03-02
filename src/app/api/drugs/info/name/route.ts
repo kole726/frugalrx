@@ -20,6 +20,15 @@ export async function GET(request: Request) {
       );
     }
     
+    // Validate drug name length
+    if (drugName.trim().length < 3) {
+      console.error(`API: Drug name too short: "${drugName}"`);
+      return NextResponse.json(
+        { error: 'Drug name must be at least 3 characters long' },
+        { status: 400 }
+      );
+    }
+    
     try {
       // Try to get real data from the API
       console.log(`API: Getting drug info for: "${drugName}"`);
