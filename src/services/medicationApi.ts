@@ -1,4 +1,5 @@
 import { DrugInfo, DrugDetails, PharmacyPrice, DrugPriceResponse } from '@/types/api';
+import { findGsnByDrugName } from '@/lib/drug-gsn-mapping';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
@@ -31,11 +32,8 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     const normalizedQuery = query.toLowerCase();
     console.log(`Client: Searching for medications with query: "${normalizedQuery}"`);
     
-    // In development, use the mock API endpoint
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const apiEndpoint = isDevelopment 
-      ? `${API_BASE_URL}/test-mock/drugs/search?q=${encodeURIComponent(normalizedQuery)}`
-      : `${API_BASE_URL}/drugs/search?q=${encodeURIComponent(normalizedQuery)}`;
+    // Use the enhanced search endpoint that combines API results with GSN mapping
+    const apiEndpoint = `${API_BASE_URL}/drugs/search?q=${encodeURIComponent(normalizedQuery)}`;
     
     console.log(`Using API endpoint: ${apiEndpoint}`);
     const response = await fetch(apiEndpoint);
@@ -55,27 +53,13 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     }
 
     const data = await response.json();
-    console.log(`Client: Found ${data.length} results for "${normalizedQuery}"`);
+    console.log(`Client: Received search results:`, data);
     
-    // Process the drug names to ensure proper capitalization
-    // The API returns drug names in ALL CAPS, so we need to format them properly
-    const formattedResults = Array.isArray(data) ? data.map(item => {
-      // If the item is a string, convert it to an object with drugName property
-      const drugItem = typeof item === 'string' 
-        ? { drugName: item } 
-        : item;
-      
-      // Format the drug name with proper capitalization
-      // First letter uppercase, rest lowercase
-      if (drugItem.drugName) {
-        drugItem.drugName = drugItem.drugName.charAt(0).toUpperCase() + 
-                           drugItem.drugName.slice(1).toLowerCase();
-      }
-      
-      return drugItem;
-    }) : data;
+    // Return the results array from the response
+    const results = data.results || [];
+    console.log(`Client: Found ${results.length} results for "${normalizedQuery}"`);
     
-    return formattedResults;
+    return results;
   } catch (error) {
     console.error('Client: Error searching medications:', error);
     throw error;
@@ -240,7 +224,7 @@ export async function getDrugInfo(drugName: string, languageCode?: string): Prom
     // Build the URL with optional language code
     let url = isDevelopment
       ? `${API_BASE_URL}/test-mock/drugs/info?name=${encodeURIComponent(normalizedDrugName)}`
-      : `${API_BASE_URL}/drugs/info?name=${encodeURIComponent(normalizedDrugName)}`;
+      : `${API_BASE_URL}/drugs/info/name?name=${encodeURIComponent(normalizedDrugName)}`;
     
     if (languageCode) {
       url += `&languageCode=${encodeURIComponent(languageCode)}`;
@@ -462,6 +446,27 @@ export async function getMedicationAlternatives(
     }
     
     return mockAlternatives;
+  }
+}
+
+/**
+ * Get detailed drug information by GSN using the proper drug info endpoint
+ * @param gsn The GSN of the drug
+ * @returns Detailed drug information
+ */
+export async function getDetailedDrugInfo(gsn: number): Promise<any> {
+  try {
+    const response = await fetch(`/api/drugs/info/gsn?gsn=${gsn}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API error: ${response.status} - ${errorText || 'Unknown error'}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching detailed drug info:', error);
+    throw error;
   }
 }
 

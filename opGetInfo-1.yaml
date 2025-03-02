@@ -1,0 +1,95 @@
+1. opGetDrugInfo
+Endpoint: GET /v1/druginfo/{gsn}
+Description: Provides detailed information about a requested drug, including usage, interactions, and more.
+
+Parameters:
+Path: gsn (integer, required) - The GSN (Generic Sequence Number) of the drug.
+Query: languageCode (string, optional) - Language preference (e.g., "es" for Spanish).
+Responses:
+200 OK - Returns GetDrugInfoBizResponse.
+401 Unauthorized - No content.
+403 Forbidden - No content.
+404 Not Found - No content.
+2. opGetPharmacyDrugPricingbyGSN
+Endpoint: POST /v1/drugprices/byGSN
+Description: Returns pricing information based on the drug's GSN.
+
+Parameters:
+Body: criteria (PricingSearchCriteriaByGSN, required)
+Responses:
+200 OK - Returns PricingResult.
+401 Unauthorized, 403 Forbidden, 404 Not Found - No content.
+3. opGetPharmacyDrugPricingbyName
+Endpoint: POST /v1/drugprices/byName
+Description: Returns pricing information based on the drug name.
+
+Parameters:
+Body: criteria (PricingSearchCriteriaByName, required)
+Responses:
+200 OK - Returns PricingResult.
+401 Unauthorized, 403 Forbidden, 404 Not Found - No content.
+4. opGetPharmacyDrugPricingbyNDC
+Endpoint: POST /v1/drugprices/byNdcCode
+Description: Returns pricing based on the drug's NDC (National Drug Code).
+
+Parameters:
+Body: criteria (PricingSearchCriteriaByNDC, required)
+Responses:
+200 OK - Returns PricingResult.
+401 Unauthorized, 403 Forbidden, 404 Not Found - No content.
+5. opFindDrugByName
+Endpoint: GET /v1/drugs/{prefixText}
+Description: Searches for drugs that start with the given prefix.
+
+Parameters:
+Path: prefixText (string, required) - The starting text of the drug name.
+Query: count (string, optional, default "10") - Number of results to return.
+Query: hqAlias (string, optional) - Identifies the HQ code.
+Responses:
+200 OK - Returns an array of strings.
+401 Unauthorized, 403 Forbidden, 404 Not Found - No content.
+6. opGetGroupPharmacyDrugPricing
+Endpoint: POST /v1/drugprices/groupdrugprices
+Description: Returns pricing aggregated by pharmacy chain.
+
+Parameters:
+Body: criteria (PricingSearchCriteria, required)
+Responses:
+200 OK - Returns PricingResult.
+401 Unauthorized, 403 Forbidden, 404 Not Found - No content.
+7. opGetPharmacyMultiDrugPricingbyGSN
+Endpoint: POST /v1/multidrugprices/byGSN
+Description: Returns pricing for multiple drugs based on their GSNs.
+
+Parameters:
+Body: criteria (MultiPricingSearchCriteriaByGSN, required)
+Responses:
+200 OK - Returns an array of MultiPricingResult.
+401 Unauthorized, 403 Forbidden, 404 Not Found - No content.
+8. opGetPharmacyMultiDrugPricingbyName
+Endpoint: POST /v1/multidrugprices/byName
+Description: Returns pricing for multiple drugs based on their names.
+
+Parameters:
+Body: criteria (MultiPricingSearchCriteriaByName, required)
+Responses:
+200 OK - Returns an array of MultiPricingResult.
+401 Unauthorized, 403 Forbidden, 404 Not Found - No content.
+9. opGetPharmacyMultiDrugPricingbyNDC
+Endpoint: POST /v1/multidrugprices/byNdcCode
+Description: Returns pricing for multiple drugs based on their NDCs.
+
+Parameters:
+Body: criteria (MultiPricingSearchCriteriaByNDC, required)
+Responses:
+200 OK - Returns an array of MultiPricingResult.
+401 Unauthorized, 403 Forbidden, 404 Not Found - No content.
+10. opGetGroupPharmacyMultiDrugPricing
+Endpoint: POST /v1/multigroupdrugprices
+Description: Returns pricing for multiple drugs aggregated by pharmacy chain.
+
+Parameters:
+Body: criteria (MultiPricingSearchCriteria, required)
+Responses:
+200 OK - Returns an array of MultiPricingResult.
+401 Unauthorized, 403 Forbidden, 404 Not Found - No content.

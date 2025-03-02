@@ -625,3 +625,67 @@ export async function compareMedications(
     throw error;
   }
 }
+
+/**
+ * Get detailed information about a medication by GSN using the proper drug info endpoint
+ * @param gsn The Generic Sequence Number of the medication
+ * @returns Detailed information about the medication
+ */
+export async function getDetailedDrugInfo(gsn: number): Promise<DrugDetails> {
+  try {
+    const token = await getAuthToken();
+    
+    // Validate API URL
+    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    if (!apiUrl) {
+      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      throw new Error('API URL not configured');
+    }
+    
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    
+    // Define the endpoint according to the API documentation: GET /v1/druginfo/{gsn}
+    const endpoint = `/v1/druginfo/${gsn}`;
+    
+    console.log(`Making API request to ${baseUrl}${endpoint} for detailed drug info with GSN: ${gsn}`);
+    
+    const response = await fetch(`${baseUrl}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+      cache: 'no-store' // Ensure we don't use cached responses
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Drug info API error: ${response.status}`, errorText);
+      throw new Error(`${response.status}: ${errorText || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    
+    // Transform the API response to match our DrugDetails interface
+    const drugDetails: DrugDetails = {
+      brandName: data.brandName || '',
+      genericName: data.genericName || '',
+      description: data.description || '',
+      sideEffects: data.sideEffects || data.side || '',
+      dosage: data.dosage || '',
+      storage: data.storage || data.store || '',
+      contraindications: data.contraindications || '',
+      admin: data.admin || '',
+      disclaimer: data.disclaimer || '',
+      interaction: data.interaction || '',
+      missedD: data.missedD || '',
+      monitor: data.monitor || '',
+    };
+    
+    return drugDetails;
+  } catch (error) {
+    console.error('Error getting detailed drug info:', error);
+    throw new Error(`Failed to get drug details: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}

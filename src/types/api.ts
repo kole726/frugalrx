@@ -77,4 +77,9 @@ export interface DrugDetails {
 export interface APIError {
   message: string;
   status: number;
+}
+
+export interface DrugSearchResponse {
+  drugName: string;
+  gsn?: number;
 } 
