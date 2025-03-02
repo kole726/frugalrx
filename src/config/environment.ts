@@ -7,10 +7,8 @@
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 // Determine if we should use mock data
-// This can be controlled via environment variables in Vercel
-export const USE_MOCK_DATA = 
-  process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' || 
-  (isDevelopment && process.env.NEXT_PUBLIC_USE_REAL_API !== 'true');
+// Setting this to false to disable mock data completely
+export const USE_MOCK_DATA = false;
 
 // Log the actual value for debugging
 if (isDevelopment) {
@@ -74,17 +72,8 @@ export const LOGGING = {
  * @returns Whether to use mock data for the feature
  */
 export function useMockDataFor(feature: string): boolean {
-  // Check for feature-specific override
-  const featureEnvVar = `NEXT_PUBLIC_USE_MOCK_${feature.toUpperCase()}`;
-  if (process.env[featureEnvVar] === 'true') {
-    return true;
-  }
-  if (process.env[featureEnvVar] === 'false') {
-    return false;
-  }
-  
-  // Fall back to global setting
-  return USE_MOCK_DATA;
+  // Always return false to disable mock data
+  return false;
 }
 
 /**

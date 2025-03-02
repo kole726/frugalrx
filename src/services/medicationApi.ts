@@ -1,6 +1,5 @@
 import { DrugInfo, DrugDetails, PharmacyPrice, DrugPriceResponse } from '@/types/api';
 import { findGsnByDrugName } from '@/lib/drug-gsn-mapping';
-import { MOCK_DRUG_DATA, MOCK_DRUG_DATA_BY_GSN } from '@/lib/mockData';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
@@ -168,25 +167,6 @@ export async function getDetailedDrugInfo(gsn: number): Promise<any> {
     return data;
   } catch (error) {
     console.error('Client: Error getting detailed drug info:', error);
-    
-    // Fall back to mock data if available
-    if (process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true' || process.env.NEXT_PUBLIC_USE_MOCK_DRUG_INFO === 'true') {
-      console.log(`Client: Falling back to mock data for GSN: ${gsn}`);
-      
-      // Use mock data from our predefined set
-      const mockData = MOCK_DRUG_DATA_BY_GSN[gsn] || {
-        brandName: `Medication ${gsn}`,
-        genericName: `Generic Medication ${gsn}`,
-        description: `This is a medication with GSN ${gsn}. Please consult with your healthcare provider for specific information.`,
-        sideEffects: "Side effects may vary. Please consult with your healthcare provider for detailed information.",
-        dosage: "Various strengths available",
-        storage: "Store according to package instructions.",
-        contraindications: "Please consult with your healthcare provider for contraindication information."
-      };
-      
-      return mockData;
-    }
-    
     throw error;
   }
 }
