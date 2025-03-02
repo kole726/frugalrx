@@ -35,7 +35,8 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
     // Define the endpoint for drug names search - the baseUrl already includes '/pricing'
-    const endpoint = '/v1/drugs/names';
+    // Remove the v1 prefix to avoid duplication since the baseUrl already includes it
+    const endpoint = '/drugs/names';
     
     console.log(`Server: Searching for drugs at ${baseUrl}${endpoint}`);
     
@@ -756,8 +757,8 @@ export async function getDetailedDrugInfo(gsn: number): Promise<DrugDetails> {
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
     // Define the endpoint according to the API documentation
-    // The baseUrl already includes '/pricing', so we just need to add the rest of the path
-    const endpoint = `/v1/druginfo/${gsn}`;
+    // Removed the v1 prefix to avoid duplication since baseUrl already includes the necessary path components
+    const endpoint = `/druginfo/${gsn}`;
     
     console.log(`Making API request to ${baseUrl}${endpoint} for detailed drug info with GSN: ${gsn}`);
     
@@ -930,7 +931,8 @@ export async function searchDrugsByPrefix(
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
     // Define the endpoint for drug search by prefix - the baseUrl already includes '/pricing'
-    const endpoint = `/v1/drugs/${encodeURIComponent(prefixText)}`;
+    // Remove the v1 prefix to avoid duplication since the baseUrl already includes it
+    const endpoint = `/drugs/${encodeURIComponent(prefixText)}`;
     
     // Build the URL with query parameters
     const url = new URL(`${baseUrl}${endpoint}`);
