@@ -2,12 +2,28 @@
 
 import { DrugPriceRequest, DrugInfo, DrugPrice, PharmacyPrice, DrugPriceResponse, DrugDetails, APIError } from '@/types/api';
 import { getAuthToken } from './auth';
-import { API_CONFIG, USE_MOCK_DATA, useMockDataFor } from '@/config/environment';
+import { API_CONFIG, USE_MOCK_DATA } from '@/config/environment';
 import { 
   MOCK_DRUG_SEARCH_RESULTS, 
   getMockDrugInfo, 
   getMockDrugInfoByGsn 
 } from '@/lib/mockData';
+
+// Helper function to check if mock data should be used for a specific feature
+// This is a non-React version of the useMockDataFor function
+function shouldUseMockDataFor(feature: string): boolean {
+  // Check for feature-specific override
+  const featureEnvVar = `NEXT_PUBLIC_USE_MOCK_${feature.toUpperCase()}`;
+  if (process.env[featureEnvVar] === 'true') {
+    return true;
+  }
+  if (process.env[featureEnvVar] === 'false') {
+    return false;
+  }
+  
+  // Fall back to global setting
+  return USE_MOCK_DATA;
+}
 
 // Define the interface for drug search response
 interface DrugSearchResponse {
@@ -27,7 +43,7 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     console.log(`Searching for drugs with query: "${normalizedQuery}"`);
     
     // Check if we should use mock data for drug search
-    if (useMockDataFor('DRUG_SEARCH')) {
+    if (shouldUseMockDataFor('DRUG_SEARCH')) {
       console.log('Using mock data for drug search');
       return MOCK_DRUG_SEARCH_RESULTS.filter(drug => 
         drug.drugName.toLowerCase().includes(normalizedQuery)

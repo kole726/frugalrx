@@ -10,6 +10,11 @@ import { USE_MOCK_DATA, FEATURES, useMockDataFor } from '@/config/environment';
 export default function EnvironmentInfo() {
   const [isExpanded, setIsExpanded] = useState(false);
   
+  // Pre-compute all mock data statuses to avoid conditional hook calls
+  const useMockDataForDrugSearch = useMockDataFor('DRUG_SEARCH');
+  const useMockDataForDrugInfo = useMockDataFor('DRUG_INFO');
+  const useMockDataForPharmacyPrices = useMockDataFor('PHARMACY_PRICES');
+  
   // Only show in development or when debug is enabled
   if (!FEATURES.showDebugInfo) {
     return null;
@@ -45,13 +50,13 @@ export default function EnvironmentInfo() {
             <div className="font-semibold">Feature-specific Mock Data:</div>
             <ul className="pl-4 list-disc">
               <li>
-                Drug Search: {useMockDataFor('DRUG_SEARCH') ? 'Mock' : 'Real API'}
+                Drug Search: {useMockDataForDrugSearch ? 'Mock' : 'Real API'}
               </li>
               <li>
-                Drug Info: {useMockDataFor('DRUG_INFO') ? 'Mock' : 'Real API'}
+                Drug Info: {useMockDataForDrugInfo ? 'Mock' : 'Real API'}
               </li>
               <li>
-                Pharmacy Prices: {useMockDataFor('PHARMACY_PRICES') ? 'Mock' : 'Real API'}
+                Pharmacy Prices: {useMockDataForPharmacyPrices ? 'Mock' : 'Real API'}
               </li>
             </ul>
           </div>
