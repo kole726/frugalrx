@@ -218,13 +218,8 @@ export async function getDrugInfo(drugName: string, languageCode?: string): Prom
     const normalizedDrugName = drugName.toLowerCase();
     console.log(`Client: Getting drug info for: "${normalizedDrugName}"`);
     
-    // In development, use the mock API endpoint
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    
     // Build the URL with optional language code
-    let url = isDevelopment
-      ? `${API_BASE_URL}/test-mock/drugs/info?name=${encodeURIComponent(normalizedDrugName)}`
-      : `${API_BASE_URL}/drugs/info/name?name=${encodeURIComponent(normalizedDrugName)}`;
+    let url = `${API_BASE_URL}/drugs/info/name?name=${encodeURIComponent(normalizedDrugName)}`;
     
     if (languageCode) {
       url += `&languageCode=${encodeURIComponent(languageCode)}`;
@@ -233,7 +228,10 @@ export async function getDrugInfo(drugName: string, languageCode?: string): Prom
     console.log(`Using API endpoint: ${url}`);
     
     // Try to get real data from API
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      // Add cache: 'no-store' to prevent caching of failed responses
+      cache: 'no-store'
+    });
     
     if (!response.ok) {
       let errorMessage = `API error: ${response.status}`;
@@ -268,6 +266,20 @@ export async function getDrugInfo(drugName: string, languageCode?: string): Prom
     return data;
   } catch (error) {
     console.error('Error fetching drug info:', error);
+    
+    // Provide a more user-friendly error message
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // If this is a network error, provide a specific message
+    if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network Error')) {
+      throw new Error('Network error. Please check your internet connection and try again.');
+    }
+    
+    // If this is an API error, provide a more helpful message
+    if (errorMessage.includes('API error') || errorMessage.includes('401')) {
+      throw new Error('Error loading drug information. Our service is currently experiencing issues. Please try again later.');
+    }
+    
     throw error;
   }
 }
