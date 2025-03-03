@@ -28,8 +28,8 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Define the endpoint - ensure it includes the pricing/v1 path if not already in the baseUrl
-    const endpoint = baseUrl.includes('/pricing/v1') ? '/drugs/search' : '/pricing/v1/drugs/search';
+    // Use the correct endpoint from the Postman collection
+    const endpoint = '/pricing/v1/drugs/names';
     
     console.log(`Server: Searching for drugs at ${baseUrl}${endpoint} with query: ${query}`);
     
@@ -37,18 +37,17 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     const token = await getAuthToken();
     console.log('Successfully obtained auth token for drug search');
     
-    // Create URL with optional query parameters
-    const url = new URL(`${baseUrl}${endpoint}`);
-    url.searchParams.append('count', '20'); // Optional: limit results to 20
-    url.searchParams.append('hqAlias', 'walkerrx'); // Optional: specify the hq code
-    
-    // Make API request using GET method as specified in the documentation
-    const response = await fetch(url.toString(), {
-      method: 'GET', // Using GET as specified in the API docs
+    // Make API request using POST method as specified in the Postman collection
+    const response = await fetch(`${baseUrl}${endpoint}`, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+        prefixText: query
+      }),
       cache: 'no-store' // Ensure we don't use cached responses
     });
 
@@ -56,27 +55,19 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Drug search API error: ${response.status}`, errorText);
-      console.error(`Request details: query="${query}", endpoint=${baseUrl}${endpoint}`);
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
-    console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${query}" from API`);
+    console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${query}"`);
     
     // Format the response to match the expected interface
-    // According to the API docs, the response is an array of strings
     if (Array.isArray(data)) {
-      return data.map(drugName => {
-        // Format drug name with proper capitalization (first letter uppercase, rest lowercase)
-        // The API returns drug names in ALL CAPS
-        const formattedName = typeof drugName === 'string' 
+      return data.map(drugName => ({
+        drugName: typeof drugName === 'string' 
           ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
-          : drugName;
-          
-        return {
-          drugName: formattedName
-        };
-      });
+          : drugName
+      }));
     }
     
     return data;
