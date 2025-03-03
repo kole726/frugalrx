@@ -452,9 +452,18 @@ export default function DrugPage({ params }: Props) {
       console.error("Error updating location:", error);
       setError("Failed to update location. Please try a valid US ZIP code.");
       toast.error("Failed to update location. Please try a valid US ZIP code.");
-      setIsLoadingPharmacies(false);
     } finally {
+      // Always reset loading state
       setIsLoadingPharmacies(false);
+      
+      // Set a timeout to ensure the loading state is reset in the map component
+      setTimeout(() => {
+        console.log("Ensuring map loading state is reset");
+        // This will trigger a re-render of the map component
+        setUserLocation(prevLocation => ({
+          ...prevLocation
+        }));
+      }, 1000);
     }
   };
 

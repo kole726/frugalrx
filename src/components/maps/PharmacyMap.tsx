@@ -437,6 +437,15 @@ export default function PharmacyMap({
     }
   }, [zipCode]);
 
+  // Reset loading state when pharmacies change
+  useEffect(() => {
+    // If we have pharmacies data and loading is true, reset loading state
+    if (pharmacies.length > 0 && loading) {
+      console.log("Pharmacies data received, resetting loading state");
+      setLoading(false);
+    }
+  }, [pharmacies, loading]);
+
   // Handle ZIP code change
   const handleZipCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -456,6 +465,14 @@ export default function PharmacyMap({
       setTimeout(() => {
         try {
           onZipCodeChange(localZipCode);
+          
+          // Set a timeout to reset loading state if it doesn't happen automatically
+          setTimeout(() => {
+            if (loading) {
+              console.log("Manual submit: Auto-reset loading state after timeout");
+              setLoading(false);
+            }
+          }, 10000); // 10 second safety timeout
         } catch (err) {
           console.error("Error updating ZIP code:", err);
           setError("Failed to update location. Please try again.");
@@ -513,7 +530,20 @@ export default function PharmacyMap({
                       console.log(`Auto-submitting ZIP code: ${value}`);
                       setLoading(true);
                       setError(null);
-                      onZipCodeChange(value);
+                      try {
+                        onZipCodeChange(value);
+                        // Set a timeout to reset loading state if it doesn't happen automatically
+                        setTimeout(() => {
+                          if (loading) {
+                            console.log("Auto-reset loading state after timeout");
+                            setLoading(false);
+                          }
+                        }, 10000); // 10 second safety timeout
+                      } catch (err) {
+                        console.error("Error in auto-submit:", err);
+                        setError("Failed to update location. Please try again.");
+                        setLoading(false);
+                      }
                     }
                   }, 500);
                 }
