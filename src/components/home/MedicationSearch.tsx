@@ -27,14 +27,14 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
 
   useEffect(() => {
     async function fetchSuggestions() {
-      if (!debouncedSearch || debouncedSearch.length < 3) {
-        setSuggestions([]);
-        setError(null);
-        return;
+      if (!debouncedSearch || debouncedSearch.length < 2) {
+        setSuggestions([])
+        setError(null)
+        return
       }
 
-      setIsLoading(true);
-      setError(null);
+      setIsLoading(true)
+      setError(null)
       try {
         console.log('Searching for:', debouncedSearch);
         
@@ -111,7 +111,7 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
         {onSearch && (
           <button 
             type="submit"
-            className="bg-[#FF6B8B] hover:bg-[#FF6B8B]/90 text-white px-3 sm:px-8 py-2 sm:py-3 rounded-full font-semibold sm:ml-2 flex-shrink-0 text-sm sm:text-base whitespace-nowrap"
+            className="bg-accent hover:bg-accent/90 text-white px-3 sm:px-8 py-2 sm:py-3 rounded-full font-semibold sm:ml-2 flex-shrink-0 text-sm sm:text-base whitespace-nowrap"
           >
             Search
           </button>
