@@ -697,7 +697,7 @@ export default function DrugPage({ params }: Props) {
                     </div>
                     
                     {/* Pharmacy list */}
-                    <div ref={pharmacyListRef} className="space-y-4 max-h-[500px] overflow-y-auto">
+                    <div ref={pharmacyListRef} className="space-y-4">
                       {isLoadingPharmacies ? (
                         <div className="text-center py-8">
                           <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
@@ -729,7 +729,7 @@ export default function DrugPage({ params }: Props) {
                               key={`${pharmacy.name}-${actualIndex}`}
                               data-pharmacy-id={actualIndex}
                               className={`relative border rounded-lg p-4 ${
-                                isBestPrice ? 'pt-7' : 'pt-5'
+                                isBestPrice ? 'pt-8 mt-4' : 'pt-5'
                               } cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
                                 selectedPharmacy === pharmacy 
                                   ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
