@@ -699,14 +699,17 @@ export default function DrugPage({ params }: Props) {
             className="grid grid-cols-1 lg:grid-cols-2 gap-8"
           >
             {showPrices && (
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="md:col-span-1 order-2 md:order-1">
-                  <div className="bg-white rounded-lg shadow-md p-4 mb-4">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold">Pharmacy Prices</h3>
-                      <div className="flex space-x-2">
+                  <div className="bg-white rounded-xl shadow-lg p-5 mb-4 border border-gray-100">
+                    <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">Pharmacy Prices</h3>
+                        <p className="text-sm text-gray-500 mt-1">Compare prices at nearby pharmacies</p>
+                      </div>
+                      <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
                         <select 
-                          className="text-sm border rounded p-1"
+                          className="text-sm border border-gray-200 rounded-md p-2 bg-white hover:border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-colors"
                           value={selectedSort}
                           onChange={handleSortChange}
                           disabled={isLoadingPharmacies}
@@ -715,7 +718,7 @@ export default function DrugPage({ params }: Props) {
                           <option value="DISTANCE">Sort by Distance</option>
                         </select>
                         <select 
-                          className="text-sm border rounded p-1"
+                          className="text-sm border border-gray-200 rounded-md p-2 bg-white hover:border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-colors"
                           value={pharmaciesPerPage}
                           onChange={handlePharmaciesPerPageChange}
                           disabled={isLoadingPharmacies}
@@ -744,61 +747,102 @@ export default function DrugPage({ params }: Props) {
                           <p className="text-gray-500 mt-2">Try increasing your search radius or changing your location.</p>
                         </div>
                       ) : (
-                        pharmacyPrices.map((pharmacy, index) => (
-                          <div 
-                            key={`${pharmacy.name}-${index}`}
-                            className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                              selectedPharmacy === pharmacy ? 'border-blue-500 bg-blue-50' : 'hover:border-gray-400'
-                            }`}
-                            onClick={() => setSelectedPharmacy(pharmacy)}
-                          >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h4 className="font-medium">{index + 1 + (currentPage - 1) * pharmaciesPerPage}. {pharmacy.name}</h4>
-                                <p className="text-sm text-gray-600">{pharmacy.distance}</p>
-                                {pharmacy.address && (
-                                  <p className="text-xs text-gray-500 mt-1">{pharmacy.address}</p>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className="text-lg font-bold text-green-600">${pharmacy.price.toFixed(2)}</p>
-                                <button 
-                                  className="text-sm text-blue-600 hover:text-blue-800"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleGetCoupon(pharmacy);
-                                  }}
-                                >
-                                  Get Coupon
-                                </button>
+                        pharmacyPrices.map((pharmacy, index) => {
+                          // Determine if this is the best price
+                          const isBestPrice = index === 0 && selectedSort === 'PRICE';
+                          // Determine if this is the closest pharmacy
+                          const isClosest = index === 0 && selectedSort === 'DISTANCE';
+                          
+                          return (
+                            <div 
+                              key={`${pharmacy.name}-${index}`}
+                              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                                selectedPharmacy === pharmacy 
+                                  ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
+                                  : 'hover:border-emerald-300'
+                              }`}
+                              onClick={() => setSelectedPharmacy(pharmacy)}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="flex items-center">
+                                    <span className="flex items-center justify-center w-6 h-6 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium mr-2">
+                                      {index + 1 + (currentPage - 1) * pharmaciesPerPage}
+                                    </span>
+                                    <h4 className="font-semibold text-gray-800">{pharmacy.name}</h4>
+                                    {isBestPrice && (
+                                      <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
+                                        Best Price
+                                      </span>
+                                    )}
+                                    {isClosest && (
+                                      <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                        Closest
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center mt-1 text-sm text-gray-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span>{pharmacy.distance}</span>
+                                  </div>
+                                  {pharmacy.address && (
+                                    <p className="text-xs text-gray-500 mt-1 ml-5">{pharmacy.address}</p>
+                                  )}
+                                </div>
+                                <div className="text-right flex flex-col items-end">
+                                  <div className="bg-emerald-50 px-3 py-1 rounded-lg">
+                                    <p className="text-xl font-bold text-emerald-600">${pharmacy.price.toFixed(2)}</p>
+                                  </div>
+                                  <button 
+                                    className="mt-2 px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleGetCoupon(pharmacy);
+                                    }}
+                                  >
+                                    Get Coupon
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                     
                     {/* Pagination */}
                     {totalPages > 1 && !isLoadingPharmacies && (
-                      <div className="flex justify-center mt-4">
-                        <nav className="flex items-center space-x-1">
+                      <div className="flex justify-center mt-6">
+                        <nav className="flex items-center space-x-2">
                           <button
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
-                            className={`px-3 py-1 rounded ${
-                              currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-50'
+                            className={`flex items-center justify-center w-10 h-10 rounded-md border transition-all duration-200 ${
+                              currentPage === 1 
+                                ? 'text-gray-300 border-gray-200 cursor-not-allowed' 
+                                : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300'
                             }`}
+                            aria-label="Previous page"
                           >
-                            &lt;
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
                           </button>
                           
                           {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                             <button
                               key={page}
                               onClick={() => handlePageChange(page)}
-                              className={`px-3 py-1 rounded ${
-                                currentPage === page ? 'bg-blue-600 text-white' : 'text-blue-600 hover:bg-blue-50'
+                              className={`flex items-center justify-center w-10 h-10 rounded-md border font-medium transition-all duration-200 ${
+                                currentPage === page 
+                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
+                                  : 'text-gray-700 border-gray-200 hover:bg-emerald-50 hover:border-emerald-300'
                               }`}
+                              aria-label={`Page ${page}`}
+                              aria-current={currentPage === page ? 'page' : undefined}
                             >
                               {page}
                             </button>
@@ -807,11 +851,16 @@ export default function DrugPage({ params }: Props) {
                           <button
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
-                            className={`px-3 py-1 rounded ${
-                              currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 hover:bg-blue-50'
+                            className={`flex items-center justify-center w-10 h-10 rounded-md border transition-all duration-200 ${
+                              currentPage === totalPages 
+                                ? 'text-gray-300 border-gray-200 cursor-not-allowed' 
+                                : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300'
                             }`}
+                            aria-label="Next page"
                           >
-                            &gt;
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            </svg>
                           </button>
                         </nav>
                       </div>
@@ -820,23 +869,32 @@ export default function DrugPage({ params }: Props) {
                 </div>
                 
                 <div className="md:col-span-2 order-1 md:order-2">
-                  <div className="bg-white rounded-lg shadow-md p-4 h-full">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-lg font-semibold">Pharmacy Map</h3>
-                      <div className="flex items-center space-x-2">
-                        <select 
-                          className="text-sm border rounded p-1"
-                          value={searchRadius}
-                          onChange={handleSearchRadiusChange}
-                          disabled={isLoadingPharmacies}
-                        >
-                          <option value="5">5 miles</option>
-                          <option value="10">10 miles</option>
-                          <option value="25">25 miles</option>
-                          <option value="50">50 miles</option>
-                        </select>
+                  <div className="bg-white rounded-xl shadow-lg p-5 h-full border border-gray-100">
+                    <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">Pharmacy Map</h3>
+                        <p className="text-sm text-gray-500 mt-1">Find pharmacies near you</p>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-600 mr-2">Radius:</span>
+                          <select 
+                            className="text-sm border border-gray-200 rounded-md p-2 bg-white hover:border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-colors"
+                            value={searchRadius}
+                            onChange={handleSearchRadiusChange}
+                            disabled={isLoadingPharmacies}
+                          >
+                            <option value="5">5 miles</option>
+                            <option value="10">10 miles</option>
+                            <option value="25">25 miles</option>
+                            <option value="50">50 miles</option>
+                          </select>
+                        </div>
                         {isLoadingPharmacies && (
-                          <div className="inline-block animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500"></div>
+                          <div className="flex items-center text-emerald-600">
+                            <div className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent mr-2"></div>
+                            <span className="text-sm">Loading...</span>
+                          </div>
                         )}
                       </div>
                     </div>

@@ -7,11 +7,13 @@ export const PHARMACY_PIN_PATH = 'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.7
 
 // Colors for markers
 export const MARKER_COLORS = {
-  primary: '#006142', // Primary green
-  secondary: '#22A307', // Secondary green
-  accent: '#EF065B', // Accent pink
-  selected: '#006142', // Selected marker color
-  default: '#64748B', // Default gray
+  primary: '#10b981', // Primary emerald
+  secondary: '#059669', // Secondary emerald
+  accent: '#f59e0b', // Amber accent for best price
+  selected: '#0ea5e9', // Blue for selected
+  default: '#64748b', // Default slate
+  bestPrice: '#f59e0b', // Amber for best price
+  closest: '#0ea5e9', // Blue for closest
 };
 
 /**
@@ -39,14 +41,24 @@ export function createPinMarker(color: string = MARKER_COLORS.primary, selected:
  * @param selected Whether this marker is selected
  * @returns A Google Maps marker icon configuration
  */
-export function createPharmacyMarker(index: number, selected: boolean = false) {
+export function createPharmacyMarker(index: number, selected: boolean = false, isBestPrice: boolean = false, isClosest: boolean = false) {
+  // Determine the color based on status
+  let fillColor = MARKER_COLORS.primary;
+  if (selected) {
+    fillColor = MARKER_COLORS.selected;
+  } else if (isBestPrice) {
+    fillColor = MARKER_COLORS.bestPrice;
+  } else if (isClosest) {
+    fillColor = MARKER_COLORS.closest;
+  }
+  
   return {
     path: PHARMACY_PIN_PATH,
-    fillColor: selected ? MARKER_COLORS.selected : MARKER_COLORS.primary,
+    fillColor: fillColor,
     fillOpacity: 1,
     strokeColor: '#FFFFFF',
     strokeWeight: 2,
-    scale: selected ? 2.2 : 2,
+    scale: selected ? 2.2 : (isBestPrice || isClosest ? 2.1 : 2),
     anchor: new window.google.maps.Point(12, 22),
     labelOrigin: new window.google.maps.Point(12, 10),
   };
@@ -57,12 +69,15 @@ export function createPharmacyMarker(index: number, selected: boolean = false) {
  * @returns A Google Maps marker icon configuration
  */
 export function createUserLocationMarker() {
+  // Create a more visually appealing user location marker
   return {
     path: window.google.maps.SymbolPath.CIRCLE,
-    fillColor: '#4285F4',
-    fillOpacity: 1,
+    fillColor: '#3b82f6', // Blue
+    fillOpacity: 0.8,
     strokeColor: '#FFFFFF',
-    strokeWeight: 2,
-    scale: 8,
+    strokeWeight: 3,
+    scale: 10,
+    // Add a pulse effect with a second circle
+    animation: window.google.maps.Animation.BOUNCE,
   };
 } 
