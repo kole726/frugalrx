@@ -728,30 +728,36 @@ export default function DrugPage({ params }: Props) {
                             <div 
                               key={`${pharmacy.name}-${actualIndex}`}
                               data-pharmacy-id={actualIndex}
-                              className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                              className={`relative border rounded-lg p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
                                 selectedPharmacy === pharmacy 
                                   ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
-                                  : 'hover:border-emerald-300'
+                                  : isBestPrice
+                                    ? 'border-emerald-600 border-2 hover:border-emerald-700'
+                                    : 'hover:border-emerald-300'
                               }`}
                               onClick={() => setSelectedPharmacy(pharmacy)}
                             >
+                              {isBestPrice && (
+                                <div className="absolute -top-3 left-3 px-2 py-1 bg-emerald-600 text-white text-xs font-medium rounded-md shadow-sm">
+                                  Best Price
+                                </div>
+                              )}
+                              {isClosest && (
+                                <div className="absolute -top-3 left-3 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md shadow-sm">
+                                  Closest
+                                </div>
+                              )}
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
                                   <div className="flex items-center">
-                                    <span className="flex items-center justify-center w-6 h-6 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium mr-2">
+                                    <span className={`flex items-center justify-center w-6 h-6 ${
+                                      isBestPrice 
+                                        ? 'bg-emerald-600 text-white' 
+                                        : 'bg-emerald-100 text-emerald-800'
+                                      } rounded-full text-sm font-medium mr-2`}>
                                       {actualIndex + 1}
                                     </span>
                                     <h4 className="font-semibold text-gray-800">{pharmacy.name}</h4>
-                                    {isBestPrice && (
-                                      <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
-                                        Best Price
-                                      </span>
-                                    )}
-                                    {isClosest && (
-                                      <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                                        Closest
-                                      </span>
-                                    )}
                                   </div>
                                   <div className="flex items-center mt-1 text-sm text-gray-600">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -765,8 +771,8 @@ export default function DrugPage({ params }: Props) {
                                   )}
                                 </div>
                                 <div className="text-right flex flex-col items-end">
-                                  <div className="bg-emerald-50 px-3 py-1 rounded-lg">
-                                    <p className="text-xl font-bold text-emerald-600">${pharmacy.price.toFixed(2)}</p>
+                                  <div className={`${isBestPrice ? 'bg-emerald-100' : 'bg-emerald-50'} px-3 py-1 rounded-lg`}>
+                                    <p className={`text-xl font-bold ${isBestPrice ? 'text-emerald-700' : 'text-emerald-600'}`}>${pharmacy.price.toFixed(2)}</p>
                                   </div>
                                   <button 
                                     className="mt-2 px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors"
