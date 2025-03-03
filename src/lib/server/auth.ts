@@ -31,7 +31,8 @@ let tokenRefreshHistory: Array<{
 const MOCK_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZydWdhbHJ4LWRldi1rZXktMjAyNCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkZydWdhbFJ4IERldmVsb3BlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxOTE2MjM5MDIyLCJzY29wZSI6ImNjZHMucmVhZCJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
 // Production token kid value
-const PRODUCTION_KID = 'frugalrx-prod-key-2024';
+// const PRODUCTION_KID = 'frugalrx-prod-key-2024';
+// The API is rejecting our custom kid header, so let's not add one and let the token be used as-is
 
 /**
  * Format a timestamp for logging
@@ -79,6 +80,12 @@ function logTokenEvent(action: string, success: boolean, details?: Record<string
 
 // Function to add kid header to JWT token if missing
 function ensureKidHeader(token: string): string {
+  // The API is rejecting our custom kid header, so we'll return the token as-is
+  // Log that we're skipping the kid header modification
+  console.log('[AUTH] Skipping kid header modification - using token as provided by auth service');
+  return token;
+  
+  /* Original implementation commented out
   try {
     // Split the token into parts
     const parts = token.split('.');
@@ -121,6 +128,7 @@ function ensureKidHeader(token: string): string {
     console.error('[AUTH] Error adding kid header to token:', error);
     return token;
   }
+  */
 }
 
 /**
