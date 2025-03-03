@@ -58,7 +58,12 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
           
           console.log(`Client: Found ${results.length} autocomplete results for "${normalizedQuery}"`);
           return results;
+        } else {
+          console.log(`Client: Autocomplete endpoint returned empty results for "${normalizedQuery}"`);
         }
+      } else {
+        const errorText = await response.text();
+        console.error(`Client: Autocomplete endpoint error (${response.status}):`, errorText);
       }
       
       // If autocomplete fails or returns empty, fall back to the regular search

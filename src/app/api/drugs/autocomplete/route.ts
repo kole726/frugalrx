@@ -75,9 +75,11 @@ export async function GET(request: Request) {
         throw new Error('Missing AMERICAS_PHARMACY_API_URL environment variable');
       }
       
-      // Ensure the URL is properly formatted
-      const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      // Ensure the URL is properly formatted - remove any trailing slashes and path segments
+      const baseUrl = apiUrl.replace(/\/pricing\/v1\/?$/, '');
       const endpoint = `/pricing/v1/drugs/names`;
+      
+      console.log(`Using API URL: ${baseUrl}${endpoint}`);
       
       const response = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',

@@ -34,9 +34,11 @@ export async function GET() {
       throw new Error('Missing AMERICAS_PHARMACY_API_URL environment variable');
     }
     
-    // Ensure the URL is properly formatted
-    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    // Ensure the URL is properly formatted - remove any trailing slashes and path segments
+    const baseUrl = apiUrl.replace(/\/pricing\/v1\/?$/, '');
     const endpoint = `/pricing/v1/drugs/names`;
+    
+    console.log(`Using API URL: ${baseUrl}${endpoint}`);
     
     // Make a test API call
     const response = await fetch(`${baseUrl}${endpoint}`, {
@@ -72,13 +74,43 @@ export async function GET() {
       };
     }
     
+    // Also test the direct America's Pharmacy autocomplete endpoint
+    const directResponse = await fetch(`https://www.americaspharmacy.com/drugautocomplete/adv`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      cache: 'no-store'
+    });
+    
+    let directTestResult;
+    
+    if (directResponse.ok) {
+      const directData = await directResponse.json();
+      directTestResult = {
+        success: true,
+        status: directResponse.status,
+        resultCount: Array.isArray(directData) ? directData.length : 0,
+        sampleResults: Array.isArray(directData) ? directData.slice(0, 3) : directData
+      };
+    } else {
+      const directErrorText = await directResponse.text();
+      directTestResult = {
+        success: false,
+        status: directResponse.status,
+        error: directErrorText
+      };
+    }
+    
     // Return the token and test results
     return NextResponse.json({
       message: 'Authentication test',
       tokenStatus,
       apiTest: apiTestResult,
+      directTest: directTestResult,
       environment: {
         apiUrl: process.env.AMERICAS_PHARMACY_API_URL,
+        apiUrlFixed: baseUrl,
         hqMapping: process.env.AMERICAS_PHARMACY_HQ_MAPPING,
         authUrl: process.env.AMERICAS_PHARMACY_AUTH_URL,
         clientId: process.env.AMERICAS_PHARMACY_CLIENT_ID ? '✓ Set' : '✗ Missing',
