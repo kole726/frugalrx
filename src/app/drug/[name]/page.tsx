@@ -728,7 +728,7 @@ export default function DrugPage({ params }: Props) {
                             <div 
                               key={`${pharmacy.name}-${actualIndex}`}
                               data-pharmacy-id={actualIndex}
-                              className={`relative border rounded-lg p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                              className={`relative border rounded-lg p-4 pt-5 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
                                 selectedPharmacy === pharmacy 
                                   ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
                                   : isBestPrice
@@ -770,12 +770,9 @@ export default function DrugPage({ params }: Props) {
                                     <p className="text-xs text-gray-500 mt-1 ml-5">{pharmacy.address}</p>
                                   )}
                                 </div>
-                                <div className="text-right flex flex-col items-end">
-                                  <div className={`${isBestPrice ? 'bg-emerald-100' : 'bg-emerald-50'} px-3 py-1 rounded-lg`}>
-                                    <p className={`text-xl font-bold ${isBestPrice ? 'text-emerald-700' : 'text-emerald-600'}`}>${pharmacy.price.toFixed(2)}</p>
-                                  </div>
+                                <div className="flex items-center space-x-2">
                                   <button 
-                                    className="mt-2 px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors"
+                                    className="px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleGetCoupon(pharmacy);
@@ -783,6 +780,9 @@ export default function DrugPage({ params }: Props) {
                                   >
                                     Get Coupon
                                   </button>
+                                  <div className={`${isBestPrice ? 'bg-emerald-100' : 'bg-emerald-50'} px-3 py-1 rounded-lg`}>
+                                    <p className={`text-xl font-bold ${isBestPrice ? 'text-emerald-700' : 'text-emerald-600'}`}>${pharmacy.price.toFixed(2)}</p>
+                                  </div>
                                 </div>
                               </div>
                             </div>
