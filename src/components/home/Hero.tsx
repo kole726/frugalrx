@@ -12,6 +12,7 @@ export default function Hero() {
   const router = useRouter()
   const [medication, setMedication] = useState('')
   const [selectedMedication, setSelectedMedication] = useState<SelectedMedication | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
 
   const handleMedicationChange = (value: string, gsn?: number) => {
     setMedication(value)
@@ -29,17 +30,23 @@ export default function Hero() {
     if (!medication) return
     
     try {
+      setIsSearching(true)
+      
       // Always convert medication name to lowercase for URLs
       const normalizedMedication = medication.toLowerCase()
       
       // Navigate to the drug detail page with GSN if available
       if (selectedMedication?.gsn) {
+        console.log(`Navigating to drug page with GSN: ${selectedMedication.gsn}`)
         router.push(`/drug/${encodeURIComponent(normalizedMedication)}?gsn=${selectedMedication.gsn}`)
       } else {
+        console.log(`Navigating to drug page without GSN: ${normalizedMedication}`)
         router.push(`/drug/${encodeURIComponent(normalizedMedication)}`)
       }
     } catch (error) {
       console.error('Error during search:', error)
+    } finally {
+      setIsSearching(false)
     }
   }
 
@@ -61,6 +68,11 @@ export default function Hero() {
               onChange={handleMedicationChange}
               onSearch={handleSearch}
             />
+            {isSearching && (
+              <div className="mt-2 text-sm text-gray-600">
+                Searching...
+              </div>
+            )}
           </div>
 
           {/* Stats */}

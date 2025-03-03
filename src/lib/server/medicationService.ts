@@ -420,13 +420,14 @@ export async function getPharmacies(
 }
 
 /**
- * Get detailed information about a medication by name
- * @param drugName The name of the medication
- * @returns Detailed information about the medication
+ * Get drug information by name
+ * @param drugName The name of the drug
+ * @param languageCode Optional language code for localized information
+ * @returns Drug information
  */
-export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> {
+export async function getDrugInfoByName(drugName: string, languageCode?: string): Promise<DrugDetails> {
   try {
-    const token = await getAuthToken();
+    console.log(`Server: Getting drug info for: "${drugName}"`);
     
     // Validate API URL
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
@@ -438,43 +439,35 @@ export async function getDrugInfoByName(drugName: string): Promise<DrugDetails> 
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // First search for the drug to get its GSN
-    const searchEndpoint = `/v1/drugs/${encodeURIComponent(drugName)}`;
-    console.log(`Searching for drug "${drugName}" at ${baseUrl}${searchEndpoint}`);
+    // Get authentication token
+    const token = await getAuthToken();
     
-    const searchResponse = await fetch(`${baseUrl}${searchEndpoint}?count=1&hqAlias=${process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx'}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store'
-    });
-
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      console.error(`Drug search API error: ${searchResponse.status}`, errorText);
-      throw new Error(`API Error ${searchResponse.status}: ${errorText}`);
+    // First, try to find the GSN for the drug name
+    const gsn = await findGsnForDrugName(drugName);
+    
+    if (gsn) {
+      console.log(`Server: Found GSN ${gsn} for drug "${drugName}", getting detailed info`);
+      return getDetailedDrugInfo(gsn, languageCode);
     }
-
-    const searchResults = await searchResponse.json();
-    if (!searchResults || !Array.isArray(searchResults) || searchResults.length === 0) {
-      throw new Error(`No results found for drug "${drugName}"`);
-    }
-
-    // Get the first result's GSN
-    const firstResult = searchResults[0];
-    const gsn = firstResult.gsn;
-
-    if (!gsn) {
-      throw new Error(`No GSN found for drug "${drugName}"`);
-    }
-
-    // Now get the drug details using the GSN
-    return await getDrugDetailsByGsn(gsn);
+    
+    // If we couldn't find a GSN, return a basic drug info object
+    console.log(`Server: No GSN found for drug "${drugName}", returning basic info`);
+    
+    // Create a basic drug info object
+    const drugInfo: DrugDetails = {
+      brandName: drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase(),
+      genericName: drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase(),
+      description: 'No detailed information available for this medication.',
+      sideEffects: '',
+      dosage: '',
+      storage: '',
+      contraindications: ''
+    };
+    
+    return drugInfo;
   } catch (error) {
-    console.error('Error getting drug info by name:', error);
-    throw new Error(`Failed to get drug info: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Error in getDrugInfoByName:', error);
+    throw error;
   }
 }
 
@@ -608,13 +601,14 @@ export async function compareMedications(
 }
 
 /**
- * Get detailed information about a medication by GSN using the proper drug info endpoint
- * @param gsn The Generic Sequence Number of the medication
- * @returns Detailed information about the medication
+ * Get detailed drug information by GSN
+ * @param gsn The Generic Sequence Number of the drug
+ * @param languageCode Optional language code for localized information
+ * @returns Detailed drug information
  */
-export async function getDetailedDrugInfo(gsn: number): Promise<DrugDetails> {
+export async function getDetailedDrugInfo(gsn: number, languageCode?: string): Promise<any> {
   try {
-    const token = await getAuthToken();
+    console.log(`Server: Getting detailed drug info for GSN: ${gsn}`);
     
     // Validate API URL
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
@@ -626,14 +620,21 @@ export async function getDetailedDrugInfo(gsn: number): Promise<DrugDetails> {
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Define the endpoint according to the API documentation: GET /v1/druginfo/{gsn}
-    // Check if the baseUrl already includes the /v1 path
-    const basePath = baseUrl.includes('/v1') ? '' : '/v1';
-    const endpoint = `${basePath}/druginfo/${gsn}`;
+    // Get authentication token
+    const token = await getAuthToken();
     
-    console.log(`Making API request to ${baseUrl}${endpoint} for detailed drug info with GSN: ${gsn}`);
+    // Create URL with optional query parameters
+    const url = new URL(`${baseUrl}/v1/druginfo/${gsn}`);
     
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    // Add language code if provided
+    if (languageCode) {
+      url.searchParams.append('languageCode', languageCode);
+    }
+    
+    console.log(`Server: Making API request to ${url.toString()}`);
+    
+    // Make API request
+    const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -641,34 +642,83 @@ export async function getDetailedDrugInfo(gsn: number): Promise<DrugDetails> {
       },
       cache: 'no-store' // Ensure we don't use cached responses
     });
-
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Drug info API error: ${response.status}`, errorText);
-      throw new Error(`${response.status}: ${errorText || 'Unknown error'}`);
+      throw new Error(`API Error ${response.status}: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log(`Server: Received detailed drug info for GSN ${gsn}`);
+    
+    return data;
+  } catch (error) {
+    console.error('Error in getDetailedDrugInfo:', error);
+    throw error;
+  }
+}
+
+/**
+ * Find the GSN for a drug name by searching the API
+ * @param drugName The name of the drug
+ * @returns The GSN if found, otherwise undefined
+ */
+async function findGsnForDrugName(drugName: string): Promise<number | undefined> {
+  try {
+    console.log(`Server: Finding GSN for drug name: "${drugName}"`);
+    
+    // Validate API URL
+    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    if (!apiUrl) {
+      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      throw new Error('API URL not configured');
+    }
+    
+    // Ensure the URL is properly formatted by removing trailing slashes
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    
+    // Get authentication token
+    const token = await getAuthToken();
+    
+    // First search for the drug to get its GSN
+    const searchEndpoint = `/v1/drugs/${encodeURIComponent(drugName)}`;
+    console.log(`Searching for drug "${drugName}" at ${baseUrl}${searchEndpoint}`);
+    
+    const searchResponse = await fetch(`${baseUrl}${searchEndpoint}?count=1&hqAlias=${process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx'}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store'
+    });
+
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error(`Drug search API error: ${searchResponse.status}`, errorText);
+      return undefined;
     }
 
-    const data = await response.json();
+    const searchResults = await searchResponse.json();
+    if (!searchResults || !Array.isArray(searchResults) || searchResults.length === 0) {
+      console.log(`No results found for drug "${drugName}"`);
+      return undefined;
+    }
+
+    // Try to find a result with a GSN
+    for (const result of searchResults) {
+      if (result.gsn) {
+        console.log(`Found GSN ${result.gsn} for drug "${drugName}"`);
+        return result.gsn;
+      }
+    }
     
-    // Transform the API response to match our DrugDetails interface
-    const drugDetails: DrugDetails = {
-      brandName: data.brandName || '',
-      genericName: data.genericName || '',
-      description: data.description || '',
-      sideEffects: data.sideEffects || data.side || '',
-      dosage: data.dosage || '',
-      storage: data.storage || data.store || '',
-      contraindications: data.contraindications || '',
-      admin: data.admin || '',
-      disclaimer: data.disclaimer || '',
-      interaction: data.interaction || '',
-      missedD: data.missedD || '',
-      monitor: data.monitor || '',
-    };
-    
-    return drugDetails;
+    // If we get here, no GSN was found
+    console.log(`No GSN found for drug "${drugName}"`);
+    return undefined;
   } catch (error) {
-    console.error('Error getting detailed drug info:', error);
-    throw new Error(`Failed to get drug details: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Error finding GSN for drug name:', error);
+    return undefined;
   }
 }

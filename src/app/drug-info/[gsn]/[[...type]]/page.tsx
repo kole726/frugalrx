@@ -51,13 +51,29 @@ export default function DrugInfoPage({ params }: Props) {
           throw new Error('Invalid GSN parameter')
         }
         
-        // Fetch basic drug details
-        const drugDetails = await getDrugDetailsByGsn(gsn)
-        setDrugInfo(drugDetails)
-        
-        // Fetch detailed drug information
-        const detailedInfo = await getDetailedDrugInfo(gsn)
+        // Fetch detailed drug information with language code
+        const languageCode = 'en'; // Default to English
+        const detailedInfo = await getDetailedDrugInfo(gsn, languageCode)
+        console.log('Detailed drug info:', detailedInfo)
         setDetailedInfo(detailedInfo)
+        
+        // Create a drug details object from the detailed info
+        const drugDetails: DrugDetails = {
+          brandName: detailedInfo.brandName || '',
+          genericName: detailedInfo.genericName || '',
+          description: detailedInfo.description || '',
+          sideEffects: detailedInfo.sideEffects || detailedInfo.side || '',
+          dosage: detailedInfo.dosage || '',
+          storage: detailedInfo.storage || detailedInfo.store || '',
+          contraindications: detailedInfo.contraindications || '',
+          admin: detailedInfo.admin || '',
+          disclaimer: detailedInfo.disclaimer || '',
+          interaction: detailedInfo.interaction || '',
+          missedD: detailedInfo.missedD || '',
+          monitor: detailedInfo.monitor || '',
+        }
+        
+        setDrugInfo(drugDetails)
       } catch (err) {
         console.error('Error fetching drug information:', err)
         setError('Failed to load drug information. Please try again later.')
@@ -67,7 +83,7 @@ export default function DrugInfoPage({ params }: Props) {
     }
     
     fetchDrugInfo()
-  }, [params.gsn])
+  }, [params.gsn, drugType])
 
   // Function to capitalize first letter of each word
   const capitalizeWords = (str: string) => {

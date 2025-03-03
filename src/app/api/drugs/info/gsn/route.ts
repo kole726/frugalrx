@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDetailedDrugInfo } from '@/lib/server/medicationService';
 import { DrugDetails, APIError } from '@/types/api';
+import { getMockDrugInfo } from '@/lib/mockData';
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic';
@@ -29,14 +30,28 @@ export async function GET(request: Request) {
       );
     }
     
-    // Get real data from the API
-    console.log(`API: Getting detailed drug info for GSN: ${gsn}`);
-    const drugInfo = await getDetailedDrugInfo(gsn);
-    
-    // Log the drug info we're returning
-    console.log(`API: Returning detailed drug info for GSN ${gsn}:`, drugInfo);
-    
-    return NextResponse.json(drugInfo);
+    try {
+      // Get real data from the API
+      console.log(`API: Getting detailed drug info for GSN: ${gsn}`);
+      const drugInfo = await getDetailedDrugInfo(gsn);
+      
+      // Log the drug info we're returning
+      console.log(`API: Returning detailed drug info for GSN ${gsn}:`, drugInfo);
+      
+      return NextResponse.json(drugInfo);
+    } catch (error) {
+      console.error('API: Error fetching detailed drug info, falling back to mock data:', error);
+      
+      // Fall back to mock data if API fails
+      const mockDrug = getMockDrugInfo(`GSN:${gsn}`);
+      
+      console.log(`API: Returning mock drug info for GSN ${gsn}:`, mockDrug);
+      return NextResponse.json({
+        ...mockDrug,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        usingMockData: true
+      });
+    }
   } catch (error) {
     console.error('Error in detailed drug info API:', error);
     return NextResponse.json(

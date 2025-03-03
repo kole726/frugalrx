@@ -34,9 +34,9 @@ export async function POST(request: Request) {
     }
     
     // Validate required fields
-    if ((!criteria.drugName && !criteria.gsn)) {
+    if ((!criteria.drugName && !criteria.gsn && !criteria.ndcCode)) {
       return NextResponse.json(
-        { error: 'Missing required fields: either drugName or gsn must be provided' },
+        { error: 'Missing required fields: either drugName, gsn, or ndcCode must be provided' },
         { status: 400 }
       );
     }
@@ -44,14 +44,18 @@ export async function POST(request: Request) {
     const priceRequest: DrugPriceRequest = {
       latitude: latitude,
       longitude: longitude,
-      hqMappingName: 'walkerrx',
+      hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+      radius: criteria.radius || 10,
+      maximumPharmacies: criteria.maximumPharmacies || 50
     };
     
-    // Add either drugName or gsn
+    // Add either drugName, gsn, or ndcCode
     if (criteria.drugName) {
       priceRequest.drugName = criteria.drugName;
     } else if (criteria.gsn) {
       priceRequest.gsn = criteria.gsn;
+    } else if (criteria.ndcCode) {
+      priceRequest.ndcCode = criteria.ndcCode;
     }
     
     // Add optional fields if provided
@@ -60,8 +64,20 @@ export async function POST(request: Request) {
       priceRequest.quantity = criteria.quantity;
     }
     
-    const data = await getDrugPrices(priceRequest);
-    return NextResponse.json(data);
+    try {
+      const data = await getDrugPrices(priceRequest);
+      console.log(`Found ${data.pharmacies?.length || 0} pharmacies with prices`);
+      return NextResponse.json(data);
+    } catch (error) {
+      console.error('Error fetching drug prices, falling back to mock data:', error);
+      
+      // Fall back to mock data if API fails
+      return NextResponse.json({
+        pharmacies: MOCK_PHARMACY_PRICES,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        usingMockData: true
+      });
+    }
   } catch (error) {
     console.error('Server error in drug prices API:', error);
     return NextResponse.json(
@@ -76,19 +92,53 @@ export async function GET(request: Request) {
     // Get the parameters from the URL query
     const url = new URL(request.url);
     const drugName = url.searchParams.get('drugName');
+    const gsnParam = url.searchParams.get('gsn');
+    const ndcCode = url.searchParams.get('ndcCode');
     
-    if (!drugName) {
+    if (!drugName && !gsnParam && !ndcCode) {
       return NextResponse.json(
-        { error: 'Drug name is required' },
+        { error: 'Either drugName, gsn, or ndcCode is required' },
         { status: 400 }
       );
     }
     
-    // For now, we'll just return mock data
-    // In a real app, this would call the actual API
-    return NextResponse.json({
-      pharmacies: MOCK_PHARMACY_PRICES
-    });
+    // Convert GSN to number if provided
+    const gsn = gsnParam ? parseInt(gsnParam, 10) : undefined;
+    
+    // Get coordinates from query parameters or use defaults
+    const latitude = parseFloat(url.searchParams.get('latitude') || `${DEFAULT_LATITUDE}`);
+    const longitude = parseFloat(url.searchParams.get('longitude') || `${DEFAULT_LONGITUDE}`);
+    const radius = parseInt(url.searchParams.get('radius') || '10', 10);
+    
+    const priceRequest: DrugPriceRequest = {
+      latitude,
+      longitude,
+      radius,
+      hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+    };
+    
+    // Add either drugName, gsn, or ndcCode
+    if (drugName) {
+      priceRequest.drugName = drugName;
+    } else if (gsn) {
+      priceRequest.gsn = gsn;
+    } else if (ndcCode) {
+      priceRequest.ndcCode = ndcCode;
+    }
+    
+    try {
+      const data = await getDrugPrices(priceRequest);
+      return NextResponse.json(data);
+    } catch (error) {
+      console.error('Error fetching drug prices, falling back to mock data:', error);
+      
+      // Fall back to mock data if API fails
+      return NextResponse.json({
+        pharmacies: MOCK_PHARMACY_PRICES,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        usingMockData: true
+      });
+    }
   } catch (error) {
     console.error('Error in drug prices API:', error);
     return NextResponse.json(

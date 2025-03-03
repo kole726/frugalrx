@@ -38,7 +38,7 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
       try {
         console.log('Searching for:', debouncedSearch);
         
-        // Always use our API route
+        // Call the searchMedications function from the API service
         const results = await searchMedications(debouncedSearch);
         
         // Format drug names with proper capitalization (first letter uppercase, rest lowercase)
@@ -47,6 +47,7 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
           drugName: result.drugName.charAt(0).toUpperCase() + result.drugName.slice(1).toLowerCase()
         }));
         
+        console.log('Search results:', formattedResults);
         setSuggestions(formattedResults);
       } catch (error) {
         console.error('Error fetching suggestions:', error)
@@ -82,9 +83,11 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
       // Always convert drug name to lowercase for URLs
       const normalizedDrugName = suggestion.drugName.toLowerCase()
       
+      // Construct URL with GSN if available (important for API calls)
       const url = suggestion.gsn 
         ? `/drug/${encodeURIComponent(normalizedDrugName)}?gsn=${suggestion.gsn}`
         : `/drug/${encodeURIComponent(normalizedDrugName)}`;
+      
       window.location.href = url;
     }
   }
@@ -134,18 +137,21 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
                     <span className="text-sm sm:text-lg text-gray-900 font-medium">
                       {suggestion.drugName}
                     </span>
+                    {suggestion.gsn && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        GSN: {suggestion.gsn}
+                      </span>
+                    )}
                   </div>
                 </li>
               ))}
             </ul>
+          ) : error ? (
+            <div className="p-3 sm:p-4 text-center text-red-500 text-sm sm:text-base">{error}</div>
           ) : (
             <div className="p-3 sm:p-4 text-center text-gray-500 text-sm sm:text-base">No medications found</div>
           )}
         </div>
-      )}
-
-      {error && (
-        <div className="p-2 sm:p-4 text-center text-red-500 text-sm sm:text-base">{error}</div>
       )}
     </div>
   )

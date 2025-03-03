@@ -140,14 +140,22 @@ export async function getDrugPricesByNdc(
 /**
  * Get detailed information about a medication by GSN
  * @param gsn The Generic Sequence Number of the medication
+ * @param languageCode Optional language code for localized information
  * @returns Detailed information about the medication
  */
-export async function getDetailedDrugInfo(gsn: number): Promise<any> {
+export async function getDetailedDrugInfo(gsn: number, languageCode?: string): Promise<any> {
   try {
     console.log(`Client: Getting detailed drug info for GSN: ${gsn}`);
     
+    // Build the URL with optional language code
+    let url = `/api/drugs/info/gsn?gsn=${gsn}`;
+    
+    if (languageCode) {
+      url += `&languageCode=${encodeURIComponent(languageCode)}`;
+    }
+    
     // Make the API request to our Next.js API route
-    const response = await fetch(`/api/drugs/info/gsn?gsn=${gsn}`, {
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -438,7 +446,7 @@ export async function getDrugDetailsByGsn(gsn: number, languageCode?: string): P
     console.log(`Client: Getting drug details by GSN: ${gsn}`);
     
     // Use the new getDetailedDrugInfo function
-    const detailedInfo = await getDetailedDrugInfo(gsn);
+    const detailedInfo = await getDetailedDrugInfo(gsn, languageCode);
     
     // Format the response to match the expected interface
     const formattedData: DrugDetails = {

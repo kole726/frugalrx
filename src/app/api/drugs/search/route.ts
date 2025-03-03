@@ -6,10 +6,10 @@ import { getMockDrugSearchResults } from '@/lib/mockData'
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
 
-// Set CORS headers
+// Define CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
@@ -79,7 +79,11 @@ export async function GET(request: Request) {
       
       console.log(`API: Returning ${mockResults.length} mock results for "${query}"`);
       return NextResponse.json(
-        { results: mockResults },
+        { 
+          results: mockResults,
+          error: apiError instanceof Error ? apiError.message : 'Unknown error',
+          usingMockData: true
+        },
         { headers: corsHeaders }
       );
     }
