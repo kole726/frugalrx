@@ -51,44 +51,29 @@ export default function DrugPage({ params }: Props) {
   // Create a ref for the pharmacy list
   const pharmacyListRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Try to get user's location
-    const getUserLocation = async () => {
-      setIsLoadingPharmacies(true);
-      
-      try {
-        if (navigator.geolocation) {
-          // Create a promise for geolocation to handle timeout
-          const geolocationPromise = new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(
-              (position) => resolve(position),
-              (error) => reject(error),
-              { timeout: 10000, enableHighAccuracy: true }
-            );
-          });
-          
-          // Wait for geolocation with a timeout
-          const position = await geolocationPromise as GeolocationPosition;
-          
-          // Get coordinates from browser
-          const latitude = position.coords.latitude;
-          const longitude = position.coords.longitude;
-          
-          console.log(`Successfully obtained user location: ${latitude}, ${longitude}`);
-          
-          // Get ZIP code from coordinates using reverse geocoding
-          let zipCode = userLocation.zipCode; // Default
-          
-          try {
-            // Use the Google Maps Geocoding API to get the ZIP code
-            const response = await fetch(
-              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-            );
+  // Function to get user's location
+  const getUserLocation = async () => {
+    setIsLoadingPharmacies(true);
+    
+    try {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            console.log(`Got user location: ${latitude}, ${longitude}`);
             
-            if (response.ok) {
+            // Try to get ZIP code from coordinates
+            try {
+              const response = await fetch(
+                `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+              );
+              
               const data = await response.json();
+              
               if (data.results && data.results.length > 0) {
-                // Extract ZIP code from address components
+                let zipCode = userLocation.zipCode; // Default
+                
+                // Look for postal code in the address components
                 for (const result of data.results) {
                   for (const component of result.address_components) {
                     if (component.types.includes('postal_code')) {
@@ -98,42 +83,58 @@ export default function DrugPage({ params }: Props) {
                   }
                   if (zipCode !== userLocation.zipCode) break;
                 }
+                
+                console.log(`Resolved ZIP code from coordinates: ${zipCode}`);
+                
+                // Update user location with coordinates and ZIP code
+                setUserLocation({
+                  latitude,
+                  longitude,
+                  zipCode
+                });
+                
+                // Fetch pharmacy prices with the new location
+                await fetchPharmacyPrices(latitude, longitude, searchRadius);
               }
-              console.log(`Resolved ZIP code from coordinates: ${zipCode}`);
+            } catch (error) {
+              console.error('Error getting ZIP code from coordinates:', error);
+              
+              // Update user location with just the coordinates
+              setUserLocation({
+                latitude,
+                longitude,
+                zipCode: userLocation.zipCode // Keep the existing ZIP code
+              });
+              
+              // Fetch pharmacy prices with the new location
+              await fetchPharmacyPrices(latitude, longitude, searchRadius);
             }
-          } catch (error) {
-            console.error("Error getting ZIP code from coordinates:", error);
-            // Keep existing ZIP code
+          },
+          (error) => {
+            console.error('Error getting user location:', error);
+            setError('Could not get your location. Please check your browser settings.');
+            setIsLoadingPharmacies(false);
           }
-          
-          // Update user location with coordinates and ZIP code
-          const newLocation = {
-            latitude,
-            longitude,
-            zipCode
-          };
-          
-          setUserLocation(newLocation);
-          
-          // Fetch pharmacy prices with the new location
-          await fetchPharmacyPrices(latitude, longitude, searchRadius);
-        } else {
-          console.warn("Geolocation is not supported by this browser");
-          // Use default location and fetch pharmacy prices
-          await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
-        }
-      } catch (error) {
-        console.error("Error getting user location:", error);
-        // Use default location as fallback
-        console.log(`Using default location: ${userLocation.latitude}, ${userLocation.longitude}`);
-        await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
-      } finally {
+        );
+      } else {
+        console.error('Geolocation is not supported by this browser.');
+        setError('Geolocation is not supported by your browser.');
         setIsLoadingPharmacies(false);
       }
-    };
-    
+    } catch (error) {
+      console.error('Error in getUserLocation:', error);
+      setError('An error occurred while trying to get your location.');
+      setIsLoadingPharmacies(false);
+    }
+  };
+
+  useEffect(() => {
+    // Try to get user's location
     getUserLocation();
-  }, [])
+    
+    // Fetch drug info
+    fetchDrugInfo();
+  }, []);
 
   // Function to fetch pharmacy prices
   const fetchPharmacyPrices = async (latitude: number, longitude: number, radius: number) => {
@@ -368,10 +369,6 @@ export default function DrugPage({ params }: Props) {
     }
   }
 
-  useEffect(() => {
-    fetchDrugInfo();
-  }, [params.name, gsn, searchRadius, userLocation]);
-
   // Handle ZIP code change from the map component
   const handleZipCodeChange = async (newZipCode: string) => {
     try {
@@ -589,105 +586,87 @@ export default function DrugPage({ params }: Props) {
             </div>
           </motion.div>
 
-          {/* Location Selector */}
+          {/* Drug Information Section */}
           <motion.div 
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
-            className="bg-[#006142] text-white p-4 rounded-md mb-8 flex items-center justify-between shadow-md"
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100"
           >
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-white" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-              </svg>
-              <span className="font-medium">{userLocation.zipCode || 'Location not set'}</span>
-            </div>
-            <button
-              onClick={() => setShowPrices(!showPrices)}
-              className="flex items-center bg-white text-[#006142] px-3 py-1 rounded-full font-medium text-sm hover:bg-[#EFFDF6] transition-colors"
-            >
-              {showPrices ? (
-                <>
-                  <span>Hide Prices</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                  </svg>
-                </>
-              ) : (
-                <>
-                  <span>Show Prices</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </>
-              )}
-            </button>
-          </motion.div>
-
-          {/* Tabs */}
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.4 }}
-            className="border-b border-gray-200 mb-6"
-          >
-            <div className="flex">
-              <button className="py-2 px-4 border-b-2 border-[#006142] text-[#006142] font-medium">
-                PRICES
-              </button>
-              <button className="py-2 px-4 text-gray-500 hover:text-gray-700">
-                FAVORITE PHARMACY
-              </button>
-            </div>
-          </motion.div>
-
-          {/* Sort and Filter Options */}
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.5 }}
-            className="flex flex-wrap justify-between items-center mb-6"
-          >
-            <div className="flex items-center mb-4 md:mb-0">
-              <span className="text-gray-600 mr-2">SORT:</span>
-              <select 
-                className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedSort}
-                onChange={handleSortChange}
-              >
-                <option value="PRICE">PRICE</option>
-                <option value="DISTANCE">DISTANCE</option>
-                <option value="NAME">NAME</option>
-              </select>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <span className="text-gray-600 mr-2">SHOW:</span>
-                <select 
-                  className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={pharmaciesPerPage === 1000 ? 'all' : pharmaciesPerPage.toString()}
-                  onChange={handlePharmaciesPerPageChange}
-                >
-                  <option value="5">5</option>
-                  <option value="10">10</option>
-                  <option value="15">15</option>
-                  <option value="20">20</option>
-                  <option value="all">All</option>
-                </select>
+            {/* Drug information content */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">{drugInfo?.brandName || decodeURIComponent(params.name)}</h2>
+                {drugInfo?.genericName && drugInfo.genericName !== drugInfo.brandName && (
+                  <p className="text-gray-600 mt-1">{drugInfo.genericName}</p>
+                )}
               </div>
+              <div className="mt-4 md:mt-0 flex items-center">
+                <div className="flex items-center bg-emerald-50 px-4 py-2 rounded-lg">
+                  <span className="text-emerald-700 font-semibold mr-2">Your location:</span>
+                  <span className="font-medium">{userLocation.zipCode || 'Location not set'}</span>
+                </div>
+                <button 
+                  onClick={getUserLocation}
+                  className="ml-2 p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-full transition-colors"
+                  aria-label="Update location"
+                  title="Update location"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            {/* Drug details */}
+            <div className="prose max-w-none">
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Description</h3>
+              <p className="mb-4 text-gray-700">{drugInfo?.description || 'No description available.'}</p>
+              
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Side Effects</h3>
+              <p className="mb-4 text-gray-700">{drugInfo?.sideEffects || 'No side effects information available.'}</p>
+              
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Dosage</h3>
+              <p className="mb-4 text-gray-700">{drugInfo?.dosage || 'No dosage information available.'}</p>
+              
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Storage</h3>
+              <p className="mb-4 text-gray-700">{drugInfo?.storage || 'No storage information available.'}</p>
+              
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Contraindications</h3>
+              <p className="mb-4 text-gray-700">{drugInfo?.contraindications || 'No contraindication information available.'}</p>
+            </div>
+          </motion.div>
+
+          {/* Unified Filter Controls */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="bg-white rounded-xl shadow-lg p-4 mb-6 border border-gray-100"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center">
-                <span className="text-gray-600 mr-2">RADIUS:</span>
+                <span className="text-gray-700 font-medium mr-2">Search Radius:</span>
                 <select 
-                  className="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={`${searchRadius} MILES`}
+                  className="p-2 border border-gray-300 rounded-md bg-white hover:border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-colors"
+                  value={searchRadius}
                   onChange={handleSearchRadiusChange}
+                  disabled={isLoadingPharmacies}
                 >
-                  <option value="5 MILES">5 MILES</option>
-                  <option value="10 MILES">10 MILES</option>
-                  <option value="25 MILES">25 MILES</option>
-                  <option value="50 MILES">50 MILES</option>
+                  <option value="5">5 miles</option>
+                  <option value="10">10 miles</option>
+                  <option value="25">25 miles</option>
+                  <option value="50">50 miles</option>
                 </select>
               </div>
+              
+              {isLoadingPharmacies && (
+                <div className="flex items-center text-emerald-600">
+                  <div className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent mr-2"></div>
+                  <span className="text-sm">Loading pharmacy prices...</span>
+                </div>
+              )}
             </div>
           </motion.div>
 
@@ -813,59 +792,6 @@ export default function DrugPage({ params }: Props) {
                         })
                       )}
                     </div>
-                    
-                    {/* Pagination */}
-                    {Math.ceil(pharmacyPrices.length / pharmaciesPerPage) > 1 && !isLoadingPharmacies && (
-                      <div className="flex justify-center mt-6">
-                        <nav className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            disabled={currentPage === 1}
-                            className={`flex items-center justify-center w-10 h-10 rounded-md border transition-all duration-200 ${
-                              currentPage === 1 
-                                ? 'text-gray-300 border-gray-200 cursor-not-allowed' 
-                                : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300'
-                            }`}
-                            aria-label="Previous page"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                          
-                          {Array.from({ length: Math.ceil(pharmacyPrices.length / pharmaciesPerPage) }, (_, i) => i + 1).map(page => (
-                            <button
-                              key={page}
-                              onClick={() => handlePageChange(page)}
-                              className={`flex items-center justify-center w-10 h-10 rounded-md border font-medium transition-all duration-200 ${
-                                currentPage === page 
-                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
-                                  : 'text-gray-700 border-gray-200 hover:bg-emerald-50 hover:border-emerald-300'
-                              }`}
-                              aria-label={`Page ${page}`}
-                              aria-current={currentPage === page ? 'page' : undefined}
-                            >
-                              {page}
-                            </button>
-                          ))}
-                          
-                          <button
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === Math.ceil(pharmacyPrices.length / pharmaciesPerPage)}
-                            className={`flex items-center justify-center w-10 h-10 rounded-md border transition-all duration-200 ${
-                              currentPage === Math.ceil(pharmacyPrices.length / pharmaciesPerPage) 
-                                ? 'text-gray-300 border-gray-200 cursor-not-allowed' 
-                                : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300'
-                            }`}
-                            aria-label="Next page"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </nav>
-                      </div>
-                    )}
                   </div>
                 </div>
                 
@@ -875,28 +801,6 @@ export default function DrugPage({ params }: Props) {
                       <div>
                         <h3 className="text-xl font-bold text-gray-800">Pharmacy Map</h3>
                         <p className="text-sm text-gray-500 mt-1">Find pharmacies near you</p>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="flex items-center">
-                          <span className="text-sm text-gray-600 mr-2">Radius:</span>
-                          <select 
-                            className="text-sm border border-gray-200 rounded-md p-2 bg-white hover:border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-colors"
-                            value={searchRadius}
-                            onChange={handleSearchRadiusChange}
-                            disabled={isLoadingPharmacies}
-                          >
-                            <option value="5">5 miles</option>
-                            <option value="10">10 miles</option>
-                            <option value="25">25 miles</option>
-                            <option value="50">50 miles</option>
-                          </select>
-                        </div>
-                        {isLoadingPharmacies && (
-                          <div className="flex items-center text-emerald-600">
-                            <div className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent mr-2"></div>
-                            <span className="text-sm">Loading...</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                     
