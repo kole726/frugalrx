@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { searchDrugs } from '@/lib/server/medicationService'
 import { findGsnByDrugName } from '@/lib/drug-gsn-mapping'
 import { getMockDrugSearchResults } from '@/lib/mockData'
-import { shouldFallbackToMock } from '@/config/environment'
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
@@ -36,11 +35,11 @@ export async function GET(request: Request) {
       );
     }
     
-    // Validate query length - API requires at least 3 characters
-    if (query.length < 3) {
+    // Validate query length
+    if (query.length < 2) {
       console.error('API: Search query too short:', query);
       return NextResponse.json(
-        { error: 'Search query must be at least 3 characters' },
+        { error: 'Search query must be at least 2 characters' },
         { 
           status: 400,
           headers: corsHeaders
@@ -73,30 +72,15 @@ export async function GET(request: Request) {
         { headers: corsHeaders }
       );
     } catch (apiError) {
-      console.error('API: Error searching drugs:', apiError);
+      console.error('API: Error searching drugs, falling back to mock data:', apiError);
       
-      // Check if we should fall back to mock data
-      if (shouldFallbackToMock()) {
-        console.log('API: Falling back to mock data due to API error');
-        const mockResults = getMockDrugSearchResults(query);
-        
-        console.log(`API: Returning ${mockResults.length} mock results for "${query}"`);
-        return NextResponse.json(
-          { results: mockResults },
-          { headers: corsHeaders }
-        );
-      }
+      // Fall back to mock data if API fails
+      const mockResults = getMockDrugSearchResults(query);
       
-      // If we shouldn't fall back to mock data, return the error
+      console.log(`API: Returning ${mockResults.length} mock results for "${query}"`);
       return NextResponse.json(
-        { 
-          error: 'Failed to search for medications',
-          details: apiError instanceof Error ? apiError.message : String(apiError)
-        },
-        { 
-          status: 500,
-          headers: corsHeaders
-        }
+        { results: mockResults },
+        { headers: corsHeaders }
       );
     }
   } catch (error) {

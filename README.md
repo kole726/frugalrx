@@ -1,135 +1,54 @@
-# FrugalRx - Prescription Savings App
+# FrugalRx
 
-FrugalRx is a white-labeled version of America's Pharmacy, helping users save up to 80% on prescription medications. The application allows users to search for medications, compare prices at different pharmacies, and get digital discount cards.
+Save up to 80% on prescription medications with FrugalRx's digital savings card.
 
 ## Features
 
-- Medication search with autocomplete
-- Pharmacy price comparison
-- Digital discount card
-- Pharmacy locator with map integration
-- Medication information and alternatives
-
-## Tech Stack
-
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- America's Pharmacy API integration
+- Medication price comparison
+- Digital savings card
+- Pharmacy locator
+- Health savings blog
 
 ## Getting Started
 
-### Prerequisites
+First, install dependencies:
 
-- Node.js 18+ and npm
-- America's Pharmacy API credentials
+```bash
+npm install
+# or
+yarn install
+```
 
-### Installation
+Then, run the development server:
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/frugal-v2.git
-   cd frugal-v2
-   ```
+```bash
+npm run dev
+# or
+yarn dev
+```
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-3. Create a `.env.local` file based on `.env.example`:
+## Environment Configuration
+
+The application uses environment variables to control its behavior in different environments (development, production, etc.). 
+
+### Setup
+
+1. Copy `.env.example` to `.env.local`:
    ```bash
    cp .env.example .env.local
    ```
 
-4. Update the `.env.local` file with your API credentials:
+2. Edit `.env.local` to set your environment-specific values:
    ```
-   # Medication API Authentication (server-side only)
-   AMERICAS_PHARMACY_AUTH_URL=https://medimpact.okta.com/oauth2/aus107c5yrHDu55K8297/v1/token
-   AMERICAS_PHARMACY_CLIENT_ID=0oatgei47wp1CfkaQ297
-   AMERICAS_PHARMACY_CLIENT_SECRET=pMQW2VhwqCiCcG2sWtEEsTW5b3rbMkMHaI5oChXjJDa2f3e5jzkjzKIV-IgJmObc
-   AMERICAS_PHARMACY_HQ_MAPPING=walkerrx
-
-   # Medication API URLs (server-side only)
-   AMERICAS_PHARMACY_API_URL=https://api.americaspharmacy.com/pricing
-
-   # Client-side API base URL - Using relative URL for API calls
-   NEXT_PUBLIC_API_BASE_URL=/api
-
-   # Google Maps API Key
-   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-
-   # Feature flags
-   NEXT_PUBLIC_USE_REAL_API=true
-   NEXT_PUBLIC_FALLBACK_TO_MOCK=true
-   NEXT_PUBLIC_ENABLE_PHARMACY_MAP=true
-   NEXT_PUBLIC_ENABLE_DRUG_ALTERNATIVE=true
+   # API credentials (required for production)
+   AMERICAS_PHARMACY_CLIENT_ID=your_client_id_here
+   AMERICAS_PHARMACY_CLIENT_SECRET=your_client_secret_here
+   
+   # Mock data settings
+   NEXT_PUBLIC_USE_MOCK_DATA=true
    ```
-
-5. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-6. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## API Configuration
-
-FrugalRx integrates with the America's Pharmacy API to provide real-time medication pricing and pharmacy information. The following API endpoints are used:
-
-### API Endpoints
-
-#### Drug Search
-- **POST /api/drugs/search** - Search for medications by name (minimum 3 characters required)
-- **GET /api/drugs/prefix/:prefix** - Search for medications by prefix (minimum 3 characters required)
-
-#### Drug Pricing
-- **POST /api/drugs/prices** - Get prices for a medication at nearby pharmacies
-- **GET /api/drugs/prices** - Get prices for a medication (query parameters: drugName, gsn, or ndcCode required)
-
-#### Drug Information
-- **GET /api/drugs/info/name** - Get detailed information about a medication by name (minimum 3 characters required)
-- **GET /api/drugs/info/gsn/:gsn** - Get detailed information about a medication by GSN
-
-#### Pharmacy Information
-- **GET /api/pharmacies/nearby** - Find pharmacies near a location
-
-### Validation Requirements
-
-- All drug name searches require a minimum of 3 characters
-- API requests with drug names shorter than 3 characters will return a 400 Bad Request error
-- The America's Pharmacy API enforces this minimum character requirement for all drug searches
-
-### Testing the API Connection
-
-A test script is available to verify the API connection:
-
-```bash
-node src/scripts/test-api-connection.js
-```
-
-This script tests authentication, drug search, drug pricing, and other API endpoints. Note that some endpoints like group drug prices are not available in the current API version.
-
-For more details, see the [API Endpoints Documentation](src/docs/api-endpoints.md) or visit the [API test page](/api-test) in the application.
-
-## Deployment on Vercel
-
-The application is configured for deployment on Vercel. You need to set the following environment variables in your Vercel project:
-
-- `AMERICAS_PHARMACY_AUTH_URL`
-- `AMERICAS_PHARMACY_CLIENT_ID`
-- `AMERICAS_PHARMACY_CLIENT_SECRET`
-- `AMERICAS_PHARMACY_HQ_MAPPING`
-- `AMERICAS_PHARMACY_API_URL`
-- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
-- `NEXT_PUBLIC_USE_REAL_API`
-- `NEXT_PUBLIC_FALLBACK_TO_MOCK`
-- `NEXT_PUBLIC_ENABLE_PHARMACY_MAP`
-- `NEXT_PUBLIC_ENABLE_DRUG_ALTERNATIVE`
-
-## Environment Configuration
-
-The application uses environment variables to control its behavior in different environments (development, production, etc.).
 
 ### Mock Data vs. Real API
 
@@ -156,79 +75,140 @@ NEXT_PUBLIC_USE_REAL_API=false
 NEXT_PUBLIC_FALLBACK_TO_MOCK=true
 ```
 
-### Debugging
+### Vercel Deployment
 
-To enable API logging and debug information, set the following environment variables:
+When deploying to Vercel, set these environment variables in the Vercel dashboard:
 
+1. Go to your project in the Vercel dashboard
+2. Navigate to Settings > Environment Variables
+3. Add the required variables:
+   - `AMERICAS_PHARMACY_CLIENT_ID`
+   - `AMERICAS_PHARMACY_CLIENT_SECRET`
+   - `NEXT_PUBLIC_USE_MOCK_DATA` (set to `false` for production)
+
+### Environment Configuration File
+
+The application uses a centralized configuration file at `src/config/environment.ts` that loads and validates environment variables. This ensures consistent behavior across environments.
+
+## Built With
+
+- Next.js 14
+- React 18
+- Tailwind CSS
+- Framer Motion
+- TypeScript
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# frugal-v2
+
+# FrugalRx Pharmacy Map Feature
+
+This project implements a pharmacy map feature for the FrugalRx application, allowing users to find nearby pharmacies with the best prices for their medications.
+
+## Features
+
+- Interactive map displaying nearby pharmacies
+- Filtering by ZIP code and radius
+- Detailed pharmacy information including:
+  - Pharmacy name and address
+  - Distance from user location
+  - Price for the selected medication
+  - Special features (24-hour service, drive-up window, handicap access)
+- Coupon generation for selected pharmacies
+- Mobile-friendly responsive design
+
+## Setup
+
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Create a `.env.local` file with the following variables:
+   ```
+   NEXT_PUBLIC_URL=http://localhost:3000
+   AMERICAS_PHARMACY_API_URL=https://api.americaspharmacy.com
+   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_API_KEY
+   NODE_ENV=development
+   ```
+4. Replace `YOUR_GOOGLE_MAPS_API_KEY` with a valid Google Maps API key
+5. Start the development server:
+   ```
+   npm run dev
+   ```
+
+## API Endpoints
+
+The application uses the following API endpoints:
+
+- `/api/pricing/v1/drugprices/byName` - Get pharmacy prices for a specific drug
+  - Parameters:
+    - `drugName`: Name of the medication
+    - `latitude`: User's latitude
+    - `longitude`: User's longitude
+    - `zipCode`: User's ZIP code (alternative to lat/lng)
+    - `radius`: Search radius in miles (default: 50)
+
+## Components
+
+### PharmacyMap
+
+The main component for displaying the map and pharmacy markers.
+
+```tsx
+<PharmacyMap 
+  pharmacies={pharmacies}
+  zipCode={userLocation.zipCode}
+  centerLat={userLocation.latitude}
+  centerLng={userLocation.longitude}
+  searchRadius={searchRadius}
+  onMarkerClick={(pharmacy) => handleGetCoupon(pharmacy)}
+  onZipCodeChange={handleZipCodeChange}
+  onRadiusChange={handleRadiusChange}
+/>
 ```
-NEXT_PUBLIC_API_LOGGING=true
-NEXT_PUBLIC_SHOW_DEBUG=true
+
+### CouponModal
+
+Modal component for displaying and generating coupons for selected pharmacies.
+
+```tsx
+<CouponModal
+  isOpen={isCouponModalOpen}
+  onClose={() => setIsCouponModalOpen(false)}
+  drugName={drugInfo?.brandName || drugInfo?.genericName || 'Medication'}
+  pharmacy={selectedPharmacy}
+  price={selectedPharmacy.price ? selectedPharmacy.price.toFixed(2) : undefined}
+/>
 ```
+
+## Utilities
+
+- `geocoding.ts` - Utilities for converting ZIP codes to coordinates
+- `mapMarkers.ts` - Custom marker definitions for the map
+- `mapsTokenManager.ts` - Google Maps API token management
+
+## Development Notes
+
+- The application uses mock data in development mode
+- Authentication is simulated in development with a mock token
+- For production, you'll need to configure the proper API endpoints and authentication
 
 ## License
 
 This project is proprietary and confidential. Unauthorized copying, distribution, or use is strictly prohibited.
-
-## Acknowledgements
-
-- [America's Pharmacy](https://www.americaspharmacy.com/) for the API and inspiration
-- [Next.js](https://nextjs.org/) for the React framework
-- [Tailwind CSS](https://tailwindcss.com/) for the styling
-- [Vercel](https://vercel.com/) for hosting
-
-## Vercel Deployment
-
-### Environment Variables
-
-To ensure the API works correctly on Vercel, you need to set the following environment variables in your Vercel project settings:
-
-1. Go to your Vercel project dashboard
-2. Navigate to Settings > Environment Variables
-3. Add the following environment variables:
-
-#### API Configuration (Required)
-```
-AMERICAS_PHARMACY_API_URL=https://api.americaspharmacy.com/pricing
-AMERICAS_PHARMACY_AUTH_URL=https://medimpact.okta.com/oauth2/aus107c5yrHDu55K8297/v1/token
-AMERICAS_PHARMACY_CLIENT_ID=0oatgei47wp1CfkaQ297
-AMERICAS_PHARMACY_CLIENT_SECRET=pMQW2VhwqCiCcG2sWtEEsTW5b3rbMkMHaI5oChXjJDa2f3e5jzkjzKIV-IgJmObc
-AMERICAS_PHARMACY_HQ_MAPPING=walkerrx
-```
-
-#### Feature Configuration (Required)
-```
-NEXT_PUBLIC_USE_MOCK_DATA=false
-NEXT_PUBLIC_USE_REAL_API=true
-NEXT_PUBLIC_FALLBACK_TO_MOCK=true
-```
-
-#### Debugging (Optional)
-```
-NEXT_PUBLIC_API_LOGGING=true
-NEXT_PUBLIC_SHOW_DEBUG=true
-```
-
-#### Feature Flags (Optional)
-```
-NEXT_PUBLIC_ENABLE_DRUG_ALTERNATIVES=true
-NEXT_PUBLIC_ENABLE_PHARMACY_MAP=true
-```
-
-### Troubleshooting Vercel Deployment
-
-If you encounter issues with the API on Vercel:
-
-1. Visit the `/debug` page on your deployed site to check environment variables and API status
-2. Check the Vercel logs for any errors
-3. Ensure all required environment variables are set correctly
-4. Try redeploying the application after updating environment variables
-
-### Debugging Tools
-
-The application includes several debugging tools:
-
-- `/debug` - Shows environment variables and API status
-- `/api-test` - Test API endpoints directly
-- `/api/debug/env` - JSON endpoint showing environment variables
-- `/api/debug/api` - JSON endpoint showing API status
-- `/api/test-connection` - Test API connection

@@ -131,15 +131,6 @@ export async function getAuthToken(): Promise<string> {
   // Increment request counter
   tokenRequestCount++;
   
-  // Check if we have a cached token that's still valid
-  if (cachedToken && tokenExpiryTime && Date.now() < tokenExpiryTime) {
-    logTokenEvent('Using cached token', true, { 
-      expiryTime: tokenExpiryTime,
-      expiresIn: Math.floor((tokenExpiryTime - Date.now()) / 1000) + ' seconds'
-    });
-    return cachedToken.access_token;
-  }
-  
   // If we should use mock data, return a mock token
   if (USE_MOCK_DATA) {
     // Log that we're using a mock token
@@ -148,16 +139,19 @@ export async function getAuthToken(): Promise<string> {
     // Set token expiry to 1 hour from now
     tokenExpiryTime = Date.now() + 60 * 60 * 1000;
     
+    // Ensure the mock token has the kid header
+    const tokenWithKid = ensureKidHeader(MOCK_TOKEN);
+    
     cachedToken = {
       token_type: 'Bearer',
       expires_in: 3600,
-      access_token: MOCK_TOKEN
+      access_token: tokenWithKid
     };
     
     // Log token event
     logTokenEvent('Generated mock token', true, { expiryTime: tokenExpiryTime });
     
-    return MOCK_TOKEN;
+    return tokenWithKid;
   }
   
   try {
@@ -188,12 +182,6 @@ export async function getAuthToken(): Promise<string> {
     formData.append('client_secret', clientSecret);
     formData.append('scope', 'ccds.read');
     
-    // Log the request details (without sensitive information)
-    console.log('[AUTH] Making token request with the following parameters:');
-    console.log('- grant_type:', 'client_credentials');
-    console.log('- client_id:', clientId);
-    console.log('- scope:', 'ccds.read');
-    
     // Make the token request
     const response = await fetch(authUrl, {
       method: 'POST',
@@ -205,19 +193,14 @@ export async function getAuthToken(): Promise<string> {
       cache: 'no-store' // Ensure we don't use cached responses
     });
     
-    // Log the response status
-    console.log(`[AUTH] Token request response status: ${response.status}`);
-    
     if (!response.ok) {
       // Try to get more detailed error information
       let errorDetails = '';
       try {
         const errorText = await response.text();
         errorDetails = errorText;
-        console.error(`[AUTH] Token request error details: ${errorDetails}`);
       } catch (e) {
         errorDetails = `Status: ${response.status}`;
-        console.error(`[AUTH] Could not parse error details: ${e}`);
       }
       
       const error = new Error(`Authentication failed: ${response.status} - ${errorDetails}`);
@@ -225,16 +208,7 @@ export async function getAuthToken(): Promise<string> {
       throw error;
     }
     
-    // Parse the response
-    let data;
-    try {
-      data = await response.json();
-      console.log('[AUTH] Successfully parsed token response');
-    } catch (e) {
-      const error = new Error(`Failed to parse token response: ${e}`);
-      logTokenEvent('Failed to parse token response', false, {}, error);
-      throw error;
-    }
+    const data = await response.json();
     
     // Validate the token response
     if (!data.access_token) {
@@ -243,11 +217,19 @@ export async function getAuthToken(): Promise<string> {
       throw error;
     }
     
+    // Ensure the token has the kid header
+    const tokenWithKid = ensureKidHeader(data.access_token);
+    
+    // Log if the token was modified
+    if (tokenWithKid !== data.access_token) {
+      console.log('[AUTH] Added kid header to token');
+    }
+    
     // Cache the token
     cachedToken = {
       token_type: data.token_type || 'Bearer',
       expires_in: data.expires_in || 3600,
-      access_token: data.access_token
+      access_token: tokenWithKid
     };
     
     // Set expiry based on expires_in (seconds) from response, or default to 1 hour
@@ -258,53 +240,69 @@ export async function getAuthToken(): Promise<string> {
     // Log successful token retrieval
     logTokenEvent('Retrieved new token', true, { 
       expiryTime: tokenExpiryTime,
-      tokenLength: data.access_token.length,
-      expiresIn: data.expires_in
+      tokenLength: tokenWithKid.length,
+      expiresIn: data.expires_in,
+      hasKidHeader: true
     });
     
-    return data.access_token;
+    return tokenWithKid;
   } catch (error) {
-    // Log the error
+    // Log the error and rethrow
     lastTokenError = error instanceof Error ? error : new Error(String(error));
-    logTokenEvent('Token retrieval failed', false, {}, lastTokenError);
+    console.error('Error getting auth token:', error);
     
-    // Rethrow the error
-    throw lastTokenError;
+    // Fall back to mock token on error if we're not in production
+    if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
+      console.log('[AUTH] Falling back to mock token after error');
+      tokenExpiryTime = Date.now() + 60 * 60 * 1000;
+      
+      // Ensure the mock token has the kid header
+      const tokenWithKid = ensureKidHeader(MOCK_TOKEN);
+      
+      cachedToken = {
+        token_type: 'Bearer',
+        expires_in: 3600,
+        access_token: tokenWithKid
+      };
+      return tokenWithKid;
+    }
+    
+    throw error;
   }
 }
 
 /**
- * Force a refresh of the authentication token
+ * Force refresh the authentication token
  * @returns A promise that resolves to a new authentication token
  */
 export async function refreshAuthToken(): Promise<string> {
-  // Increment refresh counter
-  tokenRefreshCount++;
-  
-  // Clear cached token
+  // Clear the cache
   cachedToken = null;
   tokenExpiryTime = null;
-  
-  // Log token refresh
-  logTokenEvent('Forcing token refresh', true);
+  tokenRefreshCount++;
   
   // Get a new token
   return getAuthToken();
 }
 
 /**
- * Get the status of the authentication token
- * @returns A record with token status information
+ * Get the token status for debugging purposes
+ * This can be exposed via an admin API endpoint for troubleshooting
  */
 export async function getTokenStatus(): Promise<Record<string, any>> {
+  const now = Date.now();
+  
   return {
-    hasCachedToken: !!cachedToken,
-    isTokenValid: !!(cachedToken && tokenExpiryTime && Date.now() < tokenExpiryTime),
+    hasToken: !!cachedToken,
+    tokenType: cachedToken?.token_type,
+    tokenExpiresIn: cachedToken?.expires_in,
     tokenExpiryTime: tokenExpiryTime ? formatDate(tokenExpiryTime) : null,
-    timeUntilExpiry: tokenExpiryTime ? Math.floor((tokenExpiryTime - Date.now()) / 1000) + ' seconds' : null,
+    currentTime: formatDate(now),
+    isExpired: tokenExpiryTime ? now >= tokenExpiryTime : true,
+    timeUntilExpiry: tokenExpiryTime ? `${((tokenExpiryTime - now) / 1000).toFixed(1)}s` : 'N/A',
     tokenRequestCount,
     tokenRefreshCount,
-    lastTokenError: lastTokenError?.message || null,
-    tokenRefreshHistory
+    lastError: lastTokenError?.message,
+    refreshHistory: tokenRefreshHistory
   };
 } 

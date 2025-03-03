@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { testApiConnection } from '@/lib/server/medicationService';
-import { getTokenStatus } from '@/lib/server/auth';
-import { API_CONFIG, USE_MOCK_DATA } from '@/config/environment';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,72 +15,12 @@ export async function OPTIONS() {
 
 export async function GET() {
   try {
-    console.log('[API] Testing API connection...');
-    
-    // Test the API connection
-    let isConnected = false;
-    let connectionError = null;
-    
-    try {
-      isConnected = await testApiConnection();
-      console.log(`[API] Connection test result: ${isConnected ? 'Connected' : 'Disconnected'}`);
-    } catch (error) {
-      connectionError = error instanceof Error ? error.message : String(error);
-      console.error('[API] Connection test error:', connectionError);
-    }
-    
-    // Get token status
-    let tokenStatus;
-    try {
-      tokenStatus = await getTokenStatus();
-      console.log('[API] Successfully retrieved token status');
-    } catch (error) {
-      console.error('[API] Error getting token status:', error);
-      tokenStatus = { error: error instanceof Error ? error.message : String(error) };
-    }
-    
-    // Get environment information
-    const envInfo = {
-      NODE_ENV: process.env.NODE_ENV,
-      NEXT_PUBLIC_USE_MOCK_DATA: process.env.NEXT_PUBLIC_USE_MOCK_DATA,
-      NEXT_PUBLIC_USE_REAL_API: process.env.NEXT_PUBLIC_USE_REAL_API,
-      NEXT_PUBLIC_FALLBACK_TO_MOCK: process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK,
-      NEXT_PUBLIC_API_LOGGING: process.env.NEXT_PUBLIC_API_LOGGING,
-      NEXT_PUBLIC_SHOW_DEBUG: process.env.NEXT_PUBLIC_SHOW_DEBUG,
-      NEXT_PUBLIC_ENABLE_PHARMACY_MAP: process.env.NEXT_PUBLIC_ENABLE_PHARMACY_MAP,
-      NEXT_PUBLIC_ENABLE_DRUG_ALTERNATIVE: process.env.NEXT_PUBLIC_ENABLE_DRUG_ALTERNATIVE,
-    };
-    
-    // Get API configuration (without sensitive information)
-    const apiConfig = {
-      baseUrl: API_CONFIG.baseUrl,
-      authUrl: API_CONFIG.authUrl,
-      hqMappingName: API_CONFIG.hqMappingName,
-      enableLogging: API_CONFIG.enableLogging,
-      clientIdSet: !!API_CONFIG.clientId,
-      clientSecretSet: !!API_CONFIG.clientSecret,
-      // Don't include client credentials
-    };
-    
-    // Check if server-side environment variables are set
-    const serverEnvVars = {
-      AMERICAS_PHARMACY_API_URL: process.env.AMERICAS_PHARMACY_API_URL ? 'Set' : 'Not set',
-      AMERICAS_PHARMACY_AUTH_URL: process.env.AMERICAS_PHARMACY_AUTH_URL ? 'Set' : 'Not set',
-      AMERICAS_PHARMACY_CLIENT_ID: process.env.AMERICAS_PHARMACY_CLIENT_ID ? 'Set' : 'Not set',
-      AMERICAS_PHARMACY_CLIENT_SECRET: process.env.AMERICAS_PHARMACY_CLIENT_SECRET ? 'Set (value hidden)' : 'Not set',
-      AMERICAS_PHARMACY_HQ_MAPPING: process.env.AMERICAS_PHARMACY_HQ_MAPPING,
-    };
-    
+    const isConnected = await testApiConnection();
     return NextResponse.json({
       status: isConnected ? 'connected' : 'disconnected',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV,
-      useMockData: USE_MOCK_DATA,
-      connectionError,
-      tokenStatus,
-      envInfo,
-      apiConfig,
-      serverEnvVars,
+      useMockData: process.env.USE_MOCK_DATA || 'false',
     }, { headers: corsHeaders });
   } catch (error) {
     console.error('Error testing API connection:', error);
@@ -91,8 +29,6 @@ export async function GET() {
         status: 'error',
         error: `Failed to test API connection: ${error instanceof Error ? error.message : 'Unknown error'}`,
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV,
-        useMockData: USE_MOCK_DATA,
       },
       { status: 500, headers: corsHeaders }
     );

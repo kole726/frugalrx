@@ -12,7 +12,6 @@ interface DrugGsnMapping {
 // Common medications and their GSNs
 // These are based on real GSNs where possible, but some may be placeholders
 export const DRUG_GSN_MAPPINGS: DrugGsnMapping[] = [
-  { brandName: 'Adenoscan', genericName: 'Adenosine', gsn: 6729 },
   { brandName: 'Lipitor', genericName: 'Atorvastatin', gsn: 62733 },
   { brandName: 'Crestor', genericName: 'Rosuvastatin', gsn: 75940 },
   { brandName: 'Zocor', genericName: 'Simvastatin', gsn: 70956 },

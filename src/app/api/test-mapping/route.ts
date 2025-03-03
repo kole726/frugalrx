@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const baseUrl = apiUrl.replace(/\/+$/, '');
     
     // Test endpoint - using the drugs/names endpoint with the provided parameters
-    const endpoint = `${baseUrl}/drugs/names`;
+    const endpoint = `${baseUrl}/pricing/v1/drugs/names`;
     
     console.log(`Testing API connection to ${endpoint}`);
     
