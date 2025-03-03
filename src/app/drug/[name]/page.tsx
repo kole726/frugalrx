@@ -758,7 +758,7 @@ export default function DrugPage({ params }: Props) {
                     <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
                       <div>
                         <h3 className="text-xl font-bold text-gray-800">Pharmacy Map</h3>
-                        <p className="text-sm text-gray-500 mt-1">Find pharmacies near you</p>
+                        <p className="text-sm text-gray-500 mt-1">Showing pharmacies from page {currentPage}</p>
                       </div>
                       <div className="flex items-center">
                         {isLoadingPharmacies && (
@@ -772,21 +772,28 @@ export default function DrugPage({ params }: Props) {
                     
                     <div className="h-[600px]">
                       <PharmacyMap 
-                        pharmacies={pharmacyPrices.map((pharmacy, index) => ({
-                          pharmacyId: index,
-                          name: pharmacy.name,
-                          address: pharmacy.address || '',
-                          city: pharmacy.city || '',
-                          state: pharmacy.state || '',
-                          postalCode: pharmacy.zipCode || '',
-                          phone: pharmacy.phone || '',
-                          distance: typeof pharmacy.distance === 'string' 
-                            ? parseFloat(pharmacy.distance.replace(' miles', '').replace(' mi', '')) 
-                            : pharmacy.distance,
-                          latitude: pharmacy.latitude,
-                          longitude: pharmacy.longitude,
-                          price: pharmacy.price
-                        }))}
+                        pharmacies={pharmacyPrices
+                          .slice((currentPage - 1) * pharmaciesPerPage, currentPage * pharmaciesPerPage)
+                          .map((pharmacy, index) => {
+                            // Calculate the actual index in the full array for proper identification
+                            const actualIndex = (currentPage - 1) * pharmaciesPerPage + index;
+                            return {
+                              pharmacyId: actualIndex,
+                              name: pharmacy.name,
+                              address: pharmacy.address || '',
+                              city: pharmacy.city || '',
+                              state: pharmacy.state || '',
+                              postalCode: pharmacy.zipCode || '',
+                              phone: pharmacy.phone || '',
+                              distance: typeof pharmacy.distance === 'string' 
+                                ? parseFloat(pharmacy.distance.replace(' miles', '').replace(' mi', '')) 
+                                : pharmacy.distance,
+                              latitude: pharmacy.latitude,
+                              longitude: pharmacy.longitude,
+                              price: pharmacy.price
+                            };
+                          })
+                        }
                         zipCode={userLocation.zipCode}
                         centerLat={userLocation.latitude}
                         centerLng={userLocation.longitude}
