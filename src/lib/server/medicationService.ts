@@ -28,10 +28,8 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Use the correct endpoint from the Postman collection
-    // Add /pricing if not already in the baseUrl
-    const pricingPath = baseUrl.includes('/pricing') ? '' : '/pricing';
-    const endpoint = `${pricingPath}/v1/drugs/names`;
+    // Use the correct endpoint from the API documentation
+    const endpoint = `/v1/drugs/${encodeURIComponent(query)}`;
     
     console.log(`Server: Searching for drugs at ${baseUrl}${endpoint}`);
     
@@ -39,18 +37,18 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     const token = await getAuthToken();
     console.log('Successfully obtained auth token for drug search');
     
-    // Make API request using POST method as specified in the Postman collection
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      method: 'POST',
+    // Create URL with optional query parameters
+    const url = new URL(`${baseUrl}${endpoint}`);
+    url.searchParams.append('count', '20'); // Optional: limit results to 20
+    url.searchParams.append('hqAlias', process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx');
+    
+    // Make API request using GET method as specified in the API docs
+    const response = await fetch(url.toString(), {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify({
-        hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
-        prefixText: query
-      }),
       cache: 'no-store' // Ensure we don't use cached responses
     });
 
