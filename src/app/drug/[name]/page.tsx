@@ -56,50 +56,70 @@ export default function DrugPage({ params }: Props) {
     setIsLoadingPharmacies(true);
     
     try {
+      console.log("Attempting to get user location...");
+      
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            const { latitude, longitude } = position.coords;
-            console.log(`Got user location: ${latitude}, ${longitude}`);
+        // Add a timeout for geolocation request
+        const locationPromise = new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            (error) => {
+              console.error('Geolocation error:', error.code, error.message);
+              reject(error);
+            },
+            { 
+              enableHighAccuracy: true, 
+              timeout: 10000, 
+              maximumAge: 0 
+            }
+          );
+        });
+        
+        try {
+          const position = await locationPromise as GeolocationPosition;
+          const { latitude, longitude } = position.coords;
+          console.log(`Got user location: ${latitude}, ${longitude}`);
+          
+          // Try to get ZIP code from coordinates
+          try {
+            const response = await fetch(
+              `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+            );
             
-            // Try to get ZIP code from coordinates
-            try {
-              const response = await fetch(
-                `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-              );
+            const data = await response.json();
+            console.log("Geocoding API response:", data);
+            
+            if (data.results && data.results.length > 0) {
+              let zipCode = userLocation.zipCode; // Default
               
-              const data = await response.json();
-              
-              if (data.results && data.results.length > 0) {
-                let zipCode = userLocation.zipCode; // Default
-                
-                // Look for postal code in the address components
-                for (const result of data.results) {
-                  for (const component of result.address_components) {
-                    if (component.types.includes('postal_code')) {
-                      zipCode = component.short_name;
-                      break;
-                    }
+              // Look for postal code in the address components
+              for (const result of data.results) {
+                for (const component of result.address_components) {
+                  if (component.types.includes('postal_code')) {
+                    zipCode = component.short_name;
+                    break;
                   }
-                  if (zipCode !== userLocation.zipCode) break;
                 }
-                
-                console.log(`Resolved ZIP code from coordinates: ${zipCode}`);
-                
-                // Update user location with coordinates and ZIP code
-                setUserLocation({
-                  latitude,
-                  longitude,
-                  zipCode
-                });
-                
-                // Fetch pharmacy prices with the new location
-                await fetchPharmacyPrices(latitude, longitude, searchRadius);
+                if (zipCode !== userLocation.zipCode) break;
               }
-            } catch (error) {
-              console.error('Error getting ZIP code from coordinates:', error);
               
-              // Update user location with just the coordinates
+              console.log(`Resolved ZIP code from coordinates: ${zipCode}`);
+              
+              // Update user location with coordinates and ZIP code
+              const newLocation = {
+                latitude,
+                longitude,
+                zipCode
+              };
+              
+              console.log("Setting new user location:", newLocation);
+              setUserLocation(newLocation);
+              
+              // Fetch pharmacy prices with the new location
+              await fetchPharmacyPrices(latitude, longitude, searchRadius);
+            } else {
+              console.warn("No results from geocoding API");
+              // Fallback to using coordinates only
               setUserLocation({
                 latitude,
                 longitude,
@@ -109,22 +129,48 @@ export default function DrugPage({ params }: Props) {
               // Fetch pharmacy prices with the new location
               await fetchPharmacyPrices(latitude, longitude, searchRadius);
             }
-          },
-          (error) => {
-            console.error('Error getting user location:', error);
-            setError('Could not get your location. Please check your browser settings.');
-            setIsLoadingPharmacies(false);
+          } catch (error) {
+            console.error('Error getting ZIP code from coordinates:', error);
+            
+            // Fallback to using coordinates only
+            const newLocation = {
+              latitude,
+              longitude,
+              zipCode: userLocation.zipCode // Keep the existing ZIP code
+            };
+            
+            console.log("Setting fallback user location:", newLocation);
+            setUserLocation(newLocation);
+            
+            // Fetch pharmacy prices with the new location
+            await fetchPharmacyPrices(latitude, longitude, searchRadius);
           }
-        );
+        } catch (error) {
+          console.error('Geolocation permission denied or timeout:', error);
+          setError('Could not get your location. Please check your browser settings or enter your ZIP code manually.');
+          setIsLoadingPharmacies(false);
+          
+          // Use default location
+          console.log("Using default location");
+          await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+        }
       } else {
         console.error('Geolocation is not supported by this browser.');
-        setError('Geolocation is not supported by your browser.');
+        setError('Geolocation is not supported by your browser. Please enter your ZIP code manually.');
         setIsLoadingPharmacies(false);
+        
+        // Use default location
+        console.log("Using default location - geolocation not supported");
+        await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
       }
     } catch (error) {
       console.error('Error in getUserLocation:', error);
-      setError('An error occurred while trying to get your location.');
+      setError('An error occurred while trying to get your location. Please enter your ZIP code manually.');
       setIsLoadingPharmacies(false);
+      
+      // Use default location
+      console.log("Using default location due to error");
+      await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
     }
   };
 
@@ -383,14 +429,21 @@ export default function DrugPage({ params }: Props) {
       
       console.log(`Geocoded ${newZipCode} to coordinates:`, newLocation);
       
-      // Update user location
-      setUserLocation(newLocation);
+      // Update user location with the complete object
+      console.log("Setting new user location from ZIP code:", newLocation);
+      setUserLocation({
+        latitude: newLocation.latitude,
+        longitude: newLocation.longitude,
+        zipCode: newLocation.zipCode
+      });
       
       // Fetch prices with new location
+      console.log(`Fetching pharmacy prices with new location: ${newLocation.latitude}, ${newLocation.longitude}, ${searchRadius}`);
       await fetchPharmacyPrices(newLocation.latitude, newLocation.longitude, searchRadius);
     } catch (error) {
       console.error("Error updating location:", error);
       setError("Failed to update location. Please try a valid US ZIP code.");
+      setIsLoadingPharmacies(false);
     } finally {
       setIsLoadingPharmacies(false);
     }

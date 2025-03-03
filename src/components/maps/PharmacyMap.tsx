@@ -429,6 +429,14 @@ export default function PharmacyMap({
     setLoading(true);
   };
 
+  // Update local ZIP code when prop changes
+  useEffect(() => {
+    if (zipCode !== localZipCode) {
+      console.log(`ZIP code prop changed from ${localZipCode} to ${zipCode}`);
+      setLocalZipCode(zipCode);
+    }
+  }, [zipCode]);
+
   // Handle ZIP code change
   const handleZipCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -456,14 +464,6 @@ export default function PharmacyMap({
       onRadiusChange(radius);
     }
   };
-
-  // Update local ZIP code when prop changes
-  useEffect(() => {
-    if (zipCode !== localZipCode) {
-      console.log(`ZIP code prop changed from ${localZipCode} to ${zipCode}`);
-      setLocalZipCode(zipCode);
-    }
-  }, [zipCode, localZipCode]);
 
   // Update local radius when prop changes
   useEffect(() => {
