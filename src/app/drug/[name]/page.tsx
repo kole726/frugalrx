@@ -638,38 +638,6 @@ export default function DrugPage({ params }: Props) {
             </div>
           </motion.div>
 
-          {/* Unified Filter Controls */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="bg-white rounded-xl shadow-lg p-4 mb-6 border border-gray-100"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center">
-                <span className="text-gray-700 font-medium mr-2">Search Radius:</span>
-                <select 
-                  className="p-2 border border-gray-300 rounded-md bg-white hover:border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-colors"
-                  value={searchRadius}
-                  onChange={handleSearchRadiusChange}
-                  disabled={isLoadingPharmacies}
-                >
-                  <option value="5">5 miles</option>
-                  <option value="10">10 miles</option>
-                  <option value="25">25 miles</option>
-                  <option value="50">50 miles</option>
-                </select>
-              </div>
-              
-              {isLoadingPharmacies && (
-                <div className="flex items-center text-emerald-600">
-                  <div className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent mr-2"></div>
-                  <span className="text-sm">Loading pharmacy prices...</span>
-                </div>
-              )}
-            </div>
-          </motion.div>
-
           {/* Main Content - Prices and Map */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -679,7 +647,7 @@ export default function DrugPage({ params }: Props) {
           >
             {showPrices && (
               <>
-                <div className="lg:col-span-4 order-2 lg:order-1">
+                <div className="lg:col-span-6 order-2 lg:order-1">
                   <div className="bg-white rounded-xl shadow-lg p-5 mb-4 border border-gray-100 h-full">
                     <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
                       <div>
@@ -795,12 +763,34 @@ export default function DrugPage({ params }: Props) {
                   </div>
                 </div>
                 
-                <div className="lg:col-span-8 order-1 lg:order-2">
+                <div className="lg:col-span-6 order-1 lg:order-2">
                   <div className="bg-white rounded-xl shadow-lg p-5 h-full border border-gray-100">
                     <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
                       <div>
                         <h3 className="text-xl font-bold text-gray-800">Pharmacy Map</h3>
                         <p className="text-sm text-gray-500 mt-1">Find pharmacies near you</p>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center">
+                          <span className="text-sm text-gray-600 mr-2">Radius:</span>
+                          <select 
+                            className="text-sm border border-gray-200 rounded-md p-2 bg-white hover:border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-colors"
+                            value={searchRadius}
+                            onChange={handleSearchRadiusChange}
+                            disabled={isLoadingPharmacies}
+                          >
+                            <option value="5">5 miles</option>
+                            <option value="10">10 miles</option>
+                            <option value="25">25 miles</option>
+                            <option value="50">50 miles</option>
+                          </select>
+                        </div>
+                        {isLoadingPharmacies && (
+                          <div className="flex items-center text-emerald-600">
+                            <div className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent mr-2"></div>
+                            <span className="text-sm">Loading...</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     
