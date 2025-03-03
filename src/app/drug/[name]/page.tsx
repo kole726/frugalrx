@@ -586,58 +586,6 @@ export default function DrugPage({ params }: Props) {
             </div>
           </motion.div>
 
-          {/* Drug Information Section */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100"
-          >
-            {/* Drug information content */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-800">{drugInfo?.brandName || decodeURIComponent(params.name)}</h2>
-                {drugInfo?.genericName && drugInfo.genericName !== drugInfo.brandName && (
-                  <p className="text-gray-600 mt-1">{drugInfo.genericName}</p>
-                )}
-              </div>
-              <div className="mt-4 md:mt-0 flex items-center">
-                <div className="flex items-center bg-emerald-50 px-4 py-2 rounded-lg">
-                  <span className="text-emerald-700 font-semibold mr-2">Your location:</span>
-                  <span className="font-medium">{userLocation.zipCode || 'Location not set'}</span>
-                </div>
-                <button 
-                  onClick={getUserLocation}
-                  className="ml-2 p-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-full transition-colors"
-                  aria-label="Update location"
-                  title="Update location"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            
-            {/* Drug details */}
-            <div className="prose max-w-none">
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Description</h3>
-              <p className="mb-4 text-gray-700">{drugInfo?.description || 'No description available.'}</p>
-              
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Side Effects</h3>
-              <p className="mb-4 text-gray-700">{drugInfo?.sideEffects || 'No side effects information available.'}</p>
-              
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Dosage</h3>
-              <p className="mb-4 text-gray-700">{drugInfo?.dosage || 'No dosage information available.'}</p>
-              
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Storage</h3>
-              <p className="mb-4 text-gray-700">{drugInfo?.storage || 'No storage information available.'}</p>
-              
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Contraindications</h3>
-              <p className="mb-4 text-gray-700">{drugInfo?.contraindications || 'No contraindication information available.'}</p>
-            </div>
-          </motion.div>
-
           {/* Main Content - Prices and Map */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
