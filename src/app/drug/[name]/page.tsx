@@ -642,16 +642,21 @@ export default function DrugPage({ params }: Props) {
                           <p className="text-gray-500 mt-2">Try increasing your search radius or changing your location.</p>
                         </div>
                       ) : (
-                        pharmacyPrices.map((pharmacy, index) => {
-                          // Determine if this is the best price
-                          const isBestPrice = index === 0 && selectedSort === 'PRICE';
-                          // Determine if this is the closest pharmacy
-                          const isClosest = index === 0 && selectedSort === 'DISTANCE';
+                        // Get current pharmacies for pagination
+                        pharmacyPrices
+                          .slice((currentPage - 1) * pharmaciesPerPage, currentPage * pharmaciesPerPage)
+                          .map((pharmacy, index) => {
+                            // Calculate the actual index in the full array for badges and numbering
+                            const actualIndex = (currentPage - 1) * pharmaciesPerPage + index;
+                            // Determine if this is the best price
+                            const isBestPrice = actualIndex === 0 && selectedSort === 'PRICE';
+                            // Determine if this is the closest pharmacy
+                            const isClosest = actualIndex === 0 && selectedSort === 'DISTANCE';
                           
                           return (
                             <div 
-                              key={`${pharmacy.name}-${index}`}
-                              data-pharmacy-id={index}
+                              key={`${pharmacy.name}-${actualIndex}`}
+                              data-pharmacy-id={actualIndex}
                               className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
                                 selectedPharmacy === pharmacy 
                                   ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
@@ -663,7 +668,7 @@ export default function DrugPage({ params }: Props) {
                                 <div className="flex-1">
                                   <div className="flex items-center">
                                     <span className="flex items-center justify-center w-6 h-6 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium mr-2">
-                                      {index + 1 + (currentPage - 1) * pharmaciesPerPage}
+                                      {actualIndex + 1}
                                     </span>
                                     <h4 className="font-semibold text-gray-800">{pharmacy.name}</h4>
                                     {isBestPrice && (
@@ -708,6 +713,43 @@ export default function DrugPage({ params }: Props) {
                         })
                       )}
                     </div>
+                    
+                    {/* Pagination Controls */}
+                    {!isLoadingPharmacies && !error && pharmacyPrices.length > 0 && (
+                      <div className="flex justify-center items-center mt-6 space-x-2">
+                        <button
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className={`px-3 py-1 rounded-md ${
+                            currentPage === 1
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                          }`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        
+                        <div className="text-sm text-gray-600">
+                          Page {currentPage} of {totalPages}
+                        </div>
+                        
+                        <button
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className={`px-3 py-1 rounded-md ${
+                            currentPage === totalPages
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                          }`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
