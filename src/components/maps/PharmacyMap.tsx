@@ -213,164 +213,139 @@ export default function PharmacyMap({
         bounds.extend({ lat: centerLat, lng: centerLng });
       }
       
-      // Determine which pharmacy has the best price and which is closest
-      let bestPriceIndex = -1;
-      let closestIndex = -1;
-      
-      if (pharmacies.length > 0) {
-        // Find the pharmacy with the lowest price
-        let lowestPrice = Number.MAX_VALUE;
-        pharmacies.forEach((pharmacy, idx) => {
-          if (pharmacy.price && pharmacy.price < lowestPrice) {
-            lowestPrice = pharmacy.price;
-            bestPriceIndex = idx;
-          }
-        });
-        
-        // Find the closest pharmacy
-        let shortestDistance = Number.MAX_VALUE;
-        pharmacies.forEach((pharmacy, idx) => {
-          if (pharmacy.distance < shortestDistance) {
-            shortestDistance = pharmacy.distance;
-            closestIndex = idx;
-          }
-        });
-      }
-      
-      // Create markers for each pharmacy
+      // Create new markers
       const newMarkers = pharmacies.map((pharmacy, index) => {
-        try {
-          // Check if this marker is selected
-          const isSelected = pharmacy.pharmacyId === selectedMarker;
-          const isBestPrice = index === bestPriceIndex;
-          const isClosest = index === closestIndex;
-          
-          // Create bounds to fit all markers
-          if (pharmacy.latitude && pharmacy.longitude) {
-            bounds.extend({
-              lat: pharmacy.latitude,
-              lng: pharmacy.longitude
-            });
-          }
-          
-          // Create the marker
-          const marker = new window.google.maps.Marker({
-            position: {
-              lat: pharmacy.latitude || 0,
-              lng: pharmacy.longitude || 0
-            },
-            map,
-            title: pharmacy.name,
-            icon: createPharmacyMarker(pharmacy.pharmacyId, isSelected, isBestPrice, isClosest),
-            label: {
-              text: (pharmacy.pharmacyId + 1).toString(),
-              color: 'white',
-              fontSize: '12px',
-              fontWeight: 'bold'
-            },
-            animation: window.google.maps.Animation.DROP,
-            zIndex: isSelected ? 999 : (isBestPrice || isClosest ? 100 : 1) // Bring important markers to front
-          });
-          
-          // Create info window with pharmacy details
-          const infoWindow = new window.google.maps.InfoWindow({
-            content: `
-              <div class="p-4 max-w-[300px]">
-                <div class="flex items-start justify-between">
-                  <h3 class="font-semibold text-emerald-700 text-lg">${pharmacy.name}</h3>
-                  ${pharmacy.price ? `
-                    <div class="bg-emerald-50 px-3 py-1 rounded-lg">
-                      <p class="text-xl font-bold text-emerald-600">$${pharmacy.price.toFixed(2)}</p>
-                    </div>
-                  ` : ''}
-                </div>
-                
-                <div class="mt-2 flex items-center text-sm text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span>${pharmacy.distance.toFixed(1)} miles away</span>
-                </div>
-                
-                <div class="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
-                  <p class="text-gray-700">${pharmacy.address}, ${pharmacy.city}, ${pharmacy.state} ${pharmacy.postalCode}</p>
-                  ${pharmacy.phone ? `
-                    <p class="text-sm text-emerald-600 mt-1 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                      </svg>
-                      <a href="tel:${pharmacy.phone}" class="hover:underline">${formatPhoneNumber(pharmacy.phone)}</a>
-                    </p>
-                  ` : ''}
-                </div>
-                
-                <div class="mt-3 flex flex-wrap gap-1">
-                  ${pharmacy.open24H ? `
-                    <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Open 24 Hours
-                    </span>
-                  ` : ''}
-                  ${pharmacy.driveUpWindow ? `
-                    <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      Drive-Up Window
-                    </span>
-                  ` : ''}
-                  ${pharmacy.handicapAccess ? `
-                    <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                      </svg>
-                      Handicap Access
-                    </span>
-                  ` : ''}
-                </div>
-                
-                <button class="mt-4 bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors w-full text-center font-medium shadow-sm" id="get-coupon-btn-${pharmacy.pharmacyId}">
-                  Get Free Coupon
-                </button>
-              </div>
-            `
-          });
-          
-          // Add click listener
-          marker.addListener('click', () => {
-            // Close any active info window
-            if (activeInfoWindow) {
-              activeInfoWindow.close();
-            }
-            
-            // Open this info window
-            infoWindow.open(map, marker);
-            setActiveInfoWindow(infoWindow);
-            
-            // Update selected marker
-            setSelectedMarker(pharmacy.pharmacyId);
-            
-            // Add event listener for the "Get Free Coupon" button
-            window.google.maps.event.addListenerOnce(infoWindow, 'domready', () => {
-              const button = document.getElementById(`get-coupon-btn-${pharmacy.pharmacyId}`);
-              if (button) {
-                button.addEventListener('click', () => {
-                  if (onMarkerClick) {
-                    onMarkerClick(pharmacy);
-                  }
-                });
-              }
-            });
-          });
-          
-          return marker;
-        } catch (err) {
-          console.error('Error creating marker:', err);
+        // Use pharmacy coordinates if available, otherwise calculate from address
+        const position = { 
+          lat: pharmacy.latitude || 0, 
+          lng: pharmacy.longitude || 0 
+        };
+        
+        // Skip if we don't have valid coordinates
+        if (!position.lat || !position.lng) {
+          console.log("Skipping pharmacy with invalid coordinates:", pharmacy.name);
           return null;
         }
+        
+        console.log(`Creating marker for ${pharmacy.name} at ${position.lat}, ${position.lng}`);
+        
+        // Add position to bounds
+        bounds.extend(position);
+        
+        // Check if this marker is selected
+        const isSelected = selectedMarker === pharmacy.pharmacyId;
+        
+        // Create marker with custom icon
+        const marker = new window.google.maps.Marker({
+          position,
+          map: map,
+          title: pharmacy.name,
+          icon: createPharmacyMarker(index, isSelected),
+          label: {
+            text: (index + 1).toString(),
+            color: 'white',
+            fontWeight: 'bold',
+            fontSize: '14px'
+          },
+          animation: window.google.maps.Animation.DROP,
+          zIndex: isSelected ? 999 : 1 // Bring selected marker to front
+        });
+        
+        // Create info window with pharmacy details
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: `
+            <div class="p-4 max-w-[300px]">
+              <div class="flex items-start justify-between">
+                <h3 class="font-semibold text-emerald-700 text-lg">${pharmacy.name}</h3>
+                ${pharmacy.price ? `
+                  <div class="bg-emerald-50 px-3 py-1 rounded-lg">
+                    <p class="text-xl font-bold text-emerald-600">$${pharmacy.price.toFixed(2)}</p>
+                  </div>
+                ` : ''}
+              </div>
+              
+              <div class="mt-2 flex items-center text-sm text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>${pharmacy.distance.toFixed(1)} miles away</span>
+              </div>
+              
+              <div class="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                <p class="text-gray-700">${pharmacy.address}, ${pharmacy.city}, ${pharmacy.state} ${pharmacy.postalCode}</p>
+                ${pharmacy.phone ? `
+                  <p class="text-sm text-emerald-600 mt-1 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <a href="tel:${pharmacy.phone}" class="hover:underline">${formatPhoneNumber(pharmacy.phone)}</a>
+                  </p>
+                ` : ''}
+              </div>
+              
+              <div class="mt-3 flex flex-wrap gap-1">
+                ${pharmacy.open24H ? `
+                  <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Open 24 Hours
+                  </span>
+                ` : ''}
+                ${pharmacy.driveUpWindow ? `
+                  <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Drive-Up Window
+                  </span>
+                ` : ''}
+                ${pharmacy.handicapAccess ? `
+                  <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    Handicap Access
+                  </span>
+                ` : ''}
+              </div>
+              
+              <button class="mt-4 bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors w-full text-center font-medium shadow-sm" id="get-coupon-btn-${pharmacy.pharmacyId}">
+                Get Free Coupon
+              </button>
+            </div>
+          `
+        });
+        
+        // Add click listener
+        marker.addListener('click', () => {
+          // Close any active info window
+          if (activeInfoWindow) {
+            activeInfoWindow.close();
+          }
+          
+          // Open this info window
+          infoWindow.open(map, marker);
+          setActiveInfoWindow(infoWindow);
+          
+          // Update selected marker
+          setSelectedMarker(pharmacy.pharmacyId);
+          
+          // Add event listener for the "Get Free Coupon" button
+          window.google.maps.event.addListenerOnce(infoWindow, 'domready', () => {
+            const button = document.getElementById(`get-coupon-btn-${pharmacy.pharmacyId}`);
+            if (button) {
+              button.addEventListener('click', () => {
+                if (onMarkerClick) {
+                  onMarkerClick(pharmacy);
+                }
+              });
+            }
+          });
+        });
+        
+        return marker;
       }).filter(Boolean) as GoogleMarker[];
       
       console.log("Created", newMarkers.length, "markers");
@@ -402,7 +377,7 @@ export default function PharmacyMap({
       if (pharmacy.pharmacyId === selectedMarker) {
         // Update the marker icon to show it's selected
         if (markers[index]) {
-          markers[index].setIcon(createPharmacyMarker(pharmacy.pharmacyId, true));
+          markers[index].setIcon(createPharmacyMarker(index, true));
           markers[index].setZIndex(999); // Bring to front
           
           // Center the map on this marker
@@ -415,7 +390,7 @@ export default function PharmacyMap({
       } else {
         // Reset other markers
         if (markers[index]) {
-          markers[index].setIcon(createPharmacyMarker(pharmacy.pharmacyId, false));
+          markers[index].setIcon(createPharmacyMarker(index, false));
           markers[index].setZIndex(1);
         }
       }
@@ -428,23 +403,6 @@ export default function PharmacyMap({
     setError(null);
     setLoading(true);
   };
-
-  // Update local ZIP code when prop changes
-  useEffect(() => {
-    if (zipCode !== localZipCode) {
-      console.log(`ZIP code prop changed from ${localZipCode} to ${zipCode}`);
-      setLocalZipCode(zipCode);
-    }
-  }, [zipCode]);
-
-  // Reset loading state when pharmacies change
-  useEffect(() => {
-    // If we have pharmacies data and loading is true, reset loading state
-    if (pharmacies.length > 0 && loading) {
-      console.log("Pharmacies data received, resetting loading state");
-      setLoading(false);
-    }
-  }, [pharmacies, loading]);
 
   // Handle ZIP code change
   const handleZipCodeSubmit = (e: React.FormEvent) => {
@@ -460,25 +418,7 @@ export default function PharmacyMap({
       console.log(`Submitting ZIP code update: ${localZipCode}`);
       setLoading(true); // Show loading state while updating
       setError(null); // Clear any previous errors
-      
-      // Add a small delay to ensure the loading state is visible
-      setTimeout(() => {
-        try {
-          onZipCodeChange(localZipCode);
-          
-          // Set a timeout to reset loading state if it doesn't happen automatically
-          setTimeout(() => {
-            if (loading) {
-              console.log("Manual submit: Auto-reset loading state after timeout");
-              setLoading(false);
-            }
-          }, 10000); // 10 second safety timeout
-        } catch (err) {
-          console.error("Error updating ZIP code:", err);
-          setError("Failed to update location. Please try again.");
-          setLoading(false);
-        }
-      }, 100);
+      onZipCodeChange(localZipCode);
     }
   };
 
@@ -491,6 +431,14 @@ export default function PharmacyMap({
       onRadiusChange(radius);
     }
   };
+
+  // Update local ZIP code when prop changes
+  useEffect(() => {
+    if (zipCode !== localZipCode) {
+      console.log(`ZIP code prop changed from ${localZipCode} to ${zipCode}`);
+      setLocalZipCode(zipCode);
+    }
+  }, [zipCode, localZipCode]);
 
   // Update local radius when prop changes
   useEffect(() => {
@@ -518,55 +466,16 @@ export default function PharmacyMap({
               className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#006142] focus:border-[#006142] block w-full pl-10 p-2.5"
               placeholder="ZIP Code"
               value={localZipCode}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '').slice(0, 5);
-                setLocalZipCode(value);
-                
-                // Auto-submit when 5 digits are entered
-                if (value.length === 5 && /^\d{5}$/.test(value)) {
-                  // Small delay to allow state to update
-                  setTimeout(() => {
-                    if (onZipCodeChange) {
-                      console.log(`Auto-submitting ZIP code: ${value}`);
-                      setLoading(true);
-                      setError(null);
-                      try {
-                        onZipCodeChange(value);
-                        // Set a timeout to reset loading state if it doesn't happen automatically
-                        setTimeout(() => {
-                          if (loading) {
-                            console.log("Auto-reset loading state after timeout");
-                            setLoading(false);
-                          }
-                        }, 10000); // 10 second safety timeout
-                      } catch (err) {
-                        console.error("Error in auto-submit:", err);
-                        setError("Failed to update location. Please try again.");
-                        setLoading(false);
-                      }
-                    }
-                  }, 500);
-                }
-              }}
+              onChange={(e) => setLocalZipCode(e.target.value)}
               pattern="[0-9]{5}"
               maxLength={5}
-              aria-label="Enter your ZIP code"
             />
           </div>
           <button
             type="submit"
-            className={`ml-2 text-white bg-[#006142] hover:bg-[#22A307] focus:ring-4 focus:outline-none focus:ring-[#EFFDF6] font-medium rounded-lg text-sm px-4 py-2.5 ${loading ? 'opacity-75 cursor-not-allowed' : ''}`}
-            disabled={loading}
+            className="ml-2 text-white bg-[#006142] hover:bg-[#22A307] focus:ring-4 focus:outline-none focus:ring-[#EFFDF6] font-medium rounded-lg text-sm px-4 py-2.5"
           >
-            {loading ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Updating...
-              </span>
-            ) : "Update"}
+            Update
           </button>
         </form>
         
@@ -587,7 +496,7 @@ export default function PharmacyMap({
       </div>
       
       {/* Map Container */}
-      <div className="relative flex-grow h-full">
+      <div className="relative flex-grow">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#006142]"></div>
@@ -620,7 +529,6 @@ export default function PharmacyMap({
           ref={mapRef} 
           className="w-full h-full min-h-[400px]"
           aria-label={`Map showing pharmacies near ${zipCode}`}
-          style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
         />
       </div>
     </div>
