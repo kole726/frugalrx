@@ -696,12 +696,12 @@ export default function DrugPage({ params }: Props) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.6 }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+            className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-full"
           >
             {showPrices && (
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="md:col-span-1 order-2 md:order-1">
-                  <div className="bg-white rounded-xl shadow-lg p-5 mb-4 border border-gray-100">
+              <>
+                <div className="lg:col-span-4 order-2 lg:order-1">
+                  <div className="bg-white rounded-xl shadow-lg p-5 mb-4 border border-gray-100 h-full">
                     <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
                       <div>
                         <h3 className="text-xl font-bold text-gray-800">Pharmacy Prices</h3>
@@ -756,6 +756,7 @@ export default function DrugPage({ params }: Props) {
                           return (
                             <div 
                               key={`${pharmacy.name}-${index}`}
+                              data-pharmacy-id={index}
                               className={`border rounded-lg p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
                                 selectedPharmacy === pharmacy 
                                   ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
@@ -783,7 +784,7 @@ export default function DrugPage({ params }: Props) {
                                   </div>
                                   <div className="flex items-center mt-1 text-sm text-gray-600">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1 1 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                     </svg>
                                     <span>{pharmacy.distance}</span>
@@ -814,7 +815,7 @@ export default function DrugPage({ params }: Props) {
                     </div>
                     
                     {/* Pagination */}
-                    {totalPages > 1 && !isLoadingPharmacies && (
+                    {Math.ceil(pharmacyPrices.length / pharmaciesPerPage) > 1 && !isLoadingPharmacies && (
                       <div className="flex justify-center mt-6">
                         <nav className="flex items-center space-x-2">
                           <button
@@ -832,7 +833,7 @@ export default function DrugPage({ params }: Props) {
                             </svg>
                           </button>
                           
-                          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                          {Array.from({ length: Math.ceil(pharmacyPrices.length / pharmaciesPerPage) }, (_, i) => i + 1).map(page => (
                             <button
                               key={page}
                               onClick={() => handlePageChange(page)}
@@ -850,9 +851,9 @@ export default function DrugPage({ params }: Props) {
                           
                           <button
                             onClick={() => handlePageChange(currentPage + 1)}
-                            disabled={currentPage === totalPages}
+                            disabled={currentPage === Math.ceil(pharmacyPrices.length / pharmaciesPerPage)}
                             className={`flex items-center justify-center w-10 h-10 rounded-md border transition-all duration-200 ${
-                              currentPage === totalPages 
+                              currentPage === Math.ceil(pharmacyPrices.length / pharmaciesPerPage) 
                                 ? 'text-gray-300 border-gray-200 cursor-not-allowed' 
                                 : 'text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300'
                             }`}
@@ -868,7 +869,7 @@ export default function DrugPage({ params }: Props) {
                   </div>
                 </div>
                 
-                <div className="md:col-span-2 order-1 md:order-2">
+                <div className="lg:col-span-8 order-1 lg:order-2">
                   <div className="bg-white rounded-xl shadow-lg p-5 h-full border border-gray-100">
                     <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
                       <div>
@@ -908,11 +909,12 @@ export default function DrugPage({ params }: Props) {
                         state: pharmacy.state || '',
                         postalCode: pharmacy.zipCode || '',
                         phone: pharmacy.phone || '',
-                        distance: parseFloat(pharmacy.distance.replace(' miles', '').replace(' mi', '')),
+                        distance: typeof pharmacy.distance === 'string' 
+                          ? parseFloat(pharmacy.distance.replace(' miles', '').replace(' mi', '')) 
+                          : pharmacy.distance,
                         latitude: pharmacy.latitude,
                         longitude: pharmacy.longitude,
-                        price: pharmacy.price,
-                        open24H: pharmacy.open24H
+                        price: pharmacy.price
                       }))}
                       zipCode={userLocation.zipCode}
                       centerLat={userLocation.latitude}
@@ -921,34 +923,35 @@ export default function DrugPage({ params }: Props) {
                         const matchingPharmacy = pharmacyPrices.find((p, idx) => idx === pharmacy.pharmacyId);
                         if (matchingPharmacy) {
                           setSelectedPharmacy(matchingPharmacy);
-                          
-                          // Calculate which page this pharmacy is on
+                          // Scroll to the pharmacy in the list
                           const pharmacyIndex = pharmacyPrices.indexOf(matchingPharmacy);
                           const page = Math.floor(pharmacyIndex / pharmaciesPerPage) + 1;
-                          
-                          // Change to that page if needed
                           if (page !== currentPage) {
                             setCurrentPage(page);
                           }
-                          
-                          // Scroll to the pharmacy in the list
+                          // Wait for the DOM to update with the new page
                           setTimeout(() => {
-                            const pharmacyElements = pharmacyListRef.current?.querySelectorAll('.border.rounded-lg');
-                            if (pharmacyElements) {
-                              const elementIndex = pharmacyIndex % pharmaciesPerPage;
-                              const element = pharmacyElements[elementIndex];
-                              element?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            const pharmacyElements = document.querySelectorAll('[data-pharmacy-id]');
+                            const targetElement = Array.from(pharmacyElements).find(
+                              (el) => el.getAttribute('data-pharmacy-id') === String(pharmacy.pharmacyId)
+                            );
+                            if (targetElement && pharmacyListRef.current) {
+                              targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                             }
                           }, 100);
                         }
                       }}
                       onZipCodeChange={handleZipCodeChange}
-                      onRadiusChange={handleRadiusChange}
-                      searchRadius={searchRadius}
+                      searchRadius={Number(searchRadius)}
+                      onRadiusChange={(radius) => {
+                        // Convert the radius to a string and update the state
+                        const newRadius = radius.toString();
+                        handleSearchRadiusChange({ target: { value: newRadius } } as React.ChangeEvent<HTMLSelectElement>);
+                      }}
                     />
                   </div>
                 </div>
-              </div>
+              </>
             )}
           </motion.div>
 
