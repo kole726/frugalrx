@@ -678,7 +678,7 @@ export default function DrugPage({ params }: Props) {
                     </div>
                     
                     {/* Pharmacy list */}
-                    <div ref={pharmacyListRef} className="space-y-4 max-h-[600px] overflow-y-auto">
+                    <div ref={pharmacyListRef} className="space-y-4 max-h-[500px] overflow-y-auto">
                       {isLoadingPharmacies ? (
                         <div className="text-center py-8">
                           <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
@@ -794,55 +794,57 @@ export default function DrugPage({ params }: Props) {
                       </div>
                     </div>
                     
-                    <PharmacyMap 
-                      pharmacies={pharmacyPrices.map((pharmacy, index) => ({
-                        pharmacyId: index,
-                        name: pharmacy.name,
-                        address: pharmacy.address || '',
-                        city: pharmacy.city || '',
-                        state: pharmacy.state || '',
-                        postalCode: pharmacy.zipCode || '',
-                        phone: pharmacy.phone || '',
-                        distance: typeof pharmacy.distance === 'string' 
-                          ? parseFloat(pharmacy.distance.replace(' miles', '').replace(' mi', '')) 
-                          : pharmacy.distance,
-                        latitude: pharmacy.latitude,
-                        longitude: pharmacy.longitude,
-                        price: pharmacy.price
-                      }))}
-                      zipCode={userLocation.zipCode}
-                      centerLat={userLocation.latitude}
-                      centerLng={userLocation.longitude}
-                      onMarkerClick={(pharmacy) => {
-                        const matchingPharmacy = pharmacyPrices.find((p, idx) => idx === pharmacy.pharmacyId);
-                        if (matchingPharmacy) {
-                          setSelectedPharmacy(matchingPharmacy);
-                          // Scroll to the pharmacy in the list
-                          const pharmacyIndex = pharmacyPrices.indexOf(matchingPharmacy);
-                          const page = Math.floor(pharmacyIndex / pharmaciesPerPage) + 1;
-                          if (page !== currentPage) {
-                            setCurrentPage(page);
-                          }
-                          // Wait for the DOM to update with the new page
-                          setTimeout(() => {
-                            const pharmacyElements = document.querySelectorAll('[data-pharmacy-id]');
-                            const targetElement = Array.from(pharmacyElements).find(
-                              (el) => el.getAttribute('data-pharmacy-id') === String(pharmacy.pharmacyId)
-                            );
-                            if (targetElement && pharmacyListRef.current) {
-                              targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    <div className="h-[600px]">
+                      <PharmacyMap 
+                        pharmacies={pharmacyPrices.map((pharmacy, index) => ({
+                          pharmacyId: index,
+                          name: pharmacy.name,
+                          address: pharmacy.address || '',
+                          city: pharmacy.city || '',
+                          state: pharmacy.state || '',
+                          postalCode: pharmacy.zipCode || '',
+                          phone: pharmacy.phone || '',
+                          distance: typeof pharmacy.distance === 'string' 
+                            ? parseFloat(pharmacy.distance.replace(' miles', '').replace(' mi', '')) 
+                            : pharmacy.distance,
+                          latitude: pharmacy.latitude,
+                          longitude: pharmacy.longitude,
+                          price: pharmacy.price
+                        }))}
+                        zipCode={userLocation.zipCode}
+                        centerLat={userLocation.latitude}
+                        centerLng={userLocation.longitude}
+                        onMarkerClick={(pharmacy) => {
+                          const matchingPharmacy = pharmacyPrices.find((p, idx) => idx === pharmacy.pharmacyId);
+                          if (matchingPharmacy) {
+                            setSelectedPharmacy(matchingPharmacy);
+                            // Scroll to the pharmacy in the list
+                            const pharmacyIndex = pharmacyPrices.indexOf(matchingPharmacy);
+                            const page = Math.floor(pharmacyIndex / pharmaciesPerPage) + 1;
+                            if (page !== currentPage) {
+                              setCurrentPage(page);
                             }
-                          }, 100);
-                        }
-                      }}
-                      onZipCodeChange={handleZipCodeChange}
-                      searchRadius={Number(searchRadius)}
-                      onRadiusChange={(radius) => {
-                        // Convert the radius to a string and update the state
-                        const newRadius = radius.toString();
-                        handleSearchRadiusChange({ target: { value: newRadius } } as React.ChangeEvent<HTMLSelectElement>);
-                      }}
-                    />
+                            // Wait for the DOM to update with the new page
+                            setTimeout(() => {
+                              const pharmacyElements = document.querySelectorAll('[data-pharmacy-id]');
+                              const targetElement = Array.from(pharmacyElements).find(
+                                (el) => el.getAttribute('data-pharmacy-id') === String(pharmacy.pharmacyId)
+                              );
+                              if (targetElement && pharmacyListRef.current) {
+                                targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                              }
+                            }, 100);
+                          }
+                        }}
+                        onZipCodeChange={handleZipCodeChange}
+                        searchRadius={Number(searchRadius)}
+                        onRadiusChange={(radius) => {
+                          // Convert the radius to a string and update the state
+                          const newRadius = radius.toString();
+                          handleSearchRadiusChange({ target: { value: newRadius } } as React.ChangeEvent<HTMLSelectElement>);
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </>

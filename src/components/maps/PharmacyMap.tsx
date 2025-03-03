@@ -521,7 +521,7 @@ export default function PharmacyMap({
       </div>
       
       {/* Map Container */}
-      <div className="relative flex-grow">
+      <div className="relative flex-grow h-full">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75 z-10">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#006142]"></div>
@@ -554,6 +554,7 @@ export default function PharmacyMap({
           ref={mapRef} 
           className="w-full h-full min-h-[400px]"
           aria-label={`Map showing pharmacies near ${zipCode}`}
+          style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
         />
       </div>
     </div>
