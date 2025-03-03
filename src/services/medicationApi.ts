@@ -32,7 +32,43 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     const normalizedQuery = query.toLowerCase();
     console.log(`Client: Searching for medications with query: "${normalizedQuery}"`);
     
-    // Use the enhanced search endpoint that combines API results with GSN mapping
+    // First try the new autocomplete endpoint that mimics America's Pharmacy
+    try {
+      const autocompleteEndpoint = `${API_BASE_URL}/drugs/autocomplete/${encodeURIComponent(normalizedQuery)}`;
+      console.log(`Using autocomplete endpoint: ${autocompleteEndpoint}`);
+      
+      const response = await fetch(autocompleteEndpoint);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Client: Received autocomplete results:`, data);
+        
+        if (Array.isArray(data) && data.length > 0) {
+          // Convert from America's Pharmacy format to our format
+          const results = data.map(item => {
+            // Extract GSN from label if present
+            const gsnMatch = item.label.match(/\(GSN: (\d+)\)/);
+            const gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
+            
+            return {
+              drugName: item.value,
+              gsn
+            };
+          });
+          
+          console.log(`Client: Found ${results.length} autocomplete results for "${normalizedQuery}"`);
+          return results;
+        }
+      }
+      
+      // If autocomplete fails or returns empty, fall back to the regular search
+      console.log(`Autocomplete failed or returned empty, falling back to regular search`);
+    } catch (autocompleteError) {
+      console.error('Error with autocomplete endpoint:', autocompleteError);
+      console.log('Falling back to regular search endpoint');
+    }
+    
+    // Fall back to the regular search endpoint
     const apiEndpoint = `${API_BASE_URL}/drugs/search?q=${encodeURIComponent(normalizedQuery)}`;
     
     console.log(`Using API endpoint: ${apiEndpoint}`);
