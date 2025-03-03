@@ -204,7 +204,7 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     }
     
     // Determine which endpoint to use based on the request
-    let endpoint = 'v1/drugprices/byName';
+    let endpoint = 'drugprices/byName';
     const body: Record<string, any> = {
       hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
       latitude: request.latitude,
@@ -214,10 +214,10 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     };
     
     if (request.gsn) {
-      endpoint = 'v1/drugprices/byGSN';
+      endpoint = 'drugprices/byGSN';
       body.gsn = request.gsn;
     } else if (request.ndcCode) {
-      endpoint = 'v1/drugprices/byNdcCode';
+      endpoint = 'drugprices/byNdcCode';
       body.ndcCode = request.ndcCode;
     } else if (request.drugName) {
       body.drugName = request.drugName;
@@ -231,18 +231,18 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
       body.quantity = request.quantity;
     }
     
-    // Use URL constructor to properly handle URL construction
-    const baseUrl = new URL(apiUrl.replace(/\/pricing\/v1\/?$/, ''));
-    const fullUrl = new URL(endpoint, baseUrl);
+    // Ensure the URL is properly formatted - remove any trailing slashes and path segments
+    const baseUrl = apiUrl.replace(/\/pricing\/v1\/?$/, '');
+    const fullEndpoint = `/pricing/v1/${endpoint}`;
     
     // Add detailed logging
     console.log(`Original API URL: ${apiUrl}`);
-    console.log(`Base URL: ${baseUrl.toString()}`);
-    console.log(`Endpoint: ${endpoint}`);
-    console.log(`Full API URL: ${fullUrl.toString()}`);
-    console.log(`Making API request to ${fullUrl.toString()} for drug prices`, body);
+    console.log(`Base URL: ${baseUrl}`);
+    console.log(`Endpoint: ${fullEndpoint}`);
+    console.log(`Full API URL: ${baseUrl}${fullEndpoint}`);
+    console.log(`Making API request to ${baseUrl}${fullEndpoint} for drug prices`, body);
     
-    const response = await fetch(fullUrl.toString(), {
+    const response = await fetch(`${baseUrl}${fullEndpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
