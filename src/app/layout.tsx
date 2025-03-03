@@ -4,6 +4,7 @@ import "./globals.css"
 import Header from "@/components/layout/Header"
 import Footer from '@/components/layout/Footer'
 import EnvironmentInfo from "@/components/debug/EnvironmentInfo"
+import { Toaster } from 'react-hot-toast'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -30,6 +31,30 @@ export default function RootLayout({
         </main>
         <Footer />
         <EnvironmentInfo />
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#EFFDF6',
+              color: '#006142',
+              border: '1px solid #006142',
+            },
+            success: {
+              style: {
+                background: '#EFFDF6',
+                border: '1px solid #22A307',
+              },
+            },
+            error: {
+              style: {
+                background: '#FFF1F0',
+                color: '#CF1322',
+                border: '1px solid #CF1322',
+              },
+            },
+          }}
+        />
       </body>
     </html>
   )

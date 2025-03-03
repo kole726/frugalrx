@@ -10,6 +10,7 @@ import Image from 'next/image'
 import CouponModal from '@/components/CouponModal'
 import MedicationAlternatives from '@/components/medications/alternatives/MedicationAlternatives'
 import { motion } from 'framer-motion'
+import { toast } from 'react-hot-toast'
 
 interface Props {
   params: {
@@ -427,6 +428,10 @@ export default function DrugPage({ params }: Props) {
       const { geocodeZipCode } = await import('@/utils/geocoding');
       const newLocation = await geocodeZipCode(newZipCode);
       
+      if (!newLocation || !newLocation.latitude || !newLocation.longitude) {
+        throw new Error(`Could not geocode ZIP code: ${newZipCode}`);
+      }
+      
       console.log(`Geocoded ${newZipCode} to coordinates:`, newLocation);
       
       // Update user location with the complete object
@@ -440,9 +445,13 @@ export default function DrugPage({ params }: Props) {
       // Fetch prices with new location
       console.log(`Fetching pharmacy prices with new location: ${newLocation.latitude}, ${newLocation.longitude}, ${searchRadius}`);
       await fetchPharmacyPrices(newLocation.latitude, newLocation.longitude, searchRadius);
+      
+      // Show success message or visual feedback
+      toast.success(`Updated location to ${newZipCode}`);
     } catch (error) {
       console.error("Error updating location:", error);
       setError("Failed to update location. Please try a valid US ZIP code.");
+      toast.error("Failed to update location. Please try a valid US ZIP code.");
       setIsLoadingPharmacies(false);
     } finally {
       setIsLoadingPharmacies(false);
