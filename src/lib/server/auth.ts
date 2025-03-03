@@ -27,12 +27,8 @@ let tokenRefreshHistory: Array<{
   error?: string;
 }> = [];
 
-// Mock token for development - Updated with kid header
-const MOCK_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImZydWdhbHJ4LWRldi1rZXktMjAyNCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkZydWdhbFJ4IERldmVsb3BlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxOTE2MjM5MDIyLCJzY29wZSI6ImNjZHMucmVhZCJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
-
-// Production token kid value
-// const PRODUCTION_KID = 'frugalrx-prod-key-2024';
-// The API is rejecting our custom kid header, so let's not add one and let the token be used as-is
+// Mock token for development - DO NOT modify this token
+const MOCK_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkZydWdhbFJ4IERldmVsb3BlciIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxOTE2MjM5MDIyLCJzY29wZSI6ImNjZHMucmVhZCJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
 /**
  * Format a timestamp for logging
@@ -78,59 +74,6 @@ function logTokenEvent(action: string, success: boolean, details?: Record<string
   }
 }
 
-// Function to add kid header to JWT token if missing
-function ensureKidHeader(token: string): string {
-  // The API is rejecting our custom kid header, so we'll return the token as-is
-  // Log that we're skipping the kid header modification
-  console.log('[AUTH] Skipping kid header modification - using token as provided by auth service');
-  return token;
-  
-  /* Original implementation commented out
-  try {
-    // Split the token into parts
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      console.error('[AUTH] Invalid token format, cannot add kid header');
-      return token;
-    }
-
-    // Decode the header
-    const headerBase64 = parts[0].replace(/-/g, '+').replace(/_/g, '/');
-    const headerJson = Buffer.from(headerBase64, 'base64').toString();
-    let header;
-    
-    try {
-      header = JSON.parse(headerJson);
-    } catch (e) {
-      console.error('[AUTH] Error parsing token header:', e);
-      return token;
-    }
-
-    // If kid already exists and matches our expected value, return the original token
-    if (header.kid === PRODUCTION_KID) {
-      return token;
-    }
-
-    // Add or update kid in the header
-    header.kid = PRODUCTION_KID;
-    console.log('[AUTH] Adding/updating kid header to token');
-    
-    // Encode the modified header
-    const modifiedHeader = Buffer.from(JSON.stringify(header))
-      .toString('base64')
-      .replace(/=/g, '')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_');
-
-    // Reconstruct the token
-    return `${modifiedHeader}.${parts[1]}.${parts[2]}`;
-  } catch (error) {
-    console.error('[AUTH] Error adding kid header to token:', error);
-    return token;
-  }
-  */
-}
-
 /**
  * Get an authentication token for API calls
  * @returns A promise that resolves to an authentication token
@@ -147,19 +90,16 @@ export async function getAuthToken(): Promise<string> {
     // Set token expiry to 1 hour from now
     tokenExpiryTime = Date.now() + 60 * 60 * 1000;
     
-    // Ensure the mock token has the kid header
-    const tokenWithKid = ensureKidHeader(MOCK_TOKEN);
-    
     cachedToken = {
       token_type: 'Bearer',
       expires_in: 3600,
-      access_token: tokenWithKid
+      access_token: MOCK_TOKEN
     };
     
     // Log token event
     logTokenEvent('Generated mock token', true, { expiryTime: tokenExpiryTime });
     
-    return tokenWithKid;
+    return MOCK_TOKEN;
   }
   
   try {
@@ -225,19 +165,14 @@ export async function getAuthToken(): Promise<string> {
       throw error;
     }
     
-    // Ensure the token has the kid header
-    const tokenWithKid = ensureKidHeader(data.access_token);
-    
-    // Log if the token was modified
-    if (tokenWithKid !== data.access_token) {
-      console.log('[AUTH] Added kid header to token');
-    }
+    // Use the token exactly as provided by the auth service
+    // DO NOT modify the token in any way
     
     // Cache the token
     cachedToken = {
       token_type: data.token_type || 'Bearer',
       expires_in: data.expires_in || 3600,
-      access_token: tokenWithKid
+      access_token: data.access_token
     };
     
     // Set expiry based on expires_in (seconds) from response, or default to 1 hour
@@ -248,33 +183,15 @@ export async function getAuthToken(): Promise<string> {
     // Log successful token retrieval
     logTokenEvent('Retrieved new token', true, { 
       expiryTime: tokenExpiryTime,
-      tokenLength: tokenWithKid.length,
-      expiresIn: data.expires_in,
-      hasKidHeader: true
+      tokenLength: data.access_token.length,
+      expiresIn: data.expires_in
     });
     
-    return tokenWithKid;
+    return data.access_token;
   } catch (error) {
     // Log the error and rethrow
-    lastTokenError = error instanceof Error ? error : new Error(String(error));
-    console.error('Error getting auth token:', error);
-    
-    // Fall back to mock token on error if we're not in production
-    if (process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
-      console.log('[AUTH] Falling back to mock token after error');
-      tokenExpiryTime = Date.now() + 60 * 60 * 1000;
-      
-      // Ensure the mock token has the kid header
-      const tokenWithKid = ensureKidHeader(MOCK_TOKEN);
-      
-      cachedToken = {
-        token_type: 'Bearer',
-        expires_in: 3600,
-        access_token: tokenWithKid
-      };
-      return tokenWithKid;
-    }
-    
+    lastTokenError = error as Error;
+    logTokenEvent('Token retrieval failed', false, {}, error as Error);
     throw error;
   }
 }
