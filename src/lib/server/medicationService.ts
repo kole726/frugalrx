@@ -231,8 +231,8 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
       body.quantity = request.quantity;
     }
     
-    // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    // Ensure the URL is properly formatted - remove any trailing slashes and path segments
+    const baseUrl = apiUrl.replace(/\/pricing\/v1\/?$/, '');
     
     console.log(`Making API request to ${baseUrl}${endpoint} for drug prices`, body);
     const response = await fetch(`${baseUrl}${endpoint}`, {
