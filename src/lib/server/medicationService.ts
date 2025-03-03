@@ -231,20 +231,18 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
       body.quantity = request.quantity;
     }
     
-    // Ensure the URL is properly formatted - remove any trailing slashes and path segments
-    const baseUrl = apiUrl.replace(/\/pricing\/v1\/?$/, '');
-    
-    // Ensure baseUrl ends with a slash and endpoint doesn't start with one
-    const formattedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    // Use URL constructor to properly handle URL construction
+    const baseUrl = new URL(apiUrl.replace(/\/pricing\/v1\/?$/, ''));
+    const fullUrl = new URL(endpoint, baseUrl);
     
     // Add detailed logging
     console.log(`Original API URL: ${apiUrl}`);
-    console.log(`Processed base URL: ${formattedBaseUrl}`);
+    console.log(`Base URL: ${baseUrl.toString()}`);
     console.log(`Endpoint: ${endpoint}`);
-    console.log(`Full API endpoint: ${formattedBaseUrl}${endpoint}`);
-    console.log(`Making API request to ${formattedBaseUrl}${endpoint} for drug prices`, body);
+    console.log(`Full API URL: ${fullUrl.toString()}`);
+    console.log(`Making API request to ${fullUrl.toString()} for drug prices`, body);
     
-    const response = await fetch(`${formattedBaseUrl}${endpoint}`, {
+    const response = await fetch(fullUrl.toString(), {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
