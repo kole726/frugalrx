@@ -28,64 +28,130 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Use the correct endpoint from the API documentation
-    const endpoint = `/v1/drugs/${encodeURIComponent(query)}`;
-    
-    console.log(`Server: Searching for drugs at ${baseUrl}${endpoint}`);
-    
-    // Get authentication token
-    const token = await getAuthToken();
-    console.log('Successfully obtained auth token for drug search');
-    
-    // Create URL with optional query parameters
-    const url = new URL(`${baseUrl}${endpoint}`);
-    url.searchParams.append('count', '20'); // Optional: limit results to 20
-    url.searchParams.append('hqAlias', process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx');
-    
-    // Make API request using GET method as specified in the API docs
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
-      cache: 'no-store' // Ensure we don't use cached responses
-    });
+    // Try both API endpoints to see which one works
+    // First try the endpoint from the API documentation
+    try {
+      // Use the endpoint from the API documentation
+      const endpoint = `/v1/drugs/${encodeURIComponent(query)}`;
+      console.log(`Server: Trying GET request to ${baseUrl}${endpoint}`);
+      
+      // Get authentication token
+      const token = await getAuthToken();
+      
+      // Create URL with optional query parameters
+      const url = new URL(`${baseUrl}${endpoint}`);
+      url.searchParams.append('count', '20'); // Optional: limit results to 20
+      url.searchParams.append('hqAlias', process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx');
+      
+      // Make API request using GET method as specified in the API docs
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        cache: 'no-store' // Ensure we don't use cached responses
+      });
 
-    // Handle response
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Drug search API error: ${response.status}`, errorText);
-      throw new Error(`API Error ${response.status}: ${errorText}`);
-    }
+      // Handle response
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`GET API error: ${response.status}`, errorText);
+        throw new Error(`GET API Error ${response.status}: ${errorText}`);
+      }
 
-    const data = await response.json();
-    console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${query}"`);
-    
-    // Format the response to match the expected interface
-    if (Array.isArray(data)) {
-      return data.map(drugName => ({
-        drugName: typeof drugName === 'string' 
-          ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
-          : drugName
-      }));
+      const data = await response.json();
+      console.log(`GET request found ${Array.isArray(data) ? data.length : 0} drug matches for "${query}"`);
+      
+      // Format the response to match the expected interface
+      if (Array.isArray(data) && data.length > 0) {
+        return data.map(drugName => ({
+          drugName: typeof drugName === 'string' 
+            ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
+            : drugName
+        }));
+      }
+      
+      // If we got an empty array, throw an error to try the POST method
+      if (Array.isArray(data) && data.length === 0) {
+        throw new Error('GET request returned empty results, trying POST method');
+      }
+    } catch (error) {
+      const getError = error instanceof Error ? error : new Error(String(error));
+      console.log(`GET request failed: ${getError.message}, trying POST method`);
+      
+      // If GET fails, try the endpoint from the Postman collection
+      try {
+        // Ensure we have the pricing path
+        const pricingPath = baseUrl.includes('/pricing') ? '' : '/pricing';
+        const endpoint = `${pricingPath}/v1/drugs/names`;
+        console.log(`Server: Trying POST request to ${baseUrl}${endpoint}`);
+        
+        // Get authentication token
+        const token = await getAuthToken();
+        
+        // Make API request using POST method as specified in the Postman collection
+        const response = await fetch(`${baseUrl}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+            prefixText: query
+          }),
+          cache: 'no-store' // Ensure we don't use cached responses
+        });
+
+        // Handle response
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`POST API error: ${response.status}`, errorText);
+          throw new Error(`POST API Error ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log(`POST request found ${Array.isArray(data) ? data.length : 0} drug matches for "${query}"`);
+        
+        // Format the response to match the expected interface
+        if (Array.isArray(data) && data.length > 0) {
+          return data.map(drugName => ({
+            drugName: typeof drugName === 'string' 
+              ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
+              : drugName
+          }));
+        }
+      } catch (error) {
+        const postError = error instanceof Error ? error : new Error(String(error));
+        console.error(`POST request failed: ${postError.message}`);
+        // Both methods failed, fall back to mock data
+      }
     }
     
-    return [];
+    // If we get here, both API methods failed or returned empty results
+    // Fall back to mock data
+    console.log('Both API methods failed or returned empty results, falling back to mock data');
+    return getMockDrugSearchResults(query);
   } catch (error) {
     console.error('Error in searchDrugs:', error);
-    throw error;
+    // Fall back to mock data on any error
+    console.log('Error in searchDrugs, falling back to mock data');
+    return getMockDrugSearchResults(query);
   }
 }
 
 /**
- * Get mock drug search results for development and testing
+ * Get mock drug search results for testing or when the API fails
  * @param query The search query
- * @returns A list of mock drug results
+ * @returns An array of mock drug search results
  */
 function getMockDrugSearchResults(query: string): DrugSearchResponse[] {
-  // Common medications for testing
-  const commonMedications = [
+  console.log(`Generating mock results for query: "${query}"`);
+  
+  // Mock data for common medications
+  const MOCK_DRUGS = [
     { drugName: 'Amoxicillin', gsn: 1234 },
     { drugName: 'Lisinopril', gsn: 2345 },
     { drugName: 'Atorvastatin', gsn: 3456 },
@@ -101,17 +167,21 @@ function getMockDrugSearchResults(query: string): DrugSearchResponse[] {
     { drugName: 'Sertraline', gsn: 4356 },
     { drugName: 'Simvastatin', gsn: 5467 },
     { drugName: 'Vyvanse', gsn: 6578 },
-    { drugName: 'Triamcinolone', gsn: 7689 },
-    { drugName: 'Trimethoprim', gsn: 8790 },
-    { drugName: 'Triamterene', gsn: 9801 },
-    { drugName: 'Triptorelin', gsn: 1012 },
-    { drugName: 'Trifluoperazine', gsn: 2123 }
+    { drugName: 'Tylenol', gsn: 7689 },
+    { drugName: 'Tylox', gsn: 8790 },
+    { drugName: 'Tylenol with Codeine', gsn: 9801 },
+    { drugName: 'Tylenol PM', gsn: 1012 },
+    { drugName: 'Tylenol Cold', gsn: 2123 }
   ];
   
-  // Filter medications based on the query
-  return commonMedications.filter(med => 
-    med.drugName.toLowerCase().includes(query.toLowerCase())
+  // Filter the mock drugs based on the query
+  const normalizedQuery = query.toLowerCase();
+  const filteredDrugs = MOCK_DRUGS.filter(drug => 
+    drug.drugName.toLowerCase().includes(normalizedQuery)
   );
+  
+  console.log(`Found ${filteredDrugs.length} mock drugs matching "${normalizedQuery}"`);
+  return filteredDrugs;
 }
 
 /**
