@@ -29,7 +29,9 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
     // Use the correct endpoint from the Postman collection
-    const endpoint = '/pricing/v1/drugs/names';
+    // Add /pricing if not already in the baseUrl
+    const pricingPath = baseUrl.includes('/pricing') ? '' : '/pricing';
+    const endpoint = `${pricingPath}/v1/drugs/names`;
     
     console.log(`Server: Searching for drugs at ${baseUrl}${endpoint}`);
     
