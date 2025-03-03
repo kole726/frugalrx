@@ -204,7 +204,7 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     }
     
     // Determine which endpoint to use based on the request
-    let endpoint = '/v1/drugprices/byName';
+    let endpoint = 'v1/drugprices/byName';
     const body: Record<string, any> = {
       hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
       latitude: request.latitude,
@@ -214,10 +214,10 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     };
     
     if (request.gsn) {
-      endpoint = '/v1/drugprices/byGSN';
+      endpoint = 'v1/drugprices/byGSN';
       body.gsn = request.gsn;
     } else if (request.ndcCode) {
-      endpoint = '/v1/drugprices/byNdcCode';
+      endpoint = 'v1/drugprices/byNdcCode';
       body.ndcCode = request.ndcCode;
     } else if (request.drugName) {
       body.drugName = request.drugName;
@@ -234,8 +234,17 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     // Ensure the URL is properly formatted - remove any trailing slashes and path segments
     const baseUrl = apiUrl.replace(/\/pricing\/v1\/?$/, '');
     
-    console.log(`Making API request to ${baseUrl}${endpoint} for drug prices`, body);
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    // Ensure baseUrl ends with a slash and endpoint doesn't start with one
+    const formattedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    
+    // Add detailed logging
+    console.log(`Original API URL: ${apiUrl}`);
+    console.log(`Processed base URL: ${formattedBaseUrl}`);
+    console.log(`Endpoint: ${endpoint}`);
+    console.log(`Full API endpoint: ${formattedBaseUrl}${endpoint}`);
+    console.log(`Making API request to ${formattedBaseUrl}${endpoint} for drug prices`, body);
+    
+    const response = await fetch(`${formattedBaseUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
