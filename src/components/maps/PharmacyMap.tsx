@@ -261,9 +261,9 @@ export default function PharmacyMap({
             },
             map,
             title: pharmacy.name,
-            icon: createPharmacyMarker(index, isSelected, isBestPrice, isClosest),
+            icon: createPharmacyMarker(pharmacy.pharmacyId, isSelected, isBestPrice, isClosest),
             label: {
-              text: (index + 1).toString(),
+              text: (pharmacy.pharmacyId + 1).toString(),
               color: 'white',
               fontSize: '12px',
               fontWeight: 'bold'
@@ -402,7 +402,7 @@ export default function PharmacyMap({
       if (pharmacy.pharmacyId === selectedMarker) {
         // Update the marker icon to show it's selected
         if (markers[index]) {
-          markers[index].setIcon(createPharmacyMarker(index, true));
+          markers[index].setIcon(createPharmacyMarker(pharmacy.pharmacyId, true));
           markers[index].setZIndex(999); // Bring to front
           
           // Center the map on this marker
@@ -415,7 +415,7 @@ export default function PharmacyMap({
       } else {
         // Reset other markers
         if (markers[index]) {
-          markers[index].setIcon(createPharmacyMarker(index, false));
+          markers[index].setIcon(createPharmacyMarker(pharmacy.pharmacyId, false));
           markers[index].setZIndex(1);
         }
       }
