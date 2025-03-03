@@ -103,6 +103,16 @@ export async function getAuthToken(): Promise<string> {
   }
   
   try {
+    // Check if we have a cached token that's still valid
+    const now = Date.now();
+    if (cachedToken && tokenExpiryTime && now < tokenExpiryTime) {
+      logTokenEvent('Using cached token', true, { 
+        expiryTime: tokenExpiryTime,
+        timeUntilExpiry: `${((tokenExpiryTime - now) / 1000).toFixed(1)}s`
+      });
+      return cachedToken.access_token;
+    }
+    
     // In production, we need to call the actual auth service
     const authUrl = API_CONFIG.authUrl;
     if (!authUrl) {

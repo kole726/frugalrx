@@ -100,7 +100,7 @@ export async function GET(request: Request) {
         if (Array.isArray(apiData) && apiData.length > 0) {
           // Format the results to match America's Pharmacy website format
           const formattedResults = apiData.map(drugName => ({
-            label: `${drugName.toUpperCase()}`,
+            label: `${drugName}`,
             value: drugName
           }));
           
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
     
     // Format the results to match America's Pharmacy format
     const formattedResults = mockResults.map(drug => ({
-      label: `${drug.drugName.toUpperCase()}${drug.gsn ? ` (GSN: ${drug.gsn})` : ''}`,
+      label: `${drug.drugName}${drug.gsn ? ` (GSN: ${drug.gsn})` : ''}`,
       value: drug.drugName
     }));
     

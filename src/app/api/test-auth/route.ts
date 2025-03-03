@@ -1,92 +1,108 @@
 import { NextResponse } from 'next/server';
-import { getAuthToken } from '@/lib/server/auth';
+import { getAuthToken, getTokenStatus } from '@/lib/server/auth';
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic';
+
+// Define CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
 
 /**
  * Test endpoint for verifying authentication token functionality
  * This endpoint makes a simple API request using the auth token
  */
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    console.log('[TEST AUTH] Testing authentication token...');
-    
-    // Get the authentication token
-    const startTime = Date.now();
+    // Get authentication token
     const token = await getAuthToken();
-    const tokenTime = Date.now() - startTime;
     
-    console.log(`[TEST AUTH] Token obtained in ${tokenTime}ms`);
+    // Get token status for debugging
+    const tokenStatus = await getTokenStatus();
     
-    // Make a simple API request to test the token
-    // We'll use the drugs/names endpoint with a simple query
+    // Test the token with a simple API call
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
     if (!apiUrl) {
-      throw new Error('API URL not configured');
+      throw new Error('Missing AMERICAS_PHARMACY_API_URL environment variable');
     }
     
-    console.log(`[TEST AUTH] Making test API request to ${apiUrl}/drugs/names`);
+    // Ensure the URL is properly formatted
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    const endpoint = `/pricing/v1/drugs/names`;
     
-    const requestStartTime = Date.now();
-    const response = await fetch(`${apiUrl}/drugs/names`, {
+    // Make a test API call
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({
-        hqMappingName: 'walkerrx',
-        prefixText: 'a'  // Simple prefix to test
+        hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+        prefixText: 'adv'
       }),
-      cache: 'no-store' // Ensure we don't use cached responses
+      cache: 'no-store'
     });
-    const requestTime = Date.now() - requestStartTime;
     
-    console.log(`[TEST AUTH] API request completed in ${requestTime}ms with status ${response.status}`);
+    let apiTestResult;
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[TEST AUTH] API request failed: ${response.status}`, errorText);
-      
-      return NextResponse.json({
-        success: false,
-        message: 'API request failed',
+    if (response.ok) {
+      const data = await response.json();
+      apiTestResult = {
+        success: true,
         status: response.status,
-        error: errorText,
-        timing: {
-          tokenTime,
-          requestTime,
-          totalTime: tokenTime + requestTime
-        }
-      });
+        resultCount: Array.isArray(data) ? data.length : 0,
+        sampleResults: Array.isArray(data) ? data.slice(0, 3) : data
+      };
+    } else {
+      const errorText = await response.text();
+      apiTestResult = {
+        success: false,
+        status: response.status,
+        error: errorText
+      };
     }
     
-    // Get the response data
-    const data = await response.json();
-    const resultCount = Array.isArray(data) ? data.length : 0;
-    
-    console.log(`[TEST AUTH] API request successful, received ${resultCount} results`);
-    
+    // Return the token and test results
     return NextResponse.json({
-      success: true,
-      message: 'Authentication test successful',
-      resultCount,
-      timing: {
-        tokenTime,
-        requestTime,
-        totalTime: tokenTime + requestTime
-      },
-      tokenLength: token.length,
-      tokenPrefix: token.substring(0, 10) + '...'
-    });
+      message: 'Authentication test',
+      tokenStatus,
+      apiTest: apiTestResult,
+      environment: {
+        apiUrl: process.env.AMERICAS_PHARMACY_API_URL,
+        hqMapping: process.env.AMERICAS_PHARMACY_HQ_MAPPING,
+        authUrl: process.env.AMERICAS_PHARMACY_AUTH_URL,
+        clientId: process.env.AMERICAS_PHARMACY_CLIENT_ID ? '✓ Set' : '✗ Missing',
+        clientSecret: process.env.AMERICAS_PHARMACY_CLIENT_SECRET ? '✓ Set' : '✗ Missing',
+        mockSettings: {
+          useMockDrugSearch: process.env.NEXT_PUBLIC_USE_MOCK_DRUG_SEARCH,
+          useMockDrugInfo: process.env.NEXT_PUBLIC_USE_MOCK_DRUG_INFO,
+          useMockPharmacyPrices: process.env.NEXT_PUBLIC_USE_MOCK_PHARMACY_PRICES,
+          fallbackToMock: process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK,
+          useRealApi: process.env.NEXT_PUBLIC_USE_REAL_API
+        }
+      }
+    }, { headers: corsHeaders });
   } catch (error) {
-    console.error('[TEST AUTH] Error testing authentication:', error);
-    
-    return NextResponse.json({
-      success: false,
-      message: 'Authentication test failed',
-      error: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
+    console.error('Error in auth test API:', error);
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      },
+      { 
+        status: 500,
+        headers: corsHeaders
+      }
+    );
   }
 } 
