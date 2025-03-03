@@ -28,10 +28,9 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Try both API endpoints to see which one works
-    // First try the endpoint from the API documentation
+    // Try the endpoint from the API documentation first
     try {
-      // Use the endpoint from the API documentation
+      // Use the endpoint from the API documentation (opFindDrugByName)
       const endpoint = `/v1/drugs/${encodeURIComponent(query)}`;
       console.log(`Server: Trying GET request to ${baseUrl}${endpoint}`);
       
@@ -41,7 +40,9 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
       // Create URL with optional query parameters
       const url = new URL(`${baseUrl}${endpoint}`);
       url.searchParams.append('count', '20'); // Optional: limit results to 20
-      url.searchParams.append('hqAlias', process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx');
+      url.searchParams.append('hqAlias', 'walkerrx'); // Use the HQ_MAPPING from env vars
+      
+      console.log(`Full request URL: ${url.toString()}`);
       
       // Make API request using GET method as specified in the API docs
       const response = await fetch(url.toString(), {
@@ -63,8 +64,9 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
       const data = await response.json();
       console.log(`GET request found ${Array.isArray(data) ? data.length : 0} drug matches for "${query}"`);
       
-      // Format the response to match the expected interface
+      // If we got data, format and return it
       if (Array.isArray(data) && data.length > 0) {
+        console.log(`Sample drug data:`, data.slice(0, 2));
         return data.map(drugName => ({
           drugName: typeof drugName === 'string' 
             ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
@@ -72,8 +74,9 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
         }));
       }
       
-      // If we got an empty array, throw an error to try the POST method
+      // If we got an empty array, try the POST method
       if (Array.isArray(data) && data.length === 0) {
+        console.log('GET request returned empty results, trying POST method');
         throw new Error('GET request returned empty results, trying POST method');
       }
     } catch (error) {
@@ -82,9 +85,8 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
       
       // If GET fails, try the endpoint from the Postman collection
       try {
-        // Ensure we have the pricing path
-        const pricingPath = baseUrl.includes('/pricing') ? '' : '/pricing';
-        const endpoint = `${pricingPath}/v1/drugs/names`;
+        // Use the endpoint from the Postman collection
+        const endpoint = `/pricing/v1/drugs/names`;
         console.log(`Server: Trying POST request to ${baseUrl}${endpoint}`);
         
         // Get authentication token
@@ -99,7 +101,7 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
             'Accept': 'application/json',
           },
           body: JSON.stringify({
-            hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+            hqMappingName: 'walkerrx',
             prefixText: query
           }),
           cache: 'no-store' // Ensure we don't use cached responses
@@ -115,8 +117,9 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
         const data = await response.json();
         console.log(`POST request found ${Array.isArray(data) ? data.length : 0} drug matches for "${query}"`);
         
-        // Format the response to match the expected interface
+        // If we got data, format and return it
         if (Array.isArray(data) && data.length > 0) {
+          console.log(`Sample drug data:`, data.slice(0, 2));
           return data.map(drugName => ({
             drugName: typeof drugName === 'string' 
               ? drugName.charAt(0).toUpperCase() + drugName.slice(1).toLowerCase()
