@@ -728,7 +728,9 @@ export default function DrugPage({ params }: Props) {
                             <div 
                               key={`${pharmacy.name}-${actualIndex}`}
                               data-pharmacy-id={actualIndex}
-                              className={`relative border rounded-lg p-4 pt-5 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                              className={`relative border rounded-lg p-4 ${
+                                isBestPrice ? 'pt-7' : 'pt-5'
+                              } cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
                                 selectedPharmacy === pharmacy 
                                   ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
                                   : isBestPrice
