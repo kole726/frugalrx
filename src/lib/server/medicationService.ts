@@ -489,42 +489,73 @@ export async function testApiConnection(): Promise<boolean> {
       return false;
     }
     
-    // Test drug info endpoint with a known GSN
-    const gsn = 1790; // Tylenol
-    
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    const hqMapping = process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx';
     
-    // Try different URL structures
-    const urlStructures = [
-      `${baseUrl}/pricing/v1/druginfo/${gsn}`,
-      `${baseUrl}/v1/druginfo/${gsn}`,
-      `${baseUrl}/druginfo/${gsn}`
-    ];
+    // Test drug info endpoint with a known GSN (Tylenol)
+    const gsn = 1790;
     
-    for (const url of urlStructures) {
-      try {
-        console.log(`Server: Testing API connection with URL: ${url}`);
-        
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          console.log(`Server: API connection successful with URL: ${url}`);
-          return true;
-        } else {
-          const errorText = await response.text();
-          console.error(`Server: API connection failed with URL ${url}: ${response.status} ${response.statusText}`, errorText);
-        }
-      } catch (error) {
-        console.error(`Server: Error testing API connection with URL ${url}:`, error);
+    // Try different URL structures based on the Postman collection
+    console.log('Server: Testing drug prices by GSN endpoint');
+    try {
+      const url = `${baseUrl}/pricing/v1/drugprices/byGSN`;
+      console.log(`Server: Testing API connection with URL: ${url}`);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          hqMappingName: hqMapping,
+          gsn: gsn,
+          latitude: 30.2672,
+          longitude: -97.7431
+        })
+      });
+      
+      if (response.ok) {
+        console.log(`Server: API connection successful with URL: ${url}`);
+        return true;
+      } else {
+        const errorText = await response.text();
+        console.error(`Server: API connection failed with URL ${url}: ${response.status} ${response.statusText}`, errorText);
       }
+    } catch (error) {
+      console.error(`Server: Error testing drug prices by GSN endpoint:`, error);
+    }
+    
+    // Try drug names endpoint
+    console.log('Server: Testing drug names endpoint');
+    try {
+      const url = `${baseUrl}/pricing/v1/drugs/names`;
+      console.log(`Server: Testing API connection with URL: ${url}`);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          hqMappingName: hqMapping,
+          prefixText: "tylenol"
+        })
+      });
+      
+      if (response.ok) {
+        console.log(`Server: API connection successful with URL: ${url}`);
+        return true;
+      } else {
+        const errorText = await response.text();
+        console.error(`Server: API connection failed with URL ${url}: ${response.status} ${response.statusText}`, errorText);
+      }
+    } catch (error) {
+      console.error(`Server: Error testing drug names endpoint:`, error);
     }
     
     // If we get here, all URL structures failed

@@ -98,8 +98,10 @@ async function testDrugInfoEndpoint(token: string) {
     // Test GSN
     const gsn = 1790; // Tylenol
     
-    // Get API URL
+    // Get API URL and HQ mapping
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
+    const hqMapping = process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx';
+    
     if (!apiUrl) {
       return {
         success: false,
@@ -109,17 +111,23 @@ async function testDrugInfoEndpoint(token: string) {
     
     // Create URL
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-    const url = `${baseUrl}/pricing/v1/druginfo/${gsn}`;
+    const url = `${baseUrl}/pricing/v1/drugprices/byGSN`;
     console.log(`API: Making request to: ${url}`);
     
     // Make API request
     const response = await fetch(url, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({
+        hqMappingName: hqMapping,
+        gsn: gsn,
+        latitude: 30.2672,
+        longitude: -97.7431
+      })
     });
     
     // Check response
@@ -129,16 +137,22 @@ async function testDrugInfoEndpoint(token: string) {
       
       // Try alternative URL structure
       console.log('API: Trying alternative URL structure');
-      const altUrl = `${baseUrl}/v1/druginfo/${gsn}`;
+      const altUrl = `${baseUrl}/v1/drugprices/byGSN`;
       console.log(`API: Making request to: ${altUrl}`);
       
       const altResponse = await fetch(altUrl, {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          hqMappingName: hqMapping,
+          gsn: gsn,
+          latitude: 30.2672,
+          longitude: -97.7431
+        })
       });
       
       if (!altResponse.ok) {
@@ -211,7 +225,7 @@ async function testDrugSearchEndpoint(token: string) {
     
     // Create URL
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-    const url = `${baseUrl}/drugs/names`;
+    const url = `${baseUrl}/pricing/v1/drugs/names`;
     console.log(`API: Making request to: ${url}`);
     
     // Make API request
@@ -328,7 +342,7 @@ async function testPharmacyPricesEndpoint(token: string) {
     
     // Create URL
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-    const url = `${baseUrl}/pricing/v1/pharmacyprices`;
+    const url = `${baseUrl}/pricing/v1/drugprices/byGSN`;
     console.log(`API: Making request to: ${url}`);
     
     // Make API request
@@ -355,7 +369,7 @@ async function testPharmacyPricesEndpoint(token: string) {
       
       // Try alternative URL structure
       console.log('API: Trying alternative URL structure');
-      const altUrl = `${baseUrl}/v1/pharmacyprices`;
+      const altUrl = `${baseUrl}/v1/drugprices/byGSN`;
       console.log(`API: Making request to: ${altUrl}`);
       
       const altResponse = await fetch(altUrl, {
