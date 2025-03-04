@@ -890,8 +890,15 @@ export async function getDetailedDrugInfo(gsn: number, languageCode?: string): P
     try {
       const token = await getAuthToken();
       
-      // Create URL with optional query parameters
-      const url = new URL(`${baseUrl}/pricing/v1/druginfo/${gsn}`);
+      // Create URL with optional query parameters - avoid duplicating path segments
+      let endpoint = `/druginfo/${gsn.toString()}`;
+      
+      // If baseUrl already contains pricing/v1, don't add it again
+      if (!baseUrl.includes('/pricing/v1')) {
+        endpoint = `/pricing/v1${endpoint}`;
+      }
+      
+      const url = new URL(`${baseUrl}${endpoint}`);
       
       // Add language code if provided
       if (languageCode) {
