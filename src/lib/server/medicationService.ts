@@ -510,6 +510,18 @@ export async function testApiConnection(): Promise<boolean> {
         
       console.log(`Server: Testing API connection with URL: ${url}`);
       
+      // Create request payload based on Postman collection
+      const payload = {
+        hqMappingName: hqMapping,
+        gsn: gsn,
+        latitude: 30.2672,
+        longitude: -97.7431,
+        customizedQuantity: false,
+        quantity: 30 // Default quantity
+      };
+      
+      console.log('Server: Request payload:', JSON.stringify(payload));
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -517,12 +529,7 @@ export async function testApiConnection(): Promise<boolean> {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          hqMappingName: hqMapping,
-          gsn: gsn,
-          latitude: 30.2672,
-          longitude: -97.7431
-        })
+        body: JSON.stringify(payload)
       });
       
       if (response.ok) {
@@ -546,6 +553,14 @@ export async function testApiConnection(): Promise<boolean> {
         
       console.log(`Server: Testing API connection with URL: ${url}`);
       
+      // Create request payload based on Postman collection
+      const payload = {
+        hqMappingName: hqMapping,
+        prefixText: "tylenol"
+      };
+      
+      console.log('Server: Request payload:', JSON.stringify(payload));
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -553,10 +568,7 @@ export async function testApiConnection(): Promise<boolean> {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          hqMappingName: hqMapping,
-          prefixText: "tylenol"
-        })
+        body: JSON.stringify(payload)
       });
       
       if (response.ok) {

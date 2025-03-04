@@ -123,6 +123,19 @@ async function testDrugInfoEndpoint(token: string) {
       
     console.log(`API: Making request to: ${url}`);
     
+    // Create request payload based on Postman collection
+    const payload = {
+      hqMappingName: hqMapping,
+      gsn: gsn,
+      latitude: 30.2672,
+      longitude: -97.7431,
+      // Add these fields based on Postman collection
+      customizedQuantity: false,
+      quantity: 30 // Default quantity
+    };
+    
+    console.log('API: Request payload:', JSON.stringify(payload));
+    
     // Make API request
     const response = await fetch(url, {
       method: 'POST',
@@ -131,12 +144,7 @@ async function testDrugInfoEndpoint(token: string) {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        hqMappingName: hqMapping,
-        gsn: gsn,
-        latitude: 30.2672,
-        longitude: -97.7431
-      })
+      body: JSON.stringify(payload)
     });
     
     // Check response
@@ -144,60 +152,41 @@ async function testDrugInfoEndpoint(token: string) {
       const errorText = await response.text();
       console.error(`API: Drug info endpoint error (${response.status}):`, errorText);
       
-      // Try alternative URL structure
-      console.log('API: Trying alternative URL structure');
-      // For the alternative URL, try without the pricing/ prefix
-      const altUrl = baseUrl.includes('/v1') 
-        ? `${baseUrl}/drugprices/byGSN`
-        : `${baseUrl}/v1/drugprices/byGSN`;
-        
-      console.log(`API: Making request to: ${altUrl}`);
-      
-      const altResponse = await fetch(altUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          hqMappingName: hqMapping,
-          gsn: gsn,
-          latitude: 30.2672,
-          longitude: -97.7431
-        })
-      });
-      
-      if (!altResponse.ok) {
-        const altErrorText = await altResponse.text();
-        console.error(`API: Alternative drug info endpoint error (${altResponse.status}):`, altErrorText);
-        
-        return {
-          success: false,
-          status: response.status,
-          error: errorText,
-          altStatus: altResponse.status,
-          altError: altErrorText,
-          url: url,
-          altUrl: altUrl
-        };
-      }
-      
-      // Alternative URL worked
-      const altData = await altResponse.json();
-      console.log('API: Alternative drug info endpoint success');
-      
       return {
-        success: true,
-        status: altResponse.status,
-        data: 'Data retrieved successfully',
-        url: altUrl,
-        note: 'Used alternative URL structure'
+        success: false,
+        status: response.status,
+        error: errorText,
+        url: url
       };
     }
     
-    // Original URL worked
-    const data = await response.json();
+    // Try to parse the response
+    let data;
+    try {
+      const responseText = await response.text();
+      console.log('API: Raw response:', responseText);
+      
+      // Only try to parse if there's content
+      if (responseText && responseText.trim()) {
+        data = JSON.parse(responseText);
+      } else {
+        return {
+          success: false,
+          status: response.status,
+          error: 'Empty response from API',
+          url: url
+        };
+      }
+    } catch (parseError) {
+      console.error('API: Error parsing response:', parseError);
+      return {
+        success: false,
+        status: response.status,
+        error: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
+        url: url
+      };
+    }
+    
     console.log('API: Drug info endpoint success');
     
     return {
@@ -380,6 +369,18 @@ async function testPharmacyPricesEndpoint(token: string) {
       
     console.log(`API: Making request to: ${url}`);
     
+    // Create request payload based on Postman collection
+    const payload = {
+      hqMappingName: hqMapping,
+      gsn: gsn,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      customizedQuantity: false,
+      quantity: 30 // Default quantity
+    };
+    
+    console.log('API: Request payload:', JSON.stringify(payload));
+    
     // Make API request
     const response = await fetch(url, {
       method: 'POST',
@@ -388,13 +389,7 @@ async function testPharmacyPricesEndpoint(token: string) {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({
-        hqMappingName: hqMapping,
-        gsn: gsn,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        radius: location.radius
-      })
+      body: JSON.stringify(payload)
     });
     
     // Check response
@@ -402,61 +397,41 @@ async function testPharmacyPricesEndpoint(token: string) {
       const errorText = await response.text();
       console.error(`API: Pharmacy prices endpoint error (${response.status}):`, errorText);
       
-      // Try alternative URL structure
-      console.log('API: Trying alternative URL structure');
-      // For the alternative URL, try without the pricing/ prefix
-      const altUrl = baseUrl.includes('/v1') 
-        ? `${baseUrl}/drugprices/byGSN`
-        : `${baseUrl}/v1/drugprices/byGSN`;
-        
-      console.log(`API: Making request to: ${altUrl}`);
-      
-      const altResponse = await fetch(altUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          hqMappingName: hqMapping,
-          gsn: gsn,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          radius: location.radius
-        })
-      });
-      
-      if (!altResponse.ok) {
-        const altErrorText = await altResponse.text();
-        console.error(`API: Alternative pharmacy prices endpoint error (${altResponse.status}):`, altErrorText);
-        
-        return {
-          success: false,
-          status: response.status,
-          error: errorText,
-          altStatus: altResponse.status,
-          altError: altErrorText,
-          url: url,
-          altUrl: altUrl
-        };
-      }
-      
-      // Alternative URL worked
-      const altData = await altResponse.json();
-      console.log('API: Alternative pharmacy prices endpoint success');
-      
       return {
-        success: true,
-        status: altResponse.status,
-        data: 'Data retrieved successfully',
-        url: altUrl,
-        note: 'Used alternative URL structure'
+        success: false,
+        status: response.status,
+        error: errorText,
+        url: url
       };
     }
     
-    // Original URL worked
-    const data = await response.json();
+    // Try to parse the response
+    let data;
+    try {
+      const responseText = await response.text();
+      console.log('API: Raw response:', responseText);
+      
+      // Only try to parse if there's content
+      if (responseText && responseText.trim()) {
+        data = JSON.parse(responseText);
+      } else {
+        return {
+          success: false,
+          status: response.status,
+          error: 'Empty response from API',
+          url: url
+        };
+      }
+    } catch (parseError) {
+      console.error('API: Error parsing response:', parseError);
+      return {
+        success: false,
+        status: response.status,
+        error: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
+        url: url
+      };
+    }
+    
     console.log('API: Pharmacy prices endpoint success');
     
     return {
