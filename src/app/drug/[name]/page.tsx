@@ -183,6 +183,19 @@ export default function DrugPage({ params }: Props) {
     
     // Fetch drug info
     fetchDrugInfo();
+    
+    // Debug loading state
+    console.log('Initial component mount - isLoading:', isLoading);
+    
+    // Force update after a timeout if still loading
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.log('Still loading after timeout, forcing update');
+        setIsLoading(false);
+      }
+    }, 10000); // 10 seconds timeout
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Function to fetch pharmacy prices
@@ -341,9 +354,14 @@ export default function DrugPage({ params }: Props) {
         setError('No pharmacy prices found for this medication in your area.')
         setPharmacyPrices([])
       }
+      
+      // Always set loading to false after processing the response
+      setIsLoading(false)
+      setIsLoadingPharmacies(false)
     } catch (error) {
       console.error('Error fetching pharmacy prices:', error)
-    } finally {
+      setError(`Error loading pharmacy prices: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setIsLoading(false)
       setIsLoadingPharmacies(false)
     }
   }
@@ -444,10 +462,12 @@ export default function DrugPage({ params }: Props) {
       
       // Fetch pharmacy prices
       await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius)
-    } catch (err) {
-      console.error('Error fetching drug info:', err)
-      setError('Failed to load drug information. Please try again later.')
+    } catch (error) {
+      console.error('Error fetching drug info:', error)
+      setError(`Error loading drug information: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setDrugInfo(null)
     } finally {
+      // Always set loading to false
       setIsLoading(false)
     }
   }
