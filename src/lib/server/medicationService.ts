@@ -468,11 +468,13 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
 }
 
 /**
- * Test the connection to the Americas Pharmacy API
- * @returns True if the connection is successful, false otherwise
+ * Test API connection
+ * @returns True if the API connection is successful, false otherwise
  */
 export async function testApiConnection(): Promise<boolean> {
   try {
+    console.log('Server: Testing API connection');
+    
     // Validate API URL
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
     if (!apiUrl) {
@@ -480,43 +482,56 @@ export async function testApiConnection(): Promise<boolean> {
       return false;
     }
     
-    // Try to get an auth token
+    // Get authentication token
     const token = await getAuthToken();
+    if (!token) {
+      console.error('Failed to get authentication token');
+      return false;
+    }
+    
+    // Test drug info endpoint with a known GSN
+    const gsn = 1790; // Tylenol
     
     // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = apiUrl.endsWith('/') 
-      ? apiUrl.slice(0, -1) 
-      : apiUrl;
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
-    // Define the endpoint according to the API documentation
-    const basePath = baseUrl.includes('/v1') ? '' : '/v1';
-    const testQuery = 'a'; // Simple prefix to test
-    const endpoint = `${basePath}/drugs/${encodeURIComponent(testQuery)}`;
+    // Try different URL structures
+    const urlStructures = [
+      `${baseUrl}/pricing/v1/druginfo/${gsn}`,
+      `${baseUrl}/v1/druginfo/${gsn}`,
+      `${baseUrl}/druginfo/${gsn}`
+    ];
     
-    console.log(`Testing API connection to ${baseUrl}${endpoint}`);
-    
-    // Create URL with optional query parameters
-    const url = new URL(`${baseUrl}${endpoint}`);
-    url.searchParams.append('count', '1'); // Only need one result for testing
-    url.searchParams.append('hqAlias', 'walkerrx');
-    
-    // If we got a token, try a simple API call to verify it works
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API connection test failed with status ${response.status}:`, errorText);
+    for (const url of urlStructures) {
+      try {
+        console.log(`Server: Testing API connection with URL: ${url}`);
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          console.log(`Server: API connection successful with URL: ${url}`);
+          return true;
+        } else {
+          const errorText = await response.text();
+          console.error(`Server: API connection failed with URL ${url}: ${response.status} ${response.statusText}`, errorText);
+        }
+      } catch (error) {
+        console.error(`Server: Error testing API connection with URL ${url}:`, error);
+      }
     }
-
-    return response.ok;
+    
+    // If we get here, all URL structures failed
+    console.error('Server: All API connection tests failed');
+    return false;
   } catch (error) {
-    console.error('API connection test failed:', error);
+    console.error('Server: Error testing API connection:', error);
     return false;
   }
 }
