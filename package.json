@@ -14,6 +14,7 @@
     "@googlemaps/js-api-loader": "^1.16.8",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
+    "@tailwindcss/typography": "^0.5.10",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.477.0",
     "next": "^14.2.24",
@@ -22,23 +23,22 @@
     "react-dom": "^18",
     "react-hot-toast": "^2.5.2",
     "react-icons": "^5.5.0",
-    "react-share": "^5.0.3"
+    "react-share": "^5.0.3",
+    "tailwindcss": "^3",
+    "postcss": "^8",
+    "autoprefixer": "^10"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.10",
     "@types/google.maps": "^3.58.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
-    "autoprefixer": "^10",
     "dotenv": "^16.4.7",
     "eslint": "^8",
     "eslint-config-next": "14.0.0",
     "node-fetch": "^2.7.0",
-    "postcss": "^8",
-    "tailwindcss": "^3",
     "typescript": "^5"
   }
 }
