@@ -95,10 +95,10 @@ async function testDrugInfoEndpoint(token: string) {
   try {
     console.log('API: Testing drug info endpoint');
     
-    // Try multiple GSN values
+    // Try multiple GSN values, starting with the known working one
     const gsnValues = [
+      62733, // Known working GSN (Lipitor)
       1790,  // Tylenol
-      62733, // From Postman collection
       70954, // Another common medication
       2323,  // Try another value
       4815   // Try another value
@@ -340,10 +340,10 @@ async function testPharmacyPricesEndpoint(token: string) {
   try {
     console.log('API: Testing pharmacy prices endpoint');
     
-    // Try multiple GSN values
+    // Try multiple GSN values, starting with the known working one
     const gsnValues = [
+      62733, // Known working GSN (Lipitor)
       1790,  // Tylenol
-      62733, // From Postman collection
       70954, // Another common medication
       2323,  // Try another value
       4815   // Try another value
