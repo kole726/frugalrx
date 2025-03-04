@@ -109,9 +109,18 @@ async function testDrugInfoEndpoint(token: string) {
       };
     }
     
-    // Create URL
-    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-    const url = `${baseUrl}/pricing/v1/drugprices/byGSN`;
+    // Create URL - ensure we don't duplicate path segments
+    let baseUrl = apiUrl;
+    // Remove trailing slash if present
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    
+    // Check if baseUrl already includes the pricing/v1 path
+    const url = baseUrl.includes('/pricing/v1') 
+      ? `${baseUrl}/drugprices/byGSN`
+      : `${baseUrl}/pricing/v1/drugprices/byGSN`;
+      
     console.log(`API: Making request to: ${url}`);
     
     // Make API request
@@ -137,7 +146,11 @@ async function testDrugInfoEndpoint(token: string) {
       
       // Try alternative URL structure
       console.log('API: Trying alternative URL structure');
-      const altUrl = `${baseUrl}/v1/drugprices/byGSN`;
+      // For the alternative URL, try without the pricing/ prefix
+      const altUrl = baseUrl.includes('/v1') 
+        ? `${baseUrl}/drugprices/byGSN`
+        : `${baseUrl}/v1/drugprices/byGSN`;
+        
       console.log(`API: Making request to: ${altUrl}`);
       
       const altResponse = await fetch(altUrl, {
@@ -223,9 +236,18 @@ async function testDrugSearchEndpoint(token: string) {
       };
     }
     
-    // Create URL
-    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-    const url = `${baseUrl}/pricing/v1/drugs/names`;
+    // Create URL - ensure we don't duplicate path segments
+    let baseUrl = apiUrl;
+    // Remove trailing slash if present
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    
+    // Check if baseUrl already includes the pricing/v1 path
+    const url = baseUrl.includes('/pricing/v1') 
+      ? `${baseUrl}/drugs/names`
+      : `${baseUrl}/pricing/v1/drugs/names`;
+      
     console.log(`API: Making request to: ${url}`);
     
     // Make API request
@@ -249,7 +271,11 @@ async function testDrugSearchEndpoint(token: string) {
       
       // Try alternative URL structure
       console.log('API: Trying alternative URL structure');
-      const altUrl = `${baseUrl}/v1/drugs/names`;
+      // For the alternative URL, try without the pricing/ prefix
+      const altUrl = baseUrl.includes('/v1') 
+        ? `${baseUrl}/drugs/names`
+        : `${baseUrl}/v1/drugs/names`;
+        
       console.log(`API: Making request to: ${altUrl}`);
       
       const altResponse = await fetch(altUrl, {
@@ -340,9 +366,18 @@ async function testPharmacyPricesEndpoint(token: string) {
       };
     }
     
-    // Create URL
-    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-    const url = `${baseUrl}/pricing/v1/drugprices/byGSN`;
+    // Create URL - ensure we don't duplicate path segments
+    let baseUrl = apiUrl;
+    // Remove trailing slash if present
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    
+    // Check if baseUrl already includes the pricing/v1 path
+    const url = baseUrl.includes('/pricing/v1') 
+      ? `${baseUrl}/drugprices/byGSN`
+      : `${baseUrl}/pricing/v1/drugprices/byGSN`;
+      
     console.log(`API: Making request to: ${url}`);
     
     // Make API request
@@ -369,7 +404,11 @@ async function testPharmacyPricesEndpoint(token: string) {
       
       // Try alternative URL structure
       console.log('API: Trying alternative URL structure');
-      const altUrl = `${baseUrl}/v1/drugprices/byGSN`;
+      // For the alternative URL, try without the pricing/ prefix
+      const altUrl = baseUrl.includes('/v1') 
+        ? `${baseUrl}/drugprices/byGSN`
+        : `${baseUrl}/v1/drugprices/byGSN`;
+        
       console.log(`API: Making request to: ${altUrl}`);
       
       const altResponse = await fetch(altUrl, {

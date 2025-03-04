@@ -490,7 +490,11 @@ export async function testApiConnection(): Promise<boolean> {
     }
     
     // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    let baseUrl = apiUrl;
+    if (baseUrl.endsWith('/')) {
+      baseUrl = baseUrl.slice(0, -1);
+    }
+    
     const hqMapping = process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx';
     
     // Test drug info endpoint with a known GSN (Tylenol)
@@ -499,7 +503,11 @@ export async function testApiConnection(): Promise<boolean> {
     // Try different URL structures based on the Postman collection
     console.log('Server: Testing drug prices by GSN endpoint');
     try {
-      const url = `${baseUrl}/pricing/v1/drugprices/byGSN`;
+      // Check if baseUrl already includes the pricing/v1 path
+      const url = baseUrl.includes('/pricing/v1') 
+        ? `${baseUrl}/drugprices/byGSN`
+        : `${baseUrl}/pricing/v1/drugprices/byGSN`;
+        
       console.log(`Server: Testing API connection with URL: ${url}`);
       
       const response = await fetch(url, {
@@ -531,7 +539,11 @@ export async function testApiConnection(): Promise<boolean> {
     // Try drug names endpoint
     console.log('Server: Testing drug names endpoint');
     try {
-      const url = `${baseUrl}/pricing/v1/drugs/names`;
+      // Check if baseUrl already includes the pricing/v1 path
+      const url = baseUrl.includes('/pricing/v1') 
+        ? `${baseUrl}/drugs/names`
+        : `${baseUrl}/pricing/v1/drugs/names`;
+        
       console.log(`Server: Testing API connection with URL: ${url}`);
       
       const response = await fetch(url, {
