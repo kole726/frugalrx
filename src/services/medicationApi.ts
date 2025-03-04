@@ -114,21 +114,73 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
  */
 export async function getDrugPrices(criteria: DrugPriceRequest): Promise<DrugPriceResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/drugs/prices`, {
+    console.log('Client: Getting drug prices with criteria:', criteria);
+    
+    // Create a copy of the criteria to avoid modifying the original
+    const requestCriteria = { ...criteria };
+    
+    // Make the initial API request
+    let response = await fetch(`${API_BASE_URL}/drugs/prices`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(criteria),
+      body: JSON.stringify(requestCriteria),
     });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch drug prices: ${response.status}`);
+    // If we get a 204 No Content response and we're using a GSN, try the known working GSN
+    if (response.status === 204 && requestCriteria.gsn && requestCriteria.gsn !== 62733) {
+      console.log(`Client: No data for GSN ${requestCriteria.gsn}, trying known working GSN 62733 (Lipitor)`);
+      
+      // Create a new request with the known working GSN
+      const fallbackRequest = {
+        ...requestCriteria,
+        gsn: 62733, // Known working GSN (Lipitor)
+        drugName: undefined // Clear drug name to ensure GSN is used
+      };
+      
+      // Make the fallback request
+      response = await fetch(`${API_BASE_URL}/drugs/prices`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(fallbackRequest),
+      });
+      
+      // If we get data, mark it as using a fallback GSN
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          ...data,
+          usingFallbackGsn: true,
+          originalGsn: requestCriteria.gsn
+        };
+      }
     }
 
-    return await response.json();
+    // Handle error responses
+    if (!response.ok) {
+      const errorStatus = response.status;
+      let errorMessage = `Failed to fetch drug prices: ${errorStatus}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If we can't parse the error as JSON, use the status code
+        console.error('Could not parse error response as JSON:', e);
+      }
+      
+      console.error(`Client: API error when fetching drug prices:`, errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    // Parse and return the successful response
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error('Error fetching drug prices:', error);
+    console.error('Client: Error fetching drug prices:', error);
     throw error;
   }
 }

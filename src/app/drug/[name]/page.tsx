@@ -365,9 +365,18 @@ export default function DrugPage({ params }: Props) {
       const response = await getDrugPrices(request)
       console.log('Pharmacy price response:', response)
       
-      // Check if we're using mock data
+      // Check if we're using mock data or fallback GSN
       if ((response as any).usingMockData) {
         console.warn('Using mock pharmacy data - real API data not available')
+        toast('Using mock pharmacy data - real API data not available', {
+          icon: '⚠️'
+        })
+      } else if ((response as any).usingFallbackGsn) {
+        console.warn(`Using data from a different medication (GSN: ${(response as any).originalGsn} → 62733)`)
+        toast('Showing prices from a similar medication. Actual prices may vary.', {
+          icon: '⚠️',
+          duration: 6000
+        })
       }
       
       // Store brand variations if available

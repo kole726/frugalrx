@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDrugPrices } from '@/lib/server/medicationService'
 import { DrugPriceRequest, APIError } from '@/types/api'
 import { MOCK_PHARMACY_PRICES } from '@/lib/mockData'
+import { corsHeaders } from '@/lib/cors'
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
@@ -16,177 +17,63 @@ const zipCodeCoordinates: Record<string, { latitude: number; longitude: number }
 const DEFAULT_LATITUDE = 30.4014;
 const DEFAULT_LONGITUDE = -97.7525;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const criteria = await request.json();
-    console.log('Fetching drug prices with criteria:', criteria);
-    
-    let latitude = criteria.latitude;
-    let longitude = criteria.longitude;
-    
-    // If latitude and longitude are not provided, try to get them from zipCode
-    if ((!latitude || !longitude) && criteria.zipCode) {
-      const coordinates = zipCodeCoordinates[criteria.zipCode] || 
-                         { latitude: DEFAULT_LATITUDE, longitude: DEFAULT_LONGITUDE };
-      latitude = coordinates.latitude;
-      longitude = coordinates.longitude;
-      console.log(`Using coordinates for zip code ${criteria.zipCode}:`, coordinates);
-    }
-    
+    // Add CORS headers
+    const response = NextResponse.next();
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+
+    // Parse the request body
+    const requestData: DrugPriceRequest = await request.json();
+    console.log('API: Received drug prices request:', requestData);
+
     // Validate required fields
-    if ((!criteria.drugName && !criteria.gsn && !criteria.ndcCode)) {
+    if (!requestData.latitude || !requestData.longitude) {
       return NextResponse.json(
-        { error: 'Missing required fields: either drugName, gsn, or ndcCode must be provided' },
-        { status: 400 }
+        { error: 'Latitude and longitude are required' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Validate that either drugName, gsn, or ndcCode is provided
+    if (!requestData.drugName && !requestData.gsn && !requestData.ndcCode) {
+      return NextResponse.json(
+        { error: 'Either drugName, gsn, or ndcCode must be provided' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Call the medication service to get drug prices
+    const drugPrices = await getDrugPrices(requestData);
+    console.log('API: Drug prices retrieved successfully');
+
+    // Return the response
+    return NextResponse.json(drugPrices, { headers: corsHeaders });
+  } catch (error) {
+    console.error('API: Error getting drug prices:', error);
+    
+    // Check if it's an API error with status code
+    if (error instanceof Error && 'status' in error) {
+      const apiError = error as any;
+      return NextResponse.json(
+        { error: apiError.message || 'Error getting drug prices' },
+        { status: apiError.status || 500, headers: corsHeaders }
       );
     }
     
-    const priceRequest: DrugPriceRequest = {
-      latitude: latitude,
-      longitude: longitude,
-      hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
-      radius: criteria.radius || 10,
-      maximumPharmacies: criteria.maximumPharmacies || 50
-    };
-    
-    // Add either drugName, gsn, or ndcCode
-    if (criteria.drugName) {
-      priceRequest.drugName = criteria.drugName;
-    } else if (criteria.gsn) {
-      priceRequest.gsn = criteria.gsn;
-    } else if (criteria.ndcCode) {
-      priceRequest.ndcCode = criteria.ndcCode;
-    }
-    
-    // Add optional fields if provided
-    if (criteria.customizedQuantity) {
-      priceRequest.customizedQuantity = criteria.customizedQuantity;
-      priceRequest.quantity = criteria.quantity;
-    }
-    
-    // Add form if provided
-    if (criteria.form) {
-      priceRequest.form = criteria.form;
-    }
-    
-    // Add strength if provided
-    if (criteria.strength) {
-      priceRequest.strength = criteria.strength;
-    }
-    
-    try {
-      const data = await getDrugPrices(priceRequest);
-      console.log(`Found ${data.pharmacies?.length || 0} pharmacies with prices`);
-      
-      // Ensure we have pharmacies in the response
-      if (!data.pharmacies || data.pharmacies.length === 0) {
-        console.log('No pharmacies found in API response, adding mock pharmacies');
-        
-        // Add mock pharmacies if none are found
-        data.pharmacies = MOCK_PHARMACY_PRICES;
-      }
-      
-      // Ensure we have brand variations in the response
-      if (!data.brandVariations || !Array.isArray(data.brandVariations) || data.brandVariations.length === 0) {
-        console.log('No brand variations found in API response, adding default ones');
-        
-        // Add default brand variations if not present
-        data.brandVariations = [
-          {
-            name: `${criteria.drugName} (brand)`,
-            type: 'brand',
-            gsn: data.brandVariations?.[0]?.gsn || 1790
-          },
-          {
-            name: `${criteria.drugName} (generic)`,
-            type: 'generic',
-            gsn: data.brandVariations?.[0]?.gsn ? data.brandVariations[0].gsn + 1 : 1791
-          }
-        ];
-      }
-      
-      // Ensure we have forms in the response
-      if (!data.forms || !Array.isArray(data.forms) || data.forms.length === 0) {
-        console.log('No forms found in API response, adding default ones');
-        
-        // Add default forms if not present
-        data.forms = [
-          { form: 'TABLET', gsn: 1790 },
-          { form: 'CAPSULE', gsn: 1791 },
-          { form: 'LIQUID', gsn: 1792 }
-        ];
-      }
-      
-      // Ensure we have strengths in the response
-      if (!data.strengths || !Array.isArray(data.strengths) || data.strengths.length === 0) {
-        console.log('No strengths found in API response, adding default ones');
-        
-        // Add default strengths if not present
-        data.strengths = [
-          { strength: '500 mg', gsn: 1790 },
-          { strength: '250 mg', gsn: 1791 },
-          { strength: '125 mg', gsn: 1792 }
-        ];
-      }
-      
-      // Ensure we have quantities in the response
-      if (!data.quantities || !Array.isArray(data.quantities) || data.quantities.length === 0) {
-        console.log('No quantities found in API response, adding default ones');
-        
-        // Add default quantities if not present
-        data.quantities = [
-          { quantity: 30, uom: 'TABLET' },
-          { quantity: 60, uom: 'TABLET' },
-          { quantity: 90, uom: 'TABLET' }
-        ];
-      }
-      
-      // Return the complete response including brand variations
-      return NextResponse.json(data);
-    } catch (error) {
-      console.error('Error fetching drug prices, falling back to mock data:', error);
-      
-      // Fall back to mock data if API fails
-      return NextResponse.json({
-        pharmacies: MOCK_PHARMACY_PRICES,
-        brandVariations: [
-          {
-            name: `${criteria.drugName} (brand)`,
-            type: 'brand',
-            gsn: 1790
-          },
-          {
-            name: `${criteria.drugName} (generic)`,
-            type: 'generic',
-            gsn: 1791
-          }
-        ],
-        forms: [
-          { form: 'TABLET', gsn: 1790 },
-          { form: 'CAPSULE', gsn: 1791 },
-          { form: 'LIQUID', gsn: 1792 }
-        ],
-        strengths: [
-          { strength: '500 mg', gsn: 1790 },
-          { strength: '250 mg', gsn: 1791 },
-          { strength: '125 mg', gsn: 1792 }
-        ],
-        quantities: [
-          { quantity: 30, uom: 'TABLET' },
-          { quantity: 60, uom: 'TABLET' },
-          { quantity: 90, uom: 'TABLET' }
-        ],
-        error: error instanceof Error ? error.message : 'Unknown error',
-        usingMockData: true
-      });
-    }
-  } catch (error) {
-    console.error('Server error in drug prices API:', error);
+    // Generic error
     return NextResponse.json(
-      { error: `Failed to fetch drug prices: ${error instanceof Error ? error.message : 'Unknown error'}` },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : 'Unknown error getting drug prices' },
+      { status: 500, headers: corsHeaders }
     );
   }
+}
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
 }
 
 export async function GET(request: Request) {

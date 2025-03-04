@@ -3,6 +3,13 @@
 import { DrugPriceRequest, DrugInfo, DrugPrice, PharmacyPrice, DrugPriceResponse, DrugDetails, DrugVariation, DrugForm, DrugStrength, DrugQuantity } from '@/types/api';
 import { getAuthToken } from './auth';
 
+// Define known working GSN values for fallback
+const KNOWN_WORKING_GSNS = [
+  62733, // Lipitor (atorvastatin) - confirmed working
+  70954, // Metformin - potential alternative
+  2323,  // Another potential alternative
+];
+
 // Define the APIError class for better error handling
 class APIError extends Error {
   status: number;
@@ -619,14 +626,6 @@ export async function testApiConnection(): Promise<boolean> {
     return false;
   }
 }
-
-/**
- * Known working GSN values for testing and fallbacks
- */
-export const KNOWN_WORKING_GSNS = [
-  62733, // Lipitor (confirmed working)
-  70954  // Another medication to try
-];
 
 /**
  * Get pharmacies near a specific location
