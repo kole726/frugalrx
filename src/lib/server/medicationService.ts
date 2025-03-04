@@ -385,7 +385,7 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
     // Use the correct endpoint from the API documentation
-    const endpoint = `/v1/druginfo/${gsn}`;
+    const endpoint = `/pricing/v1/druginfo/${gsn}`;
     
     console.log(`Making API request to ${baseUrl}${endpoint} for GSN: ${gsn}`);
     
