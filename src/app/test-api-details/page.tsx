@@ -36,6 +36,30 @@ interface FormDataType {
   }
 }
 
+// Define types for drug info response
+interface DrugForm {
+  form: string;
+  gsn: number;
+}
+
+interface DrugStrength {
+  strength: string;
+}
+
+interface DrugQuantity {
+  quantity: number;
+  uom: string;
+}
+
+interface DrugInfoResponse {
+  brandName?: string;
+  genericName?: string;
+  forms?: DrugForm[];
+  strengths?: DrugStrength[];
+  quantities?: DrugQuantity[];
+  [key: string]: any;
+}
+
 // Define the type for API connection test results
 interface ConnectionTestResult {
   timestamp: string
@@ -78,6 +102,173 @@ interface ConnectionTestResult {
     }
   }
 }
+
+// Component to display detailed drug information
+const DrugInfoDetails = ({ data, onGsnChange }: { data: DrugInfoResponse, onGsnChange?: (gsn: number) => void }) => {
+  const [selectedBrandType, setSelectedBrandType] = useState<'brand' | 'generic'>('brand');
+  const [selectedForm, setSelectedForm] = useState<DrugForm | null>(null);
+  const [selectedStrength, setSelectedStrength] = useState<DrugStrength | null>(null);
+  const [selectedQuantity, setSelectedQuantity] = useState<DrugQuantity | null>(null);
+  
+  // Initialize selections when data changes
+  useEffect(() => {
+    if (data.forms && data.forms.length > 0) {
+      setSelectedForm(data.forms[0]);
+    } else {
+      setSelectedForm(null);
+    }
+    
+    if (data.strengths && data.strengths.length > 0) {
+      setSelectedStrength(data.strengths[0]);
+    } else {
+      setSelectedStrength(null);
+    }
+    
+    if (data.quantities && data.quantities.length > 0) {
+      setSelectedQuantity(data.quantities[0]);
+    } else {
+      setSelectedQuantity(null);
+    }
+  }, [data]);
+  
+  // Determine if we have both brand and generic names
+  const hasBothNames = data.brandName && data.genericName && data.brandName !== data.genericName;
+  
+  // Handle form change
+  const handleFormChange = (form: DrugForm | null) => {
+    setSelectedForm(form);
+    if (form && onGsnChange) {
+      onGsnChange(form.gsn);
+    }
+  };
+  
+  return (
+    <div className="mt-4 p-4 bg-white rounded-md border border-gray-200">
+      <h3 className="text-lg font-semibold mb-3">Drug Details</h3>
+      
+      {/* Brand/Generic Name */}
+      <div className="mb-4">
+        <div className="flex items-center mb-1">
+          <span className="text-sm font-medium text-gray-700 mr-2">Name:</span>
+          {hasBothNames ? (
+            <div className="flex items-center">
+              <button
+                onClick={() => setSelectedBrandType('brand')}
+                className={`px-2 py-1 text-xs rounded-l-md ${
+                  selectedBrandType === 'brand' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                Brand
+              </button>
+              <button
+                onClick={() => setSelectedBrandType('generic')}
+                className={`px-2 py-1 text-xs rounded-r-md ${
+                  selectedBrandType === 'generic' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                Generic
+              </button>
+              <span className="ml-2 text-blue-600">
+                {selectedBrandType === 'brand' ? data.brandName : data.genericName}
+              </span>
+            </div>
+          ) : (
+            <span className="text-blue-600">
+              {data.brandName || data.genericName || 'No Data Available'}
+            </span>
+          )}
+        </div>
+      </div>
+      
+      {/* Forms */}
+      <div className="mb-4">
+        <div className="flex items-center mb-1">
+          <span className="text-sm font-medium text-gray-700 mr-2">Form:</span>
+          {data.forms && data.forms.length > 0 ? (
+            <select 
+              className="text-sm border border-gray-300 rounded-md px-2 py-1"
+              value={selectedForm?.form || ''}
+              onChange={(e) => {
+                const form = data.forms?.find(f => f.form === e.target.value) || null;
+                handleFormChange(form);
+              }}
+            >
+              {data.forms.map((form, index) => (
+                <option key={index} value={form.form}>
+                  {form.form}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-gray-500 italic">No Data Available</span>
+          )}
+        </div>
+        {selectedForm && (
+          <div className="text-xs text-gray-500 ml-4">
+            GSN: {selectedForm.gsn}
+          </div>
+        )}
+      </div>
+      
+      {/* Strengths */}
+      <div className="mb-4">
+        <div className="flex items-center mb-1">
+          <span className="text-sm font-medium text-gray-700 mr-2">Dosage:</span>
+          {data.strengths && data.strengths.length > 0 ? (
+            <select 
+              className="text-sm border border-gray-300 rounded-md px-2 py-1"
+              value={selectedStrength?.strength || ''}
+              onChange={(e) => {
+                const strength = data.strengths?.find(s => s.strength === e.target.value) || null;
+                setSelectedStrength(strength);
+              }}
+            >
+              {data.strengths.map((strength, index) => (
+                <option key={index} value={strength.strength}>
+                  {strength.strength}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-gray-500 italic">No Data Available</span>
+          )}
+        </div>
+      </div>
+      
+      {/* Quantities */}
+      <div className="mb-4">
+        <div className="flex items-center mb-1">
+          <span className="text-sm font-medium text-gray-700 mr-2">Quantity:</span>
+          {data.quantities && data.quantities.length > 0 ? (
+            <select 
+              className="text-sm border border-gray-300 rounded-md px-2 py-1"
+              value={selectedQuantity ? `${selectedQuantity.quantity}-${selectedQuantity.uom}` : ''}
+              onChange={(e) => {
+                const [quantity, uom] = e.target.value.split('-');
+                const quantityObj = data.quantities?.find(
+                  q => q.quantity === parseInt(quantity) && q.uom === uom
+                ) || null;
+                setSelectedQuantity(quantityObj);
+              }}
+            >
+              {data.quantities.map((quantity, index) => (
+                <option key={index} value={`${quantity.quantity}-${quantity.uom}`}>
+                  {quantity.quantity} {quantity.uom}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-gray-500 italic">No Data Available</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function TestApiDetailsPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -1153,7 +1344,6 @@ export default function TestApiDetailsPage() {
                             onClick={() => copyToClipboard(
                               showRawResponse 
                                 ? results[operation.id].rawResponse || JSON.stringify(results[operation.id].data, null, 2)
-                                : JSON.stringify(results[operation.id].data, null, 2)
                             )}
                             className="text-xs text-blue-600 hover:text-blue-800"
                           >
@@ -1162,13 +1352,19 @@ export default function TestApiDetailsPage() {
                         </div>
                       </div>
 
-                      <div className="bg-gray-900 p-3 rounded-md overflow-x-auto max-h-96 overflow-y-auto">
-                        <pre className="text-green-400 text-xs">
+                      <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
+                        <pre className="text-blue-400 text-xs">
                           {showRawResponse 
                             ? results[operation.id].rawResponse || JSON.stringify(results[operation.id].data, null, 2)
-                            : JSON.stringify(results[operation.id].data, null, 2)}
+                            : JSON.stringify(results[operation.id].data, null, 2)
+                          }
                         </pre>
                       </div>
+
+                      {/* Add Drug Info Details for drug info endpoint */}
+                      {operation.endpoint.includes('/api/drugs/info/gsn') && results[operation.id]?.success && (
+                        <DrugInfoDetails data={results[operation.id].data} onGsnChange={(gsn) => handleInputChange(operation.id, 'gsn', gsn)} />
+                      )}
                     </div>
                   )}
                 </div>
