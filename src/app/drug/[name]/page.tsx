@@ -27,6 +27,7 @@ export default function DrugPage({ params }: Props) {
   const [drugInfo, setDrugInfo] = useState<DrugInfoType | null>(null)
   const [drugDetails, setDrugDetails] = useState<DrugDetails | null>(null)
   const [pharmacyPrices, setPharmacyPrices] = useState<PharmacyPrice[]>([])
+  const [brandVariations, setBrandVariations] = useState<any[]>([])
   const [selectedForm, setSelectedForm] = useState<string>('CAPSULE')
   const [selectedStrength, setSelectedStrength] = useState<string>('500 mg')
   const [selectedQuantity, setSelectedQuantity] = useState<string>('21 CAPSULE')
@@ -240,6 +241,15 @@ export default function DrugPage({ params }: Props) {
       // Check if we're using mock data
       if ((response as any).usingMockData) {
         console.warn('Using mock pharmacy data - real API data not available')
+      }
+      
+      // Store brand variations if available
+      if (response.brandVariations && Array.isArray(response.brandVariations)) {
+        console.log('Setting brand variations:', response.brandVariations)
+        setBrandVariations(response.brandVariations)
+      } else {
+        console.log('No brand variations found in response')
+        setBrandVariations([])
       }
       
       // Check if we have pharmacy data from the API response
@@ -666,8 +676,8 @@ export default function DrugPage({ params }: Props) {
           >
             <h3 className="text-lg font-semibold text-gray-800 mb-3">Brand/Generic Variations</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {pharmacyPrices && (pharmacyPrices as any).brandVariations ? (
-                (pharmacyPrices as any).brandVariations.map((variation: any, index: number) => (
+              {brandVariations && brandVariations.length > 0 ? (
+                brandVariations.map((variation: any, index: number) => (
                   <div 
                     key={`variation-${index}`}
                     className={`border rounded-md p-3 cursor-pointer transition-all ${
