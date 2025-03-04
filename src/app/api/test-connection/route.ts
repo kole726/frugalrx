@@ -252,16 +252,9 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     envVars: {
       apiUrl,
-      authUrl,
-      clientId: !!clientId,
-      clientSecret: !!clientSecret,
-      hqMapping,
-      useMockDrugInfo,
-      useMockPharmacyPrices,
-      useMockDrugSearch,
-      useRealApi,
-      fallbackToMock,
-      nodeEnv
+      apiKey: !!clientId,
+      apiSecret: !!clientSecret,
+      apiVersion: nodeEnv
     },
     tests: {
       authentication: {
@@ -269,7 +262,13 @@ export async function GET() {
         message: authResult.message,
         token: authResult.token
       },
-      endpoints: endpointTests
+      apiConnection: {
+        success: endpointTests.drugInfo.success || endpointTests.drugSearch.success || endpointTests.pharmacyPrices.success,
+        message: endpointTests.drugInfo.success || endpointTests.drugSearch.success || endpointTests.pharmacyPrices.success 
+          ? "Successfully connected to API endpoints" 
+          : "Failed to connect to API endpoints",
+        endpointTests: endpointTests
+      }
     }
   }, { headers: corsHeaders });
 } 
