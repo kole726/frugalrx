@@ -668,16 +668,16 @@ export default function DrugPage({ params }: Props) {
           </motion.div>
 
           {/* Brand Variations Section */}
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
-            className="mb-8"
-          >
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Brand/Generic Variations</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {brandVariations && brandVariations.length > 0 ? (
-                brandVariations.map((variation: any, index: number) => (
+          {brandVariations && brandVariations.length > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.3 }}
+              className="mb-8"
+            >
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Brand/Generic Variations</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {brandVariations.map((variation, index) => (
                   <div 
                     key={`variation-${index}`}
                     className={`border rounded-md p-3 cursor-pointer transition-all ${
@@ -701,14 +701,10 @@ export default function DrugPage({ params }: Props) {
                       </div>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="col-span-3 text-center py-3 bg-gray-50 rounded-md">
-                  <p className="text-gray-500">No brand/generic variations available</p>
-                </div>
-              )}
-            </div>
-          </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Main Content - Prices and Map */}
           <motion.div 
