@@ -76,6 +76,33 @@ export async function POST(request: Request) {
       // Fall back to mock data if API fails
       return NextResponse.json({
         pharmacies: MOCK_PHARMACY_PRICES,
+        brandVariations: [
+          {
+            name: `${criteria.drugName} (brand)`,
+            type: 'brand',
+            gsn: 1790
+          },
+          {
+            name: `${criteria.drugName} (generic)`,
+            type: 'generic',
+            gsn: 1791
+          }
+        ],
+        forms: [
+          { form: 'TABLET', gsn: 1790 },
+          { form: 'CAPSULE', gsn: 1791 },
+          { form: 'LIQUID', gsn: 1792 }
+        ],
+        strengths: [
+          { strength: '500 mg', gsn: 1790 },
+          { strength: '250 mg', gsn: 1791 },
+          { strength: '125 mg', gsn: 1792 }
+        ],
+        quantities: [
+          { quantity: 30, uom: 'TABLET' },
+          { quantity: 60, uom: 'TABLET' },
+          { quantity: 90, uom: 'TABLET' }
+        ],
         error: error instanceof Error ? error.message : 'Unknown error',
         usingMockData: true
       });
@@ -137,6 +164,33 @@ export async function GET(request: Request) {
       // Fall back to mock data if API fails
       return NextResponse.json({
         pharmacies: MOCK_PHARMACY_PRICES,
+        brandVariations: [
+          {
+            name: `${drugName} (brand)`,
+            type: 'brand',
+            gsn: 1790
+          },
+          {
+            name: `${drugName} (generic)`,
+            type: 'generic',
+            gsn: 1791
+          }
+        ],
+        forms: [
+          { form: 'TABLET', gsn: 1790 },
+          { form: 'CAPSULE', gsn: 1791 },
+          { form: 'LIQUID', gsn: 1792 }
+        ],
+        strengths: [
+          { strength: '500 mg', gsn: 1790 },
+          { strength: '250 mg', gsn: 1791 },
+          { strength: '125 mg', gsn: 1792 }
+        ],
+        quantities: [
+          { quantity: 30, uom: 'TABLET' },
+          { quantity: 60, uom: 'TABLET' },
+          { quantity: 90, uom: 'TABLET' }
+        ],
         error: error instanceof Error ? error.message : 'Unknown error',
         usingMockData: true
       });

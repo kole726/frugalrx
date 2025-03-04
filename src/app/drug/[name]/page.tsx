@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getDrugInfo, getDrugPrices, getDetailedDrugInfo, searchMedications } from '@/services/medicationApi'
 import LoadingState from '@/components/search/LoadingState'
-import { DrugInfo as DrugInfoType, DrugDetails, PharmacyPrice, APIError, DrugSearchResponse, DrugPriceResponse, DrugVariation, DrugForm, DrugStrength, DrugQuantity } from '@/types/api'
+import { DrugInfo as DrugInfoType, DrugDetails, PharmacyPrice, APIError, DrugSearchResponse, DrugPriceResponse } from '@/types/api'
 import PharmacyMap from '@/components/maps/PharmacyMap'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -27,9 +27,9 @@ export default function DrugPage({ params }: Props) {
   const [drugInfo, setDrugInfo] = useState<DrugInfoType | null>(null)
   const [drugDetails, setDrugDetails] = useState<DrugDetails | null>(null)
   const [pharmacyPrices, setPharmacyPrices] = useState<PharmacyPrice[]>([])
-  const [selectedForm, setSelectedForm] = useState<DrugForm | null>(null)
-  const [selectedStrength, setSelectedStrength] = useState<DrugStrength | null>(null)
-  const [selectedQuantity, setSelectedQuantity] = useState<DrugQuantity | null>(null)
+  const [selectedForm, setSelectedForm] = useState<string>('CAPSULE')
+  const [selectedStrength, setSelectedStrength] = useState<string>('500 mg')
+  const [selectedQuantity, setSelectedQuantity] = useState<string>('21 CAPSULE')
   const [selectedSort, setSelectedSort] = useState<string>('PRICE')
   const [searchRadius, setSearchRadius] = useState<number>(50)
   const [userLocation, setUserLocation] = useState({
@@ -41,11 +41,6 @@ export default function DrugPage({ params }: Props) {
   const [selectedPharmacy, setSelectedPharmacy] = useState<PharmacyPrice | null>(null)
   const [showPrices, setShowPrices] = useState(true)
   const [isLoadingPharmacies, setIsLoadingPharmacies] = useState(false)
-  const [brandVariations, setBrandVariations] = useState<DrugVariation[]>([])
-  const [selectedVariation, setSelectedVariation] = useState<DrugVariation | null>(null)
-  const [drugForms, setDrugForms] = useState<DrugForm[]>([])
-  const [drugStrengths, setDrugStrengths] = useState<DrugStrength[]>([])
-  const [drugQuantities, setDrugQuantities] = useState<DrugQuantity[]>([])
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -188,121 +183,134 @@ export default function DrugPage({ params }: Props) {
     fetchDrugInfo();
   }, []);
 
-  // Fetch pharmacy prices based on location and drug info
+  // Function to fetch pharmacy prices
   const fetchPharmacyPrices = async (latitude: number, longitude: number, radius: number) => {
-    setIsLoadingPharmacies(true);
-    
     try {
-      console.log(`Fetching pharmacy prices for ${params.name} at ${latitude}, ${longitude} with radius ${radius} miles`);
+      setIsLoadingPharmacies(true)
+      setError(null)
       
-      // Determine if we should use GSN or drug name
-      let priceRequest: any = {
+      if (!drugInfo && !params.name) {
+        console.error('Cannot fetch pharmacy prices: No drug info or name available')
+        setError('Drug information not available. Please try searching again.')
+        return
+      }
+      
+      const drugName = drugInfo?.genericName || decodeURIComponent(params.name)
+      const gsnToUse = drugInfo?.gsn || (gsn ? parseInt(gsn, 10) : undefined)
+      
+      console.log(`Fetching pharmacy prices for ${drugName} (GSN: ${gsnToUse || 'not available'})`)
+      console.log(`Location: ${latitude}, ${longitude}, Radius: ${radius} miles`)
+      
+      // Prepare the request
+      const request = {
         latitude,
         longitude,
-        radius
-      };
+        radius,
+        customizedQuantity: false,
+        maximumPharmacies: 50 // Request more pharmacies for better results
+      }
       
-      if (gsn) {
-        priceRequest.gsn = parseInt(gsn, 10);
+      // Add either GSN or drug name
+      if (gsnToUse) {
+        Object.assign(request, { gsn: gsnToUse })
       } else {
-        priceRequest.drugName = params.name;
+        Object.assign(request, { drugName })
       }
       
-      // If we have a selected variation with GSN, use that instead
-      if (selectedVariation && selectedVariation.gsn) {
-        priceRequest = {
-          ...priceRequest,
-          gsn: selectedVariation.gsn,
-          drugName: undefined // Clear drug name if using GSN
-        };
-      }
-      
-      // If we have a selected form with GSN, use that instead
-      if (selectedForm && selectedForm.gsn) {
-        priceRequest = {
-          ...priceRequest,
-          gsn: selectedForm.gsn,
-          drugName: undefined // Clear drug name if using GSN
-        };
-      }
-      
-      // If we have a selected strength with GSN, use that instead
-      if (selectedStrength && selectedStrength.gsn) {
-        priceRequest = {
-          ...priceRequest,
-          gsn: selectedStrength.gsn,
-          drugName: undefined // Clear drug name if using GSN
-        };
-      }
-      
-      // If we have a selected quantity, add it to the request
+      // Add quantity if selected
       if (selectedQuantity) {
-        priceRequest = {
-          ...priceRequest,
-          customizedQuantity: true,
-          quantity: selectedQuantity.quantity
-        };
-      }
-      
-      const priceData = await getDrugPrices(priceRequest);
-      
-      console.log(`Received ${priceData.pharmacies?.length || 0} pharmacy prices`);
-      
-      // Store brand variations if available
-      if (priceData.brandVariations && priceData.brandVariations.length > 0) {
-        console.log('Received brand variations:', priceData.brandVariations);
-        setBrandVariations(priceData.brandVariations);
-        
-        // If no variation is selected yet, select the first one
-        if (!selectedVariation) {
-          setSelectedVariation(priceData.brandVariations[0]);
+        const quantityMatch = selectedQuantity.match(/(\d+)/)
+        if (quantityMatch && quantityMatch[1]) {
+          const quantity = parseInt(quantityMatch[1], 10)
+          if (!isNaN(quantity)) {
+            Object.assign(request, { 
+              customizedQuantity: true,
+              quantity
+            })
+          }
         }
       }
       
-      // Store forms if available
-      if (priceData.forms && priceData.forms.length > 0) {
-        console.log('Received drug forms:', priceData.forms);
-        setDrugForms(priceData.forms);
-        
-        // If no form is selected yet, select the first one
-        if (!selectedForm) {
-          setSelectedForm(priceData.forms[0]);
-        }
+      console.log('Pharmacy price request:', request)
+      
+      // Call the API
+      const response = await getDrugPrices(request)
+      console.log('Pharmacy price response:', response)
+      
+      // Check if we're using mock data
+      if ((response as any).usingMockData) {
+        console.warn('Using mock pharmacy data - real API data not available')
       }
       
-      // Store strengths if available
-      if (priceData.strengths && priceData.strengths.length > 0) {
-        console.log('Received drug strengths:', priceData.strengths);
-        setDrugStrengths(priceData.strengths);
+      // Check if we have pharmacy data from the API response
+      if ((response as any).pharmacyPrices && Array.isArray((response as any).pharmacyPrices)) {
+        // API returned data in the new format with detailed pharmacy information
+        console.log('Using detailed pharmacy data from API')
         
-        // If no strength is selected yet, select the first one
-        if (!selectedStrength) {
-          setSelectedStrength(priceData.strengths[0]);
-        }
-      }
-      
-      // Store quantities if available
-      if (priceData.quantities && priceData.quantities.length > 0) {
-        console.log('Received drug quantities:', priceData.quantities);
-        setDrugQuantities(priceData.quantities);
+        // Map the API response to our PharmacyPrice format
+        const mappedPharmacies = ((response as any).pharmacyPrices).map((item: any) => {
+          const pharmacy = item.pharmacy || {};
+          const price = item.price || {};
+          
+          return {
+            name: pharmacy.name || 'Unknown Pharmacy',
+            price: parseFloat(price.price) || 0,
+            distance: `${pharmacy.distance?.toFixed(1) || '0.0'} miles`,
+            address: pharmacy.streetAddress || '',
+            city: pharmacy.city || '',
+            state: pharmacy.state || '',
+            postalCode: pharmacy.zipCode || '',
+            phone: pharmacy.phone || '',
+            latitude: pharmacy.latitude,
+            longitude: pharmacy.longitude,
+            open24H: pharmacy.open24H || false
+          };
+        });
         
-        // If no quantity is selected yet, select the first one
-        if (!selectedQuantity) {
-          setSelectedQuantity(priceData.quantities[0]);
+        // Sort pharmacies based on selected sort option
+        if (selectedSort === 'PRICE') {
+          mappedPharmacies.sort((a: PharmacyPrice, b: PharmacyPrice) => a.price - b.price)
+        } else if (selectedSort === 'DISTANCE') {
+          mappedPharmacies.sort((a: PharmacyPrice, b: PharmacyPrice) => {
+            const distanceA = parseFloat(a.distance.replace(' miles', ''))
+            const distanceB = parseFloat(b.distance.replace(' miles', ''))
+            return distanceA - distanceB
+          })
         }
+        
+        setPharmacyPrices(mappedPharmacies)
+        console.log(`Found ${mappedPharmacies.length} pharmacies with prices from API`)
       }
-      
-      // Sort pharmacies by price (lowest first)
-      const sortedPharmacies = [...(priceData.pharmacies || [])].sort((a, b) => a.price - b.price);
-      
-      setPharmacyPrices(sortedPharmacies);
-      setIsLoadingPharmacies(false);
+      else if (response.pharmacies && response.pharmacies.length > 0) {
+        // Legacy format or mock data
+        console.log('Using legacy pharmacy data format')
+        
+        // Sort pharmacies based on selected sort option
+        let sortedPharmacies = [...response.pharmacies]
+        
+        if (selectedSort === 'PRICE') {
+          sortedPharmacies.sort((a, b) => a.price - b.price)
+        } else if (selectedSort === 'DISTANCE') {
+          sortedPharmacies.sort((a, b) => {
+            const distanceA = parseFloat(a.distance.replace(' miles', '').replace(' mi', ''))
+            const distanceB = parseFloat(b.distance.replace(' miles', '').replace(' mi', ''))
+            return distanceA - distanceB
+          })
+        }
+        
+        setPharmacyPrices(sortedPharmacies)
+        console.log(`Found ${sortedPharmacies.length} pharmacies with prices from legacy format`)
+      } else {
+        console.warn('No pharmacy prices found in the response')
+        setError('No pharmacy prices found for this medication in your area.')
+        setPharmacyPrices([])
+      }
     } catch (error) {
-      console.error('Error fetching pharmacy prices:', error);
-      setError(`Failed to fetch pharmacy prices: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setIsLoadingPharmacies(false);
+      console.error('Error fetching pharmacy prices:', error)
+    } finally {
+      setIsLoadingPharmacies(false)
     }
-  };
+  }
 
   // Function to fetch drug information
   const fetchDrugInfo = async () => {
@@ -550,151 +558,6 @@ export default function DrugPage({ params }: Props) {
     }
   };
 
-  // Handle variation change
-  const handleVariationChange = (variation: DrugVariation) => {
-    setSelectedVariation(variation);
-    
-    // Refetch prices with the new variation
-    fetchPharmacyPrices(
-      userLocation.latitude,
-      userLocation.longitude,
-      searchRadius
-    );
-  };
-
-  // Handle form change
-  const handleFormChange = (form: DrugForm) => {
-    setSelectedForm(form);
-    
-    // Refetch prices with the new form
-    fetchPharmacyPrices(
-      userLocation.latitude,
-      userLocation.longitude,
-      searchRadius
-    );
-  };
-
-  // Handle strength change
-  const handleStrengthChange = (strength: DrugStrength) => {
-    setSelectedStrength(strength);
-    
-    // Refetch prices with the new strength
-    fetchPharmacyPrices(
-      userLocation.latitude,
-      userLocation.longitude,
-      searchRadius
-    );
-  };
-
-  // Handle quantity change
-  const handleQuantityChange = (quantity: DrugQuantity) => {
-    setSelectedQuantity(quantity);
-    
-    // Refetch prices with the new quantity
-    fetchPharmacyPrices(
-      userLocation.latitude,
-      userLocation.longitude,
-      searchRadius
-    );
-  };
-
-  // Add this to the JSX where you want to display the filters
-  const renderFilters = () => {
-    return (
-      <div className="mb-6 bg-white rounded-lg shadow-md p-4">
-        <h3 className="text-lg font-semibold mb-3">Filter Options</h3>
-        
-        {/* Brand/Generic Variations */}
-        {brandVariations.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium mb-2">Brand/Generic</h4>
-            <div className="flex flex-wrap gap-2">
-              {brandVariations.map((variation, index) => (
-                <button
-                  key={`variation-${index}`}
-                  onClick={() => handleVariationChange(variation)}
-                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                    selectedVariation?.name === variation.name
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                  }`}
-                >
-                  {variation.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* Drug Forms */}
-        {drugForms.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium mb-2">Form</h4>
-            <div className="flex flex-wrap gap-2">
-              {drugForms.map((form, index) => (
-                <button
-                  key={`form-${index}`}
-                  onClick={() => handleFormChange(form)}
-                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                    selectedForm?.form === form.form
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                  }`}
-                >
-                  {form.form}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* Drug Strengths */}
-        {drugStrengths.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium mb-2">Strength</h4>
-            <div className="flex flex-wrap gap-2">
-              {drugStrengths.map((strength, index) => (
-                <button
-                  key={`strength-${index}`}
-                  onClick={() => handleStrengthChange(strength)}
-                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                    selectedStrength?.strength === strength.strength
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                  }`}
-                >
-                  {strength.strength}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* Drug Quantities */}
-        {drugQuantities.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium mb-2">Quantity</h4>
-            <div className="flex flex-wrap gap-2">
-              {drugQuantities.map((quantity, index) => (
-                <button
-                  key={`quantity-${index}`}
-                  onClick={() => handleQuantityChange(quantity)}
-                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                    selectedQuantity?.quantity === quantity.quantity
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-800'
-                  }`}
-                >
-                  {quantity.quantity} {quantity.uom}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 relative">
       {isLoading ? (
@@ -762,78 +625,80 @@ export default function DrugPage({ params }: Props) {
             <div>
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedForm?.form || ''}
-                onChange={(e) => {
-                  const selectedForm = drugForms.find(f => f.form === e.target.value);
-                  if (selectedForm) {
-                    handleFormChange(selectedForm);
-                  }
-                }}
+                value={selectedForm}
+                onChange={(e) => setSelectedForm(e.target.value)}
               >
-                <option value="">Select form</option>
-                {drugForms.map((form) => (
-                  <option key={form.form} value={form.form}>{form.form}</option>
-                ))}
+                <option value="CAPSULE">CAPSULE</option>
+                <option value="TABLET">TABLET</option>
+                <option value="LIQUID">LIQUID</option>
               </select>
             </div>
             <div>
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedStrength?.strength || ''}
-                onChange={(e) => {
-                  const selectedStrength = drugStrengths.find(s => s.strength === e.target.value);
-                  if (selectedStrength) {
-                    handleStrengthChange(selectedStrength);
-                  }
-                }}
+                value={selectedStrength}
+                onChange={(e) => setSelectedStrength(e.target.value)}
               >
-                <option value="">Select strength</option>
-                {drugStrengths.map((strength) => (
-                  <option key={strength.strength} value={strength.strength}>{strength.strength}</option>
-                ))}
+                <option value="500 mg">500 mg</option>
+                <option value="250 mg">250 mg</option>
+                <option value="125 mg">125 mg</option>
               </select>
             </div>
             <div>
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedQuantity?.quantity || ''}
-                onChange={(e) => {
-                  const quantityValue = parseInt(e.target.value, 10);
-                  const selectedQuantity = drugQuantities.find(q => q.quantity === quantityValue);
-                  if (selectedQuantity) {
-                    handleQuantityChange(selectedQuantity);
-                  }
-                }}
+                value={selectedQuantity}
+                onChange={(e) => setSelectedQuantity(e.target.value)}
               >
-                <option value="">Select quantity</option>
-                {drugQuantities.map((quantity) => (
-                  <option key={quantity.quantity} value={quantity.quantity}>{quantity.quantity} {quantity.uom}</option>
-                ))}
+                <option value="21 CAPSULE">21 CAPSULE</option>
+                <option value="30 CAPSULE">30 CAPSULE</option>
+                <option value="60 CAPSULE">60 CAPSULE</option>
               </select>
             </div>
           </motion.div>
 
-          {/* Brand Variations Selector */}
-          {brandVariations.length > 0 && (
-            <div className="mb-6 border-b pb-4">
-              <h3 className="text-lg font-semibold mb-2">Available Options:</h3>
-              <div className="flex flex-wrap gap-2">
-                {brandVariations.map((variation, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleVariationChange(variation)}
-                    className={`px-4 py-2 rounded-md text-sm font-medium ${
-                      selectedVariation?.name === variation.name
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+          {/* Brand Variations Section */}
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            className="mb-8"
+          >
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Brand/Generic Variations</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {pharmacyPrices && (pharmacyPrices as any).brandVariations ? (
+                (pharmacyPrices as any).brandVariations.map((variation: any, index: number) => (
+                  <div 
+                    key={`variation-${index}`}
+                    className={`border rounded-md p-3 cursor-pointer transition-all ${
+                      variation.type === 'brand' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'
                     }`}
+                    onClick={() => {
+                      if (variation.gsn) {
+                        window.location.href = `/drug/${encodeURIComponent(variation.name.split(' ')[0])}?gsn=${variation.gsn}`;
+                      }
+                    }}
                   >
-                    {variation.name}
-                  </button>
-                ))}
-              </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{variation.name}</p>
+                        <p className="text-sm text-gray-600 capitalize">{variation.type}</p>
+                      </div>
+                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        variation.type === 'brand' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {variation.type === 'brand' ? 'Brand' : 'Generic'}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-3 bg-gray-50 rounded-md">
+                  <p className="text-gray-500">No brand/generic variations available</p>
+                </div>
+              )}
             </div>
-          )}
+          </motion.div>
 
           {/* Main Content - Prices and Map */}
           <motion.div 
@@ -863,22 +728,18 @@ export default function DrugPage({ params }: Props) {
                         </select>
                         <select 
                           className="text-sm border border-gray-200 rounded-md p-2 bg-white hover:border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-colors"
-                          value={`${searchRadius} miles`}
-                          onChange={handleSearchRadiusChange}
+                          value={pharmaciesPerPage}
+                          onChange={handlePharmaciesPerPageChange}
                           disabled={isLoadingPharmacies}
                         >
-                          <option value="5 miles">5 miles</option>
-                          <option value="10 miles">10 miles</option>
-                          <option value="25 miles">25 miles</option>
-                          <option value="50 miles">50 miles</option>
+                          <option value="5">Show 5</option>
+                          <option value="10">Show 10</option>
+                          <option value="20">Show 20</option>
                         </select>
                       </div>
                     </div>
                     
-                    {/* Drug Filters */}
-                    {renderFilters()}
-                    
-                    {/* Pharmacy List */}
+                    {/* Pharmacy list */}
                     <div ref={pharmacyListRef} className="space-y-4">
                       {isLoadingPharmacies ? (
                         <div className="text-center py-8">
@@ -892,7 +753,7 @@ export default function DrugPage({ params }: Props) {
                       ) : pharmacyPrices.length === 0 ? (
                         <div className="text-center py-8">
                           <p className="text-gray-500">No pharmacy prices found for this medication in your area.</p>
-                          <p className="text-gray-500 mt-2">Try adjusting your search radius or location.</p>
+                          <p className="text-gray-500 mt-2">Try increasing your search radius or changing your location.</p>
                         </div>
                       ) : (
                         // Get current pharmacies for pagination

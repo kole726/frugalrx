@@ -72,8 +72,8 @@ export const LOGGING = {
  * @returns Whether to use mock data for the feature
  */
 export function useMockDataFor(feature: string): boolean {
-  // Always return false to disable mock data
-  return false;
+  // Return the global USE_MOCK_DATA setting
+  return USE_MOCK_DATA;
 }
 
 /**
