@@ -252,8 +252,11 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     
     console.log(`Server: Using endpoint ${endpoint} with body:`, requestBody);
     
+    // Ensure the URL is properly formatted - remove any trailing slashes
+    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+    
     // Make API request
-    const response = await fetch(`${apiUrl}${endpoint}`, {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
