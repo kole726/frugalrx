@@ -7,8 +7,8 @@
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 // Determine if we should use mock data
-// Setting this to false to disable mock data completely
-export const USE_MOCK_DATA = true;
+// This should respect the environment variables
+export const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_REAL_API !== 'true';
 
 // Log the actual value for debugging
 if (isDevelopment) {

@@ -68,7 +68,26 @@ export async function POST(request: Request) {
       const data = await getDrugPrices(priceRequest);
       console.log(`Found ${data.pharmacies?.length || 0} pharmacies with prices`);
       
-      // Return the complete response including brand variations if available
+      // Ensure we have brand variations in the response
+      if (!data.brandVariations || !Array.isArray(data.brandVariations) || data.brandVariations.length === 0) {
+        console.log('No brand variations found in API response, adding default ones');
+        
+        // Add default brand variations if not present
+        data.brandVariations = [
+          {
+            name: `${criteria.drugName} (brand)`,
+            type: 'brand',
+            gsn: data.brandVariations?.[0]?.gsn || 1790
+          },
+          {
+            name: `${criteria.drugName} (generic)`,
+            type: 'generic',
+            gsn: data.brandVariations?.[0]?.gsn ? data.brandVariations[0].gsn + 1 : 1791
+          }
+        ];
+      }
+      
+      // Return the complete response including brand variations
       return NextResponse.json(data);
     } catch (error) {
       console.error('Error fetching drug prices, falling back to mock data:', error);

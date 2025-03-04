@@ -262,7 +262,9 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
     // Check if baseUrl already includes the pricing/v1 path
-    const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
+    // If not, add it to ensure we have the complete path
+    const pricingPath = baseUrl.includes('/pricing/v1') ? '' : '/pricing/v1';
+    const fullEndpoint = `${pricingPath}${endpoint}`;
     
     console.log(`Server: Using endpoint ${fullEndpoint} with body:`, requestBody);
     

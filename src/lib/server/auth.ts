@@ -82,8 +82,8 @@ export async function getAuthToken(): Promise<string> {
   // Increment request counter
   tokenRequestCount++;
   
-  // If we should use mock data, return a mock token
-  if (USE_MOCK_DATA) {
+  // If we should use mock data AND real API is not enabled, return a mock token
+  if (USE_MOCK_DATA && process.env.NEXT_PUBLIC_USE_REAL_API !== 'true') {
     // Log that we're using a mock token
     console.log('[AUTH] Using mock token for development environment');
     

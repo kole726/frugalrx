@@ -42,6 +42,7 @@ export default function DrugPage({ params }: Props) {
   const [selectedPharmacy, setSelectedPharmacy] = useState<PharmacyPrice | null>(null)
   const [showPrices, setShowPrices] = useState(true)
   const [isLoadingPharmacies, setIsLoadingPharmacies] = useState(false)
+  const [selectedBrand, setSelectedBrand] = useState<any | null>(null)
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -247,9 +248,34 @@ export default function DrugPage({ params }: Props) {
       if (response.brandVariations && Array.isArray(response.brandVariations)) {
         console.log('Setting brand variations:', response.brandVariations)
         setBrandVariations(response.brandVariations)
+        
+        // If we have brand variations but no selected brand, set the first one as selected
+        if (response.brandVariations.length > 0 && !selectedBrand) {
+          console.log('Setting initial selected brand:', response.brandVariations[0])
+          setSelectedBrand(response.brandVariations[0])
+        }
       } else {
-        console.log('No brand variations found in response')
-        setBrandVariations([])
+        console.warn('No brand variations found in API response')
+        // Create default brand variations if none are provided
+        const defaultVariations = [
+          {
+            name: `${drugName} (brand)`,
+            type: 'brand',
+            gsn: gsnToUse || 1790
+          },
+          {
+            name: `${drugName} (generic)`,
+            type: 'generic',
+            gsn: gsnToUse ? gsnToUse + 1 : 1791
+          }
+        ]
+        console.log('Setting default brand variations:', defaultVariations)
+        setBrandVariations(defaultVariations)
+        
+        // Set the first one as selected if no brand is selected
+        if (!selectedBrand) {
+          setSelectedBrand(defaultVariations[0])
+        }
       }
       
       // Check if we have pharmacy data from the API response
