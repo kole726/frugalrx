@@ -821,6 +821,7 @@ export default function DrugPage({ params }: Props) {
             className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
           >
             <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Brand</label>
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={drugInfo?.genericName || ''}
@@ -830,6 +831,7 @@ export default function DrugPage({ params }: Props) {
               </select>
             </div>
             <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Form</label>
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedForm}
@@ -841,6 +843,7 @@ export default function DrugPage({ params }: Props) {
               </select>
             </div>
             <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Dosage</label>
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedStrength}
@@ -852,6 +855,7 @@ export default function DrugPage({ params }: Props) {
               </select>
             </div>
             <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedQuantity}
