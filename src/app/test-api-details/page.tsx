@@ -781,48 +781,48 @@ export default function TestApiDetailsPage() {
 
               <div>
                 <h4 className="font-medium text-sm text-gray-700 mb-2">API Connection Test</h4>
-                <div className={`p-3 rounded-md ${connectionTestResults.tests.apiConnection.success ? 'bg-green-100' : 'bg-red-100'}`}>
+                <div className={`p-3 rounded-md ${connectionTestResults.tests.apiConnection?.success ? 'bg-green-100' : 'bg-red-100'}`}>
                   <div className="flex items-center mb-2">
-                    {connectionTestResults.tests.apiConnection.success ? (
+                    {connectionTestResults.tests.apiConnection?.success ? (
                       <span className="text-green-500 mr-2">✓</span>
                     ) : (
                       <span className="text-red-500 mr-2">✗</span>
                     )}
-                    <span className={connectionTestResults.tests.apiConnection.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
-                      {connectionTestResults.tests.apiConnection.success ? 'API Connection Successful' : 'API Connection Failed'}
+                    <span className={connectionTestResults.tests.apiConnection?.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
+                      {connectionTestResults.tests.apiConnection?.success ? 'API Connection Successful' : 'API Connection Failed'}
                     </span>
                   </div>
                   <div className="text-sm">
-                    {connectionTestResults.tests.apiConnection.message}
+                    {connectionTestResults.tests.apiConnection?.message}
                   </div>
                 </div>
               </div>
 
               {/* Detailed Endpoint Tests */}
-              {connectionTestResults.tests.apiConnection.endpointTests && (
+              {connectionTestResults.tests.apiConnection?.endpointTests && (
                 <div className="mt-4">
                   <h4 className="font-medium text-sm text-gray-700 mb-2">Endpoint Tests</h4>
                   
                   {/* Drug Info Endpoint Test */}
                   <div className="mb-3">
-                    <div className={`p-3 rounded-md ${connectionTestResults.tests.apiConnection.endpointTests.drugInfo.success ? 'bg-green-100' : 'bg-red-100'}`}>
+                    <div className={`p-3 rounded-md ${connectionTestResults.tests.apiConnection.endpointTests.drugInfo?.success ? 'bg-green-100' : 'bg-red-100'}`}>
                       <div className="flex items-center mb-2">
-                        {connectionTestResults.tests.apiConnection.endpointTests.drugInfo.success ? (
+                        {connectionTestResults.tests.apiConnection.endpointTests.drugInfo?.success ? (
                           <span className="text-green-500 mr-2">✓</span>
                         ) : (
                           <span className="text-red-500 mr-2">✗</span>
                         )}
-                        <span className={connectionTestResults.tests.apiConnection.endpointTests.drugInfo.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
+                        <span className={connectionTestResults.tests.apiConnection.endpointTests.drugInfo?.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
                           Drug Information API
                         </span>
                       </div>
                       <div className="text-xs text-gray-600 mb-1">
-                        Endpoint: {connectionTestResults.tests.apiConnection.endpointTests.drugInfo.url}
+                        Endpoint: {connectionTestResults.tests.apiConnection.endpointTests.drugInfo?.url}
                       </div>
                       <div className="text-xs text-gray-600 mb-2">
-                        Status: {connectionTestResults.tests.apiConnection.endpointTests.drugInfo.status}
+                        Status: {connectionTestResults.tests.apiConnection.endpointTests.drugInfo?.status}
                       </div>
-                      {connectionTestResults.tests.apiConnection.endpointTests.drugInfo.data && (
+                      {connectionTestResults.tests.apiConnection.endpointTests.drugInfo?.data && (
                         <div className="mt-2">
                           <div className="font-medium text-xs">Response Preview:</div>
                           <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
@@ -837,24 +837,24 @@ export default function TestApiDetailsPage() {
 
                   {/* Drug Search Endpoint Test */}
                   <div className="mb-3">
-                    <div className={`p-3 rounded-md ${connectionTestResults.tests.apiConnection.endpointTests.drugSearch.success ? 'bg-green-100' : 'bg-red-100'}`}>
+                    <div className={`p-3 rounded-md ${connectionTestResults.tests.apiConnection.endpointTests.drugSearch?.success ? 'bg-green-100' : 'bg-red-100'}`}>
                       <div className="flex items-center mb-2">
-                        {connectionTestResults.tests.apiConnection.endpointTests.drugSearch.success ? (
+                        {connectionTestResults.tests.apiConnection.endpointTests.drugSearch?.success ? (
                           <span className="text-green-500 mr-2">✓</span>
                         ) : (
                           <span className="text-red-500 mr-2">✗</span>
                         )}
-                        <span className={connectionTestResults.tests.apiConnection.endpointTests.drugSearch.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
+                        <span className={connectionTestResults.tests.apiConnection.endpointTests.drugSearch?.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
                           Drug Search API
                         </span>
                       </div>
                       <div className="text-xs text-gray-600 mb-1">
-                        Endpoint: {connectionTestResults.tests.apiConnection.endpointTests.drugSearch.url}
+                        Endpoint: {connectionTestResults.tests.apiConnection.endpointTests.drugSearch?.url}
                       </div>
                       <div className="text-xs text-gray-600 mb-2">
-                        Status: {connectionTestResults.tests.apiConnection.endpointTests.drugSearch.status}
+                        Status: {connectionTestResults.tests.apiConnection.endpointTests.drugSearch?.status}
                       </div>
-                      {connectionTestResults.tests.apiConnection.endpointTests.drugSearch.data && (
+                      {connectionTestResults.tests.apiConnection.endpointTests.drugSearch?.data && (
                         <div className="mt-2">
                           <div className="font-medium text-xs">Response Preview:</div>
                           <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
@@ -869,24 +869,24 @@ export default function TestApiDetailsPage() {
 
                   {/* Pharmacy Prices Endpoint Test */}
                   <div>
-                    <div className={`p-3 rounded-md ${connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices.success ? 'bg-green-100' : 'bg-red-100'}`}>
+                    <div className={`p-3 rounded-md ${connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices?.success ? 'bg-green-100' : 'bg-red-100'}`}>
                       <div className="flex items-center mb-2">
-                        {connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices.success ? (
+                        {connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices?.success ? (
                           <span className="text-green-500 mr-2">✓</span>
                         ) : (
                           <span className="text-red-500 mr-2">✗</span>
                         )}
-                        <span className={connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
+                        <span className={connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices?.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
                           Pharmacy Prices API
                         </span>
                       </div>
                       <div className="text-xs text-gray-600 mb-1">
-                        Endpoint: {connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices.url}
+                        Endpoint: {connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices?.url}
                       </div>
                       <div className="text-xs text-gray-600 mb-2">
-                        Status: {connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices.status}
+                        Status: {connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices?.status}
                       </div>
-                      {connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices.data && (
+                      {connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices?.data && (
                         <div className="mt-2">
                           <div className="font-medium text-xs">Response Preview:</div>
                           <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
@@ -901,7 +901,7 @@ export default function TestApiDetailsPage() {
                 </div>
               )}
 
-              {connectionTestResults.tests.apiConnection.details && (
+              {connectionTestResults.tests.apiConnection?.details && (
                 <div className="mt-4">
                   <div className="font-medium text-sm">Additional Details:</div>
                   <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
