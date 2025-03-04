@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getDrugInfo, getDrugPrices, getDetailedDrugInfo, searchMedications } from '@/services/medicationApi'
 import LoadingState from '@/components/search/LoadingState'
-import { DrugInfo as DrugInfoType, DrugDetails, PharmacyPrice, APIError, DrugSearchResponse, DrugPriceResponse } from '@/types/api'
+import { DrugInfo as DrugInfoType, DrugDetails, PharmacyPrice, APIError, DrugSearchResponse, DrugPriceResponse, DrugForm, DrugStrength, DrugQuantity } from '@/types/api'
 import PharmacyMap from '@/components/maps/PharmacyMap'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -30,9 +30,16 @@ export default function DrugPage({ params }: Props) {
   const [drugDetails, setDrugDetails] = useState<DrugDetails | null>(null)
   const [pharmacyPrices, setPharmacyPrices] = useState<PharmacyPrice[]>([])
   const [brandVariations, setBrandVariations] = useState<any[]>([])
+  
+  // Filter state
+  const [selectedBrand, setSelectedBrand] = useState<string>('generic')
+  const [availableForms, setAvailableForms] = useState<DrugForm[]>([])
   const [selectedForm, setSelectedForm] = useState<string>('CAPSULE')
+  const [availableStrengths, setAvailableStrengths] = useState<DrugStrength[]>([])
   const [selectedStrength, setSelectedStrength] = useState<string>('500 mg')
+  const [availableQuantities, setAvailableQuantities] = useState<DrugQuantity[]>([])
   const [selectedQuantity, setSelectedQuantity] = useState<string>('21 CAPSULE')
+  
   const [selectedSort, setSelectedSort] = useState<string>('PRICE')
   const [searchRadius, setSearchRadius] = useState<number>(50)
   const [userLocation, setUserLocation] = useState({
@@ -44,7 +51,6 @@ export default function DrugPage({ params }: Props) {
   const [selectedPharmacy, setSelectedPharmacy] = useState<PharmacyPrice | null>(null)
   const [showPrices, setShowPrices] = useState(true)
   const [isLoadingPharmacies, setIsLoadingPharmacies] = useState(false)
-  const [selectedBrand, setSelectedBrand] = useState<any | null>(null)
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -279,7 +285,7 @@ export default function DrugPage({ params }: Props) {
           
           // Set the first one as selected if no brand is selected
           if (!selectedBrand) {
-            setSelectedBrand(mockVariations[0]);
+            setSelectedBrand(mockVariations[0].type);
           }
         }
       }
@@ -311,6 +317,7 @@ export default function DrugPage({ params }: Props) {
       
       console.log(`Fetching pharmacy prices for ${drugName} (GSN: ${gsnToUse || 'not available'})`)
       console.log(`Location: ${latitude}, ${longitude}, Radius: ${radius} miles`)
+      console.log(`Form: ${selectedForm}, Strength: ${selectedStrength}, Quantity: ${selectedQuantity}`)
       
       // Prepare the request
       const request = {
@@ -326,6 +333,16 @@ export default function DrugPage({ params }: Props) {
         Object.assign(request, { gsn: gsnToUse })
       } else {
         Object.assign(request, { drugName })
+      }
+      
+      // Add form if selected
+      if (selectedForm) {
+        Object.assign(request, { form: selectedForm })
+      }
+      
+      // Add strength if selected
+      if (selectedStrength) {
+        Object.assign(request, { strength: selectedStrength })
       }
       
       // Add quantity if selected
@@ -361,7 +378,7 @@ export default function DrugPage({ params }: Props) {
         // If we have brand variations but no selected brand, set the first one as selected
         if (response.brandVariations.length > 0 && !selectedBrand) {
           console.log('Setting initial selected brand:', response.brandVariations[0])
-          setSelectedBrand(response.brandVariations[0])
+          setSelectedBrand(response.brandVariations[0].type)
         }
       } else {
         console.warn('No brand variations found in API response')
@@ -383,7 +400,7 @@ export default function DrugPage({ params }: Props) {
         
         // Set the first one as selected if no brand is selected
         if (!selectedBrand) {
-          setSelectedBrand(defaultVariations[0])
+          setSelectedBrand(defaultVariations[0].type)
         }
       }
       
@@ -483,6 +500,43 @@ export default function DrugPage({ params }: Props) {
           // Get basic drug info
           const basicInfo = await getDrugInfo(drugName)
           console.log('Basic drug info:', basicInfo)
+          
+          // Extract filter options from detailed info
+          if (detailedInfo) {
+            // Extract forms
+            if (detailedInfo.forms && Array.isArray(detailedInfo.forms)) {
+              setAvailableForms(detailedInfo.forms);
+              // Set default selected form if available
+              if (detailedInfo.forms.length > 0) {
+                setSelectedForm(detailedInfo.forms[0].form);
+              }
+            }
+            
+            // Extract strengths
+            if (detailedInfo.strengths && Array.isArray(detailedInfo.strengths)) {
+              setAvailableStrengths(detailedInfo.strengths);
+              // Set default selected strength if available
+              if (detailedInfo.strengths.length > 0) {
+                setSelectedStrength(detailedInfo.strengths[0].strength);
+              }
+            }
+            
+            // Extract quantities
+            if (detailedInfo.quantities && Array.isArray(detailedInfo.quantities)) {
+              setAvailableQuantities(detailedInfo.quantities);
+              // Set default selected quantity if available
+              if (detailedInfo.quantities.length > 0) {
+                const firstQuantity = detailedInfo.quantities[0];
+                setSelectedQuantity(`${firstQuantity.quantity} ${firstQuantity.uom}`);
+              }
+            }
+            
+            // Set brand options
+            if (detailedInfo.brandName && detailedInfo.genericName) {
+              // If both brand and generic names are available, set the brand selector
+              setSelectedBrand(detailedInfo.genericName ? 'generic' : 'brand');
+            }
+          }
           
           // Combine the information
           setDrugInfo({
@@ -765,6 +819,78 @@ export default function DrugPage({ params }: Props) {
     }
   }, [isLoading, isLoadingPharmacies, pharmacyPrices.length]);
 
+  // Handle form change
+  const handleFormChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newForm = e.target.value;
+    setSelectedForm(newForm);
+    
+    // Find the GSN for the selected form if available
+    const selectedFormObj = availableForms.find(form => form.form === newForm);
+    if (selectedFormObj && selectedFormObj.gsn) {
+      // Update the URL with the new GSN
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('gsn', selectedFormObj.gsn.toString());
+        window.history.replaceState({}, '', url.toString());
+      }
+      
+      // Refetch drug info with the new GSN
+      await fetchDrugInfo();
+    }
+  };
+  
+  // Handle strength change
+  const handleStrengthChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStrength = e.target.value;
+    setSelectedStrength(newStrength);
+    
+    // Find the GSN for the selected strength if available
+    const selectedStrengthObj = availableStrengths.find(strength => strength.strength === newStrength);
+    if (selectedStrengthObj && selectedStrengthObj.gsn) {
+      // Update the URL with the new GSN
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('gsn', selectedStrengthObj.gsn.toString());
+        window.history.replaceState({}, '', url.toString());
+      }
+      
+      // Refetch drug info with the new GSN
+      await fetchDrugInfo();
+    }
+  };
+  
+  // Handle quantity change
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedQuantity(e.target.value);
+    // Refetch pharmacy prices with the new quantity
+    fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+  };
+  
+  // Handle brand change
+  const handleBrandChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newBrand = e.target.value;
+    setSelectedBrand(newBrand);
+    
+    // If we have brand variations, find the matching one and update GSN
+    if (brandVariations.length > 0) {
+      const selectedVariation = brandVariations.find(
+        variation => variation.type === newBrand || variation.name.toLowerCase() === newBrand.toLowerCase()
+      );
+      
+      if (selectedVariation && selectedVariation.gsn) {
+        // Update the URL with the new GSN
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set('gsn', selectedVariation.gsn.toString());
+          window.history.replaceState({}, '', url.toString());
+        }
+        
+        // Refetch drug info with the new GSN
+        await fetchDrugInfo();
+      }
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {isLoading ? (
@@ -824,10 +950,21 @@ export default function DrugPage({ params }: Props) {
               <label className="block text-xs font-medium text-gray-600 mb-1">Brand</label>
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={drugInfo?.genericName || ''}
-                onChange={(e) => {/* Would navigate to new drug */}}
+                value={selectedBrand}
+                onChange={handleBrandChange}
+                disabled={isLoading || brandVariations.length === 0}
               >
-                <option value={drugInfo?.genericName || ''}>{drugInfo?.genericName || 'Select medication'}</option>
+                {drugInfo?.genericName && (
+                  <option value="generic">{drugInfo.genericName}</option>
+                )}
+                {drugInfo?.brandName && drugInfo.brandName !== drugInfo?.genericName && (
+                  <option value="brand">{drugInfo.brandName}</option>
+                )}
+                {brandVariations.map((variation, index) => (
+                  <option key={`brand-${index}`} value={variation.type}>
+                    {variation.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -835,11 +972,22 @@ export default function DrugPage({ params }: Props) {
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedForm}
-                onChange={(e) => setSelectedForm(e.target.value)}
+                onChange={handleFormChange}
+                disabled={isLoading || availableForms.length === 0}
               >
-                <option value="CAPSULE">CAPSULE</option>
-                <option value="TABLET">TABLET</option>
-                <option value="LIQUID">LIQUID</option>
+                {availableForms.length > 0 ? (
+                  availableForms.map((form, index) => (
+                    <option key={`form-${index}`} value={form.form}>
+                      {form.form}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="CAPSULE">CAPSULE</option>
+                    <option value="TABLET">TABLET</option>
+                    <option value="LIQUID">LIQUID</option>
+                  </>
+                )}
               </select>
             </div>
             <div>
@@ -847,11 +995,22 @@ export default function DrugPage({ params }: Props) {
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedStrength}
-                onChange={(e) => setSelectedStrength(e.target.value)}
+                onChange={handleStrengthChange}
+                disabled={isLoading || availableStrengths.length === 0}
               >
-                <option value="500 mg">500 mg</option>
-                <option value="250 mg">250 mg</option>
-                <option value="125 mg">125 mg</option>
+                {availableStrengths.length > 0 ? (
+                  availableStrengths.map((strength, index) => (
+                    <option key={`strength-${index}`} value={strength.strength}>
+                      {strength.strength}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="500 mg">500 mg</option>
+                    <option value="250 mg">250 mg</option>
+                    <option value="125 mg">125 mg</option>
+                  </>
+                )}
               </select>
             </div>
             <div>
@@ -859,11 +1018,22 @@ export default function DrugPage({ params }: Props) {
               <select 
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={selectedQuantity}
-                onChange={(e) => setSelectedQuantity(e.target.value)}
+                onChange={handleQuantityChange}
+                disabled={isLoading || availableQuantities.length === 0}
               >
-                <option value="21 CAPSULE">21 CAPSULE</option>
-                <option value="30 CAPSULE">30 CAPSULE</option>
-                <option value="60 CAPSULE">60 CAPSULE</option>
+                {availableQuantities.length > 0 ? (
+                  availableQuantities.map((qty, index) => (
+                    <option key={`qty-${index}`} value={`${qty.quantity} ${qty.uom}`}>
+                      {qty.quantity} {qty.uom}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="21 CAPSULE">21 CAPSULE</option>
+                    <option value="30 CAPSULE">30 CAPSULE</option>
+                    <option value="60 CAPSULE">60 CAPSULE</option>
+                  </>
+                )}
               </select>
             </div>
           </motion.div>

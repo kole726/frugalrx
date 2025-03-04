@@ -64,6 +64,16 @@ export async function POST(request: Request) {
       priceRequest.quantity = criteria.quantity;
     }
     
+    // Add form if provided
+    if (criteria.form) {
+      priceRequest.form = criteria.form;
+    }
+    
+    // Add strength if provided
+    if (criteria.strength) {
+      priceRequest.strength = criteria.strength;
+    }
+    
     try {
       const data = await getDrugPrices(priceRequest);
       console.log(`Found ${data.pharmacies?.length || 0} pharmacies with prices`);
@@ -216,6 +226,28 @@ export async function GET(request: Request) {
       priceRequest.gsn = gsn;
     } else if (ndcCode) {
       priceRequest.ndcCode = ndcCode;
+    }
+    
+    // Get form and strength from query parameters if provided
+    const form = url.searchParams.get('form');
+    const strength = url.searchParams.get('strength');
+    
+    if (form) {
+      priceRequest.form = form;
+    }
+    
+    if (strength) {
+      priceRequest.strength = strength;
+    }
+    
+    // Check for quantity parameters
+    const quantityParam = url.searchParams.get('quantity');
+    if (quantityParam) {
+      const quantity = parseInt(quantityParam, 10);
+      if (!isNaN(quantity)) {
+        priceRequest.customizedQuantity = true;
+        priceRequest.quantity = quantity;
+      }
     }
     
     try {

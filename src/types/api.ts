@@ -9,6 +9,8 @@ export interface DrugPriceRequest {
   maximumPharmacies?: number;
   customizedQuantity?: boolean;
   quantity?: number;
+  form?: string;
+  strength?: string;
 }
 
 export interface DrugInfo {

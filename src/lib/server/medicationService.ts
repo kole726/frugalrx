@@ -232,6 +232,16 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
       if (request.customizedQuantity && request.quantity) {
         requestBody = { ...requestBody, quantity: request.quantity };
       }
+      
+      // Add form if provided
+      if (request.form) {
+        requestBody = { ...requestBody, form: request.form };
+      }
+      
+      // Add strength if provided
+      if (request.strength) {
+        requestBody = { ...requestBody, strength: request.strength };
+      }
     } else if (request.drugName) {
       endpoint = '/drugprices/byName';
       requestBody = {
@@ -240,6 +250,24 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
         latitude: request.latitude,
         longitude: request.longitude
       };
+      
+      // Add form if provided
+      if (request.form) {
+        requestBody = { ...requestBody, form: request.form };
+      }
+      
+      // Add strength if provided
+      if (request.strength) {
+        requestBody = { ...requestBody, strength: request.strength };
+      }
+      
+      // Add quantity if customizedQuantity is true
+      if (request.customizedQuantity && request.quantity) {
+        requestBody = { ...requestBody, 
+          customizedQuantity: true,
+          quantity: request.quantity 
+        };
+      }
     } else if (request.ndcCode) {
       endpoint = '/drugprices/byNdcCode';
       requestBody = {
@@ -253,6 +281,16 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
       // Add quantity if customizedQuantity is true
       if (request.customizedQuantity && request.quantity) {
         requestBody = { ...requestBody, quantity: request.quantity };
+      }
+      
+      // Add form if provided
+      if (request.form) {
+        requestBody = { ...requestBody, form: request.form };
+      }
+      
+      // Add strength if provided
+      if (request.strength) {
+        requestBody = { ...requestBody, strength: request.strength };
       }
     } else {
       throw new Error('Either drugName, gsn, or ndcCode must be provided');
