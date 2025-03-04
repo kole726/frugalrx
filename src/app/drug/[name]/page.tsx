@@ -868,45 +868,6 @@ export default function DrugPage({ params }: Props) {
             </div>
           </motion.div>
 
-          {/* Brand Variations Section */}
-          {brandVariations && brandVariations.length > 0 && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.3 }}
-              className="mb-8"
-            >
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Brand/Generic Variations</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {brandVariations.map((variation, index) => (
-                  <div 
-                    key={`variation-${index}`}
-                    className={`border rounded-md p-3 cursor-pointer transition-all ${
-                      variation.type === 'brand' ? 'bg-blue-50 border-blue-200' : 'bg-green-50 border-green-200'
-                    }`}
-                    onClick={() => {
-                      if (variation.gsn) {
-                        window.location.href = `/drug/${encodeURIComponent(variation.name.split(' ')[0])}?gsn=${variation.gsn}`;
-                      }
-                    }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{variation.name}</p>
-                        <p className="text-sm text-gray-600 capitalize">{variation.type}</p>
-                      </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        variation.type === 'brand' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                      }`}>
-                        {variation.type === 'brand' ? 'Brand' : 'Generic'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-
           {/* Main Content - Prices and Map */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -1422,14 +1383,6 @@ export default function DrugPage({ params }: Props) {
               >
                 Retry
               </button>
-            </div>
-          )}
-          
-          {/* Fallback UI if brandVariations is empty */}
-          {brandVariations.length === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-              <h2 className="text-lg font-semibold text-yellow-700 mb-2">No Brand Variations Found</h2>
-              <p className="text-yellow-600">We couldn't find brand variations for this medication. Please try again later or search for a different medication.</p>
             </div>
           )}
         </>
