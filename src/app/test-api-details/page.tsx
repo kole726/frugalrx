@@ -634,6 +634,27 @@ export default function TestApiDetailsPage() {
         if (!expandedResults.includes(operation.id)) {
           toggleResultExpansion(operation.id)
         }
+        
+        // If this is a drug info request and we have GSN, update the drug name
+        if (operation.endpoint.includes('/api/drugs/info/gsn') && data.gsn) {
+          const gsn = parseInt(data.gsn.toString());
+          
+          // Extract drug name from response
+          let drugName = '';
+          if (responseData.brandName) {
+            drugName = responseData.brandName;
+          } else if (responseData.genericName) {
+            drugName = responseData.genericName;
+          } else if (responseData.drugName) {
+            drugName = responseData.drugName;
+          }
+          
+          // Update drug name lookup if we found a name
+          if (drugName && drugName !== '') {
+            setDrugNameLookup(prev => ({ ...prev, [gsn]: drugName }));
+            addToLog(`Updated drug name for GSN ${gsn}: ${drugName}`);
+          }
+        }
       } else {
         addToLog(`❌ ${operation.name} failed with status ${response.status}`)
         setResults(prev => ({
