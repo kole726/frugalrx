@@ -59,9 +59,27 @@ export interface DrugVariation {
   gsn?: number;
 }
 
+export interface DrugForm {
+  form: string;
+  gsn?: number;
+}
+
+export interface DrugStrength {
+  strength: string;
+  gsn?: number;
+}
+
+export interface DrugQuantity {
+  quantity: number;
+  uom: string;
+}
+
 export interface DrugPriceResponse {
   pharmacies: PharmacyPrice[];
   brandVariations?: DrugVariation[];
+  forms?: DrugForm[];
+  strengths?: DrugStrength[];
+  quantities?: DrugQuantity[];
 }
 
 export interface DrugDetails {

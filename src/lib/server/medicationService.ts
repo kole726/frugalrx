@@ -277,26 +277,88 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     const data = await response.json();
     console.log(`Server: Received drug prices response with ${data.pharmacies?.length || 0} pharmacies`);
     
-    // Process the response to handle brand/generic variations
-    if (data.drugInfo && data.drugInfo.brandVariations) {
-      // Extract brand variations from the response
+    // Process the response to extract all filter information
+    const result: DrugPriceResponse = {
+      pharmacies: data.pharmacies || []
+    };
+    
+    // Extract brand/generic variations
+    if (data.drug) {
+      console.log('Server: Processing drug data:', data.drug);
+      
+      // Extract brand/generic flag
+      const brandGenericFlag = data.drug.brandGenericFlag;
+      const brandName = data.drug.brandName;
+      const genericName = data.drug.genericName;
+      
+      // Create variations array
+      const variations: DrugVariation[] = [];
+      
+      // Add the current drug as a variation
+      if (brandGenericFlag === 'B' || brandGenericFlag === 'G') {
+        variations.push({
+          name: brandGenericFlag === 'B' ? brandName : `${genericName} (generic)`,
+          type: brandGenericFlag === 'B' ? 'brand' : 'generic',
+          gsn: data.drug.gsn
+        });
+      }
+      
+      // Add other variations if available
+      if (data.drug.alternatives) {
+        data.drug.alternatives.forEach((alt: any) => {
+          variations.push({
+            name: alt.brandGenericFlag === 'B' ? alt.brandName : `${alt.genericName} (generic)`,
+            type: alt.brandGenericFlag === 'B' ? 'brand' : 'generic',
+            gsn: alt.gsn
+          });
+        });
+      }
+      
+      if (variations.length > 0) {
+        result.brandVariations = variations;
+        console.log(`Server: Found ${variations.length} brand/generic variations`);
+      }
+      
+      // Extract forms if available
+      if (data.drug.forms && Array.isArray(data.drug.forms)) {
+        result.forms = data.drug.forms.map((form: any) => ({
+          form: form.form,
+          gsn: form.gsn
+        }));
+        console.log(`Server: Found ${result.forms.length} drug forms`);
+      }
+      
+      // Extract strengths/dosages if available
+      if (data.drug.strengths && Array.isArray(data.drug.strengths)) {
+        result.strengths = data.drug.strengths.map((strength: any) => ({
+          strength: strength.strength,
+          gsn: strength.gsn
+        }));
+        console.log(`Server: Found ${result.strengths.length} drug strengths`);
+      }
+      
+      // Extract quantities if available
+      if (data.drug.quantities && Array.isArray(data.drug.quantities)) {
+        result.quantities = data.drug.quantities.map((qty: any) => ({
+          quantity: qty.quantity,
+          uom: qty.uom
+        }));
+        console.log(`Server: Found ${result.quantities.length} drug quantities`);
+      }
+    } else if (data.drugInfo && data.drugInfo.brandVariations) {
+      // Handle the previous response format for backward compatibility
       const brandVariations = data.drugInfo.brandVariations || [];
       console.log(`Server: Found ${brandVariations.length} brand variations for this drug`);
       
       // Add brand variation information to the response
-      return {
-        pharmacies: data.pharmacies || [],
-        brandVariations: brandVariations.map((variation: any) => ({
-          name: variation.name,
-          type: variation.type || (variation.name.includes('(generic)') ? 'generic' : 'brand'),
-          gsn: variation.gsn
-        }))
-      };
+      result.brandVariations = brandVariations.map((variation: any) => ({
+        name: variation.name,
+        type: variation.type || (variation.name.includes('(generic)') ? 'generic' : 'brand'),
+        gsn: variation.gsn
+      }));
     }
     
-    return {
-      pharmacies: data.pharmacies || []
-    };
+    return result;
   } catch (error) {
     console.error('Error fetching drug prices:', error);
     throw error;
