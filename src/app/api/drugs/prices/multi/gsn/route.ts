@@ -1,22 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { corsHeaders } from '@/lib/cors';
-import { getDrugPrices } from '@/lib/server/medicationService';
+import { compareMedications } from '@/lib/server/medicationService';
 
-// Mark this route as dynamic
-export const dynamic = 'force-dynamic';
-
-/**
- * API endpoint to get drug prices by NDC code
- * POST /api/drugs/prices/ndc
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
     // Validate required fields
-    if (!body.ndcCode) {
+    if (!body.gsns || !Array.isArray(body.gsns) || body.gsns.length === 0) {
       return NextResponse.json(
-        { error: 'NDC code is required' },
+        { error: 'GSNs array is required and must not be empty' },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -29,23 +22,20 @@ export async function POST(request: NextRequest) {
     }
     
     // Convert string numbers to actual numbers if needed
-    const ndcCode = body.ndcCode.toString();
     const latitude = typeof body.latitude === 'string' ? parseFloat(body.latitude) : body.latitude;
     const longitude = typeof body.longitude === 'string' ? parseFloat(body.longitude) : body.longitude;
     const radius = body.radius ? (typeof body.radius === 'string' ? parseFloat(body.radius) : body.radius) : undefined;
-    const quantity = body.quantity ? (typeof body.quantity === 'string' ? parseInt(body.quantity, 10) : body.quantity) : undefined;
     
-    const result = await getDrugPrices({
-      ndcCode,
-      latitude,
-      longitude,
-      radius,
-      quantity
-    });
+    // Format medications array for the compareMedications function
+    const medications = body.gsns.map((gsn: number | string) => ({
+      gsn: typeof gsn === 'string' ? parseInt(gsn, 10) : gsn
+    }));
+    
+    const result = await compareMedications(medications, latitude, longitude, radius);
     
     return NextResponse.json(result, { headers: corsHeaders });
   } catch (error) {
-    console.error('Error in drug prices by NDC API:', error);
+    console.error('Error in multi-drug prices by GSN API:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500, headers: corsHeaders }
