@@ -88,6 +88,10 @@ export default function TestApiDetailsPage() {
   const [testLog, setTestLog] = useState<string[]>([])
   const [showRawResponse, setShowRawResponse] = useState(false)
   
+  // State for drug name lookup
+  const [drugNameLookup, setDrugNameLookup] = useState<Record<string, string>>({})
+  const [drugNameLoading, setDrugNameLoading] = useState<Record<string, boolean>>({})
+  
   // State for API connection test
   const [connectionTestLoading, setConnectionTestLoading] = useState(false)
   const [connectionTestResults, setConnectionTestResults] = useState<ConnectionTestResult | null>(null)
@@ -418,11 +422,28 @@ export default function TestApiDetailsPage() {
     
     setFormData(initialFormData)
   }, [])
+  
+  // Fetch drug names for default GSN values
+  useEffect(() => {
+    if (Object.keys(formData).length > 0) {
+      // Find all GSN fields with values
+      Object.entries(formData).forEach(([operationId, fields]) => {
+        if (fields.gsn && !drugNameLookup[fields.gsn]) {
+          fetchDrugName(fields.gsn);
+        }
+      });
+    }
+  }, [formData]);
 
   const handleInputChange = (operationId: string, fieldName: string, value: any) => {
     setFormData(prev => {
       // Ensure the operation exists in the form data
       const currentOperationData = prev[operationId] || {};
+      
+      // If this is a GSN field and the value has changed, fetch the drug name
+      if (fieldName === 'gsn' && value !== currentOperationData[fieldName]) {
+        fetchDrugName(value);
+      }
       
       return {
         ...prev,
@@ -432,6 +453,51 @@ export default function TestApiDetailsPage() {
         }
       };
     });
+  }
+
+  // Function to fetch drug name based on GSN
+  const fetchDrugName = async (gsn: number) => {
+    if (!gsn || drugNameLookup[gsn]) return;
+    
+    setDrugNameLoading(prev => ({ ...prev, [gsn]: true }));
+    addToLog(`Looking up drug name for GSN ${gsn}...`);
+    
+    try {
+      // First try to get the drug name from the API
+      const response = await fetch(`/api/drugs/name?gsn=${gsn}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.name) {
+          setDrugNameLookup(prev => ({ ...prev, [gsn]: data.name }));
+          addToLog(`Found drug name for GSN ${gsn}: ${data.name}`);
+          return;
+        }
+      }
+      
+      // If the API doesn't return a name, try to get it from the drug info endpoint
+      const infoResponse = await fetch(`/api/drugs/info/gsn?gsn=${gsn}`);
+      
+      if (infoResponse.ok) {
+        const infoData = await infoResponse.json();
+        if (infoData.data?.drugName) {
+          setDrugNameLookup(prev => ({ ...prev, [gsn]: infoData.data.drugName }));
+          addToLog(`Found drug name for GSN ${gsn}: ${infoData.data.drugName}`);
+          return;
+        }
+      }
+      
+      // If we still don't have a name, set a placeholder
+      setDrugNameLookup(prev => ({ ...prev, [gsn]: 'Unknown Drug' }));
+      addToLog(`Could not find drug name for GSN ${gsn}`);
+      
+    } catch (error) {
+      console.error('Error fetching drug name:', error);
+      addToLog(`Error looking up drug name for GSN ${gsn}`);
+      setDrugNameLookup(prev => ({ ...prev, [gsn]: 'Error fetching name' }));
+    } finally {
+      setDrugNameLoading(prev => ({ ...prev, [gsn]: false }));
+    }
   }
 
   const toggleResultExpansion = (operationId: string) => {
@@ -953,6 +1019,27 @@ export default function TestApiDetailsPage() {
                         placeholder={field.description}
                       />
                       <p className="text-xs text-gray-500">{field.description}</p>
+                      
+                      {/* Display drug name if this is a GSN field */}
+                      {field.name === 'gsn' && formData[operation.id]?.[field.name] && (
+                        <div className="mt-2">
+                          {drugNameLoading[formData[operation.id]?.[field.name]] ? (
+                            <p className="text-sm text-blue-600">Looking up drug name...</p>
+                          ) : drugNameLookup[formData[operation.id]?.[field.name]] ? (
+                            <div className="flex items-center">
+                              <span className="text-sm font-medium text-gray-700 mr-2">Drug Name:</span>
+                              <span className="text-sm text-blue-600">{drugNameLookup[formData[operation.id]?.[field.name]]}</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => fetchDrugName(formData[operation.id]?.[field.name])}
+                              className="text-sm text-blue-600 hover:text-blue-800"
+                            >
+                              Lookup drug name
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
