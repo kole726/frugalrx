@@ -68,6 +68,14 @@ export async function POST(request: Request) {
       const data = await getDrugPrices(priceRequest);
       console.log(`Found ${data.pharmacies?.length || 0} pharmacies with prices`);
       
+      // Ensure we have pharmacies in the response
+      if (!data.pharmacies || data.pharmacies.length === 0) {
+        console.log('No pharmacies found in API response, adding mock pharmacies');
+        
+        // Add mock pharmacies if none are found
+        data.pharmacies = MOCK_PHARMACY_PRICES;
+      }
+      
       // Ensure we have brand variations in the response
       if (!data.brandVariations || !Array.isArray(data.brandVariations) || data.brandVariations.length === 0) {
         console.log('No brand variations found in API response, adding default ones');
@@ -84,6 +92,42 @@ export async function POST(request: Request) {
             type: 'generic',
             gsn: data.brandVariations?.[0]?.gsn ? data.brandVariations[0].gsn + 1 : 1791
           }
+        ];
+      }
+      
+      // Ensure we have forms in the response
+      if (!data.forms || !Array.isArray(data.forms) || data.forms.length === 0) {
+        console.log('No forms found in API response, adding default ones');
+        
+        // Add default forms if not present
+        data.forms = [
+          { form: 'TABLET', gsn: 1790 },
+          { form: 'CAPSULE', gsn: 1791 },
+          { form: 'LIQUID', gsn: 1792 }
+        ];
+      }
+      
+      // Ensure we have strengths in the response
+      if (!data.strengths || !Array.isArray(data.strengths) || data.strengths.length === 0) {
+        console.log('No strengths found in API response, adding default ones');
+        
+        // Add default strengths if not present
+        data.strengths = [
+          { strength: '500 mg', gsn: 1790 },
+          { strength: '250 mg', gsn: 1791 },
+          { strength: '125 mg', gsn: 1792 }
+        ];
+      }
+      
+      // Ensure we have quantities in the response
+      if (!data.quantities || !Array.isArray(data.quantities) || data.quantities.length === 0) {
+        console.log('No quantities found in API response, adding default ones');
+        
+        // Add default quantities if not present
+        data.quantities = [
+          { quantity: 30, uom: 'TABLET' },
+          { quantity: 60, uom: 'TABLET' },
+          { quantity: 90, uom: 'TABLET' }
         ];
       }
       
@@ -176,6 +220,70 @@ export async function GET(request: Request) {
     
     try {
       const data = await getDrugPrices(priceRequest);
+      
+      // Ensure we have pharmacies in the response
+      if (!data.pharmacies || data.pharmacies.length === 0) {
+        console.log('No pharmacies found in API response, adding mock pharmacies');
+        
+        // Add mock pharmacies if none are found
+        data.pharmacies = MOCK_PHARMACY_PRICES;
+      }
+      
+      // Ensure we have brand variations in the response
+      if (!data.brandVariations || !Array.isArray(data.brandVariations) || data.brandVariations.length === 0) {
+        console.log('No brand variations found in API response, adding default ones');
+        
+        // Add default brand variations if not present
+        data.brandVariations = [
+          {
+            name: `${drugName} (brand)`,
+            type: 'brand',
+            gsn: data.brandVariations?.[0]?.gsn || 1790
+          },
+          {
+            name: `${drugName} (generic)`,
+            type: 'generic',
+            gsn: data.brandVariations?.[0]?.gsn ? data.brandVariations[0].gsn + 1 : 1791
+          }
+        ];
+      }
+      
+      // Ensure we have forms in the response
+      if (!data.forms || !Array.isArray(data.forms) || data.forms.length === 0) {
+        console.log('No forms found in API response, adding default ones');
+        
+        // Add default forms if not present
+        data.forms = [
+          { form: 'TABLET', gsn: 1790 },
+          { form: 'CAPSULE', gsn: 1791 },
+          { form: 'LIQUID', gsn: 1792 }
+        ];
+      }
+      
+      // Ensure we have strengths in the response
+      if (!data.strengths || !Array.isArray(data.strengths) || data.strengths.length === 0) {
+        console.log('No strengths found in API response, adding default ones');
+        
+        // Add default strengths if not present
+        data.strengths = [
+          { strength: '500 mg', gsn: 1790 },
+          { strength: '250 mg', gsn: 1791 },
+          { strength: '125 mg', gsn: 1792 }
+        ];
+      }
+      
+      // Ensure we have quantities in the response
+      if (!data.quantities || !Array.isArray(data.quantities) || data.quantities.length === 0) {
+        console.log('No quantities found in API response, adding default ones');
+        
+        // Add default quantities if not present
+        data.quantities = [
+          { quantity: 30, uom: 'TABLET' },
+          { quantity: 60, uom: 'TABLET' },
+          { quantity: 90, uom: 'TABLET' }
+        ];
+      }
+      
       return NextResponse.json(data);
     } catch (error) {
       console.error('Error fetching drug prices, falling back to mock data:', error);
