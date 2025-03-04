@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getDrugInfo, getDrugPrices, getDetailedDrugInfo, searchMedications } from '@/services/medicationApi'
 import LoadingState from '@/components/search/LoadingState'
-import { DrugInfo as DrugInfoType, DrugDetails, PharmacyPrice, APIError, DrugSearchResponse, DrugPriceResponse } from '@/types/api'
+import { DrugInfo as DrugInfoType, DrugDetails, PharmacyPrice, APIError, DrugSearchResponse, DrugPriceResponse, DrugVariation } from '@/types/api'
 import PharmacyMap from '@/components/maps/PharmacyMap'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -41,6 +41,8 @@ export default function DrugPage({ params }: Props) {
   const [selectedPharmacy, setSelectedPharmacy] = useState<PharmacyPrice | null>(null)
   const [showPrices, setShowPrices] = useState(true)
   const [isLoadingPharmacies, setIsLoadingPharmacies] = useState(false)
+  const [brandVariations, setBrandVariations] = useState<DrugVariation[]>([])
+  const [selectedVariation, setSelectedVariation] = useState<DrugVariation | null>(null)
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -183,134 +185,61 @@ export default function DrugPage({ params }: Props) {
     fetchDrugInfo();
   }, []);
 
-  // Function to fetch pharmacy prices
+  // Fetch pharmacy prices based on location and drug info
   const fetchPharmacyPrices = async (latitude: number, longitude: number, radius: number) => {
+    setIsLoadingPharmacies(true);
+    
     try {
-      setIsLoadingPharmacies(true)
-      setError(null)
+      console.log(`Fetching pharmacy prices for ${params.name} at ${latitude}, ${longitude} with radius ${radius} miles`);
       
-      if (!drugInfo && !params.name) {
-        console.error('Cannot fetch pharmacy prices: No drug info or name available')
-        setError('Drug information not available. Please try searching again.')
-        return
-      }
-      
-      const drugName = drugInfo?.genericName || decodeURIComponent(params.name)
-      const gsnToUse = drugInfo?.gsn || (gsn ? parseInt(gsn, 10) : undefined)
-      
-      console.log(`Fetching pharmacy prices for ${drugName} (GSN: ${gsnToUse || 'not available'})`)
-      console.log(`Location: ${latitude}, ${longitude}, Radius: ${radius} miles`)
-      
-      // Prepare the request
-      const request = {
+      // Determine if we should use GSN or drug name
+      let priceRequest: any = {
         latitude,
         longitude,
-        radius,
-        customizedQuantity: false,
-        maximumPharmacies: 50 // Request more pharmacies for better results
-      }
+        radius
+      };
       
-      // Add either GSN or drug name
-      if (gsnToUse) {
-        Object.assign(request, { gsn: gsnToUse })
+      if (gsn) {
+        priceRequest.gsn = parseInt(gsn, 10);
       } else {
-        Object.assign(request, { drugName })
+        priceRequest.drugName = params.name;
       }
       
-      // Add quantity if selected
-      if (selectedQuantity) {
-        const quantityMatch = selectedQuantity.match(/(\d+)/)
-        if (quantityMatch && quantityMatch[1]) {
-          const quantity = parseInt(quantityMatch[1], 10)
-          if (!isNaN(quantity)) {
-            Object.assign(request, { 
-              customizedQuantity: true,
-              quantity
-            })
-          }
+      // If we have a selected variation with GSN, use that instead
+      if (selectedVariation && selectedVariation.gsn) {
+        priceRequest = {
+          ...priceRequest,
+          gsn: selectedVariation.gsn,
+          drugName: undefined // Clear drug name if using GSN
+        };
+      }
+      
+      const priceData = await getDrugPrices(priceRequest);
+      
+      console.log(`Received ${priceData.pharmacies?.length || 0} pharmacy prices`);
+      
+      // Store brand variations if available
+      if (priceData.brandVariations && priceData.brandVariations.length > 0) {
+        console.log('Received brand variations:', priceData.brandVariations);
+        setBrandVariations(priceData.brandVariations);
+        
+        // If no variation is selected yet, select the first one
+        if (!selectedVariation) {
+          setSelectedVariation(priceData.brandVariations[0]);
         }
       }
       
-      console.log('Pharmacy price request:', request)
+      // Sort pharmacies by price (lowest first)
+      const sortedPharmacies = [...(priceData.pharmacies || [])].sort((a, b) => a.price - b.price);
       
-      // Call the API
-      const response = await getDrugPrices(request)
-      console.log('Pharmacy price response:', response)
-      
-      // Check if we're using mock data
-      if ((response as any).usingMockData) {
-        console.warn('Using mock pharmacy data - real API data not available')
-      }
-      
-      // Check if we have pharmacy data from the API response
-      if ((response as any).pharmacyPrices && Array.isArray((response as any).pharmacyPrices)) {
-        // API returned data in the new format with detailed pharmacy information
-        console.log('Using detailed pharmacy data from API')
-        
-        // Map the API response to our PharmacyPrice format
-        const mappedPharmacies = ((response as any).pharmacyPrices).map((item: any) => {
-          const pharmacy = item.pharmacy || {};
-          const price = item.price || {};
-          
-          return {
-            name: pharmacy.name || 'Unknown Pharmacy',
-            price: parseFloat(price.price) || 0,
-            distance: `${pharmacy.distance?.toFixed(1) || '0.0'} miles`,
-            address: pharmacy.streetAddress || '',
-            city: pharmacy.city || '',
-            state: pharmacy.state || '',
-            postalCode: pharmacy.zipCode || '',
-            phone: pharmacy.phone || '',
-            latitude: pharmacy.latitude,
-            longitude: pharmacy.longitude,
-            open24H: pharmacy.open24H || false
-          };
-        });
-        
-        // Sort pharmacies based on selected sort option
-        if (selectedSort === 'PRICE') {
-          mappedPharmacies.sort((a: PharmacyPrice, b: PharmacyPrice) => a.price - b.price)
-        } else if (selectedSort === 'DISTANCE') {
-          mappedPharmacies.sort((a: PharmacyPrice, b: PharmacyPrice) => {
-            const distanceA = parseFloat(a.distance.replace(' miles', ''))
-            const distanceB = parseFloat(b.distance.replace(' miles', ''))
-            return distanceA - distanceB
-          })
-        }
-        
-        setPharmacyPrices(mappedPharmacies)
-        console.log(`Found ${mappedPharmacies.length} pharmacies with prices from API`)
-      }
-      else if (response.pharmacies && response.pharmacies.length > 0) {
-        // Legacy format or mock data
-        console.log('Using legacy pharmacy data format')
-        
-        // Sort pharmacies based on selected sort option
-        let sortedPharmacies = [...response.pharmacies]
-        
-        if (selectedSort === 'PRICE') {
-          sortedPharmacies.sort((a, b) => a.price - b.price)
-        } else if (selectedSort === 'DISTANCE') {
-          sortedPharmacies.sort((a, b) => {
-            const distanceA = parseFloat(a.distance.replace(' miles', '').replace(' mi', ''))
-            const distanceB = parseFloat(b.distance.replace(' miles', '').replace(' mi', ''))
-            return distanceA - distanceB
-          })
-        }
-        
-        setPharmacyPrices(sortedPharmacies)
-        console.log(`Found ${sortedPharmacies.length} pharmacies with prices from legacy format`)
-      } else {
-        console.warn('No pharmacy prices found in the response')
-        setError('No pharmacy prices found for this medication in your area.')
-        setPharmacyPrices([])
-      }
+      setPharmacyPrices(sortedPharmacies);
+      setIsLoadingPharmacies(false);
     } catch (error) {
-      console.error('Error fetching pharmacy prices:', error)
-    } finally {
-      setIsLoadingPharmacies(false)
+      console.error('Error fetching pharmacy prices:', error);
+      setError(`Failed to fetch pharmacy prices: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsLoadingPharmacies(false);
     }
-  }
+  };
 
   // Function to fetch drug information
   const fetchDrugInfo = async () => {
@@ -558,6 +487,18 @@ export default function DrugPage({ params }: Props) {
     }
   };
 
+  // Handle variation change
+  const handleVariationChange = (variation: DrugVariation) => {
+    setSelectedVariation(variation);
+    
+    // Refetch prices with the new variation
+    fetchPharmacyPrices(
+      userLocation.latitude,
+      userLocation.longitude,
+      searchRadius
+    );
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 relative">
       {isLoading ? (
@@ -656,6 +597,28 @@ export default function DrugPage({ params }: Props) {
               </select>
             </div>
           </motion.div>
+
+          {/* Brand Variations Selector */}
+          {brandVariations.length > 0 && (
+            <div className="mb-6 border-b pb-4">
+              <h3 className="text-lg font-semibold mb-2">Available Options:</h3>
+              <div className="flex flex-wrap gap-2">
+                {brandVariations.map((variation, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleVariationChange(variation)}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${
+                      selectedVariation?.name === variation.name
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                    }`}
+                  >
+                    {variation.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Main Content - Prices and Map */}
           <motion.div 

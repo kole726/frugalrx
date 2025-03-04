@@ -194,7 +194,7 @@ function getMockDrugSearchResults(query: string): DrugSearchResponse[] {
  */
 export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPriceResponse> {
   try {
-    const token = await getAuthToken();
+    console.log('Server: Fetching drug prices with criteria:', request);
     
     // Validate API URL
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
@@ -203,66 +203,100 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
       throw new Error('API URL not configured');
     }
     
-    // Determine which endpoint to use based on the request
-    let endpoint = 'drugprices/byName';
-    const body: Record<string, any> = {
-      hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
-      latitude: request.latitude,
-      longitude: request.longitude,
-      radius: request.radius || 10,
-      maximumPharmacies: request.maximumPharmacies || 50
-    };
+    // Get authentication token
+    const token = await getAuthToken();
+    
+    // Determine which endpoint to use based on the provided parameters
+    let endpoint = '';
+    let requestBody = {};
     
     if (request.gsn) {
-      endpoint = 'drugprices/byGSN';
-      body.gsn = request.gsn;
-    } else if (request.ndcCode) {
-      endpoint = 'drugprices/byNdcCode';
-      body.ndcCode = request.ndcCode;
+      endpoint = '/pricing/v1/drugprices/byGSN';
+      requestBody = {
+        hqMappingName: request.hqMappingName || process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+        gsn: request.gsn,
+        latitude: request.latitude,
+        longitude: request.longitude,
+        customizedQuantity: request.customizedQuantity || false
+      };
+      
+      // Add quantity if customizedQuantity is true
+      if (request.customizedQuantity && request.quantity) {
+        requestBody = { ...requestBody, quantity: request.quantity };
+      }
     } else if (request.drugName) {
-      body.drugName = request.drugName;
+      endpoint = '/pricing/v1/drugprices/byName';
+      requestBody = {
+        hqMappingName: request.hqMappingName || process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+        drugName: request.drugName,
+        latitude: request.latitude,
+        longitude: request.longitude
+      };
+    } else if (request.ndcCode) {
+      endpoint = '/pricing/v1/drugprices/byNdcCode';
+      requestBody = {
+        hqMappingName: request.hqMappingName || process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+        ndcCode: request.ndcCode,
+        latitude: request.latitude,
+        longitude: request.longitude,
+        customizedQuantity: request.customizedQuantity || false
+      };
+      
+      // Add quantity if customizedQuantity is true
+      if (request.customizedQuantity && request.quantity) {
+        requestBody = { ...requestBody, quantity: request.quantity };
+      }
     } else {
-      throw new Error('Must provide either gsn, ndcCode, or drugName');
+      throw new Error('Either drugName, gsn, or ndcCode must be provided');
     }
     
-    // Add optional parameters if provided
-    if (request.customizedQuantity) {
-      body.customizedQuantity = request.customizedQuantity;
-      body.quantity = request.quantity;
-    }
+    console.log(`Server: Using endpoint ${endpoint} with body:`, requestBody);
     
-    // Ensure the URL is properly formatted - remove any trailing slashes and path segments
-    const baseUrl = apiUrl.replace(/\/pricing\/v1\/?$/, '');
-    const fullEndpoint = `/pricing/v1/${endpoint}`;
-    
-    // Add detailed logging
-    console.log(`Original API URL: ${apiUrl}`);
-    console.log(`Base URL: ${baseUrl}`);
-    console.log(`Endpoint: ${fullEndpoint}`);
-    console.log(`Full API URL: ${baseUrl}${fullEndpoint}`);
-    console.log(`Making API request to ${baseUrl}${fullEndpoint} for drug prices`, body);
-    
-    const response = await fetch(`${baseUrl}${fullEndpoint}`, {
+    // Make API request
+    const response = await fetch(`${apiUrl}${endpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(requestBody),
       cache: 'no-store'
     });
-
+    
+    // Handle response
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Drug prices API error: ${response.status}`, errorText);
+      console.error(`API error: ${response.status}`, errorText);
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
-
+    
     const data = await response.json();
-    return data;
+    console.log(`Server: Received drug prices response with ${data.pharmacies?.length || 0} pharmacies`);
+    
+    // Process the response to handle brand/generic variations
+    if (data.drugInfo && data.drugInfo.brandVariations) {
+      // Extract brand variations from the response
+      const brandVariations = data.drugInfo.brandVariations || [];
+      console.log(`Server: Found ${brandVariations.length} brand variations for this drug`);
+      
+      // Add brand variation information to the response
+      return {
+        pharmacies: data.pharmacies || [],
+        brandVariations: brandVariations.map((variation: any) => ({
+          name: variation.name,
+          type: variation.type || (variation.name.includes('(generic)') ? 'generic' : 'brand'),
+          gsn: variation.gsn
+        }))
+      };
+    }
+    
+    return {
+      pharmacies: data.pharmacies || []
+    };
   } catch (error) {
-    console.error('Error getting drug prices:', error);
-    throw new Error(`Failed to get drug prices: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Error fetching drug prices:', error);
+    throw error;
   }
 }
 

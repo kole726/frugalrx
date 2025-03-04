@@ -53,8 +53,15 @@ export interface PharmacyPrice {
   handicapAccess?: boolean;
 }
 
+export interface DrugVariation {
+  name: string;
+  type: 'brand' | 'generic';
+  gsn?: number;
+}
+
 export interface DrugPriceResponse {
   pharmacies: PharmacyPrice[];
+  brandVariations?: DrugVariation[];
 }
 
 export interface DrugDetails {

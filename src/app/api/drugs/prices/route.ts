@@ -67,6 +67,8 @@ export async function POST(request: Request) {
     try {
       const data = await getDrugPrices(priceRequest);
       console.log(`Found ${data.pharmacies?.length || 0} pharmacies with prices`);
+      
+      // Return the complete response including brand variations if available
       return NextResponse.json(data);
     } catch (error) {
       console.error('Error fetching drug prices, falling back to mock data:', error);
