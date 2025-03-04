@@ -31,14 +31,18 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     // Try the endpoint from the API documentation first
     try {
       // Use the endpoint from the API documentation (opFindDrugByName)
-      const endpoint = `/pricing/v1/drugs/${encodeURIComponent(query)}`;
-      console.log(`Server: Trying GET request to ${baseUrl}${endpoint}`);
+      const endpoint = `/drugs/${encodeURIComponent(query)}`;
+      
+      // Check if baseUrl already includes the pricing/v1 path
+      const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
+      
+      console.log(`Server: Trying GET request to ${baseUrl}${fullEndpoint}`);
       
       // Get authentication token
       const token = await getAuthToken();
       
       // Create URL with optional query parameters
-      const url = new URL(`${baseUrl}${endpoint}`);
+      const url = new URL(`${baseUrl}${fullEndpoint}`);
       url.searchParams.append('count', '20'); // Optional: limit results to 20
       url.searchParams.append('hqAlias', 'walkerrx'); // Use the HQ_MAPPING from env vars
       
@@ -86,14 +90,18 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
       // If GET fails, try the endpoint from the Postman collection
       try {
         // Use the endpoint from the Postman collection
-        const endpoint = `/pricing/v1/drugs/names`;
-        console.log(`Server: Trying POST request to ${baseUrl}${endpoint}`);
+        const endpoint = `/drugs/names`;
+        
+        // Check if baseUrl already includes the pricing/v1 path
+        const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
+        
+        console.log(`Server: Trying POST request to ${baseUrl}${fullEndpoint}`);
         
         // Get authentication token
         const token = await getAuthToken();
         
         // Make API request using POST method as specified in the Postman collection
-        const response = await fetch(`${baseUrl}${endpoint}`, {
+        const response = await fetch(`${baseUrl}${fullEndpoint}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -211,7 +219,7 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
     let requestBody = {};
     
     if (request.gsn) {
-      endpoint = '/pricing/v1/drugprices/byGSN';
+      endpoint = '/drugprices/byGSN';
       requestBody = {
         hqMappingName: request.hqMappingName || process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
         gsn: request.gsn,
@@ -225,7 +233,7 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
         requestBody = { ...requestBody, quantity: request.quantity };
       }
     } else if (request.drugName) {
-      endpoint = '/pricing/v1/drugprices/byName';
+      endpoint = '/drugprices/byName';
       requestBody = {
         hqMappingName: request.hqMappingName || process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
         drugName: request.drugName,
@@ -233,7 +241,7 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
         longitude: request.longitude
       };
     } else if (request.ndcCode) {
-      endpoint = '/pricing/v1/drugprices/byNdcCode';
+      endpoint = '/drugprices/byNdcCode';
       requestBody = {
         hqMappingName: request.hqMappingName || process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
         ndcCode: request.ndcCode,
@@ -250,13 +258,16 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
       throw new Error('Either drugName, gsn, or ndcCode must be provided');
     }
     
-    console.log(`Server: Using endpoint ${endpoint} with body:`, requestBody);
-    
     // Ensure the URL is properly formatted - remove any trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
+    // Check if baseUrl already includes the pricing/v1 path
+    const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
+    
+    console.log(`Server: Using endpoint ${fullEndpoint} with body:`, requestBody);
+    
     // Make API request
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    const response = await fetch(`${baseUrl}${fullEndpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -385,11 +396,14 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
     // Use the correct endpoint from the API documentation
-    const endpoint = `/pricing/v1/druginfo/${gsn}`;
+    const endpoint = `/druginfo/${gsn}`;
     
-    console.log(`Making API request to ${baseUrl}${endpoint} for GSN: ${gsn}`);
+    // Check if baseUrl already includes the pricing/v1 path
+    const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
     
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    console.log(`Making API request to ${baseUrl}${fullEndpoint} for GSN: ${gsn}`);
+    
+    const response = await fetch(`${baseUrl}${fullEndpoint}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -401,7 +415,7 @@ export async function getDrugDetailsByGsn(gsn: number): Promise<DrugDetails> {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Drug details API error: ${response.status}`, errorText);
-      console.error(`Request details: GSN=${gsn}, endpoint=${baseUrl}${endpoint}`);
+      console.error(`Request details: GSN=${gsn}, endpoint=${baseUrl}${fullEndpoint}`);
       throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 

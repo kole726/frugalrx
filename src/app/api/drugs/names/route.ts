@@ -100,8 +100,12 @@ export async function POST(request: Request) {
         
         // Use the correct endpoint for drug search based on API documentation
         // GET /v1/drugs/{prefixText}
-        const endpoint = `/pricing/v1/drugs/${encodeURIComponent(prefix)}`;
-        const url = `${baseUrl}${endpoint}`;
+        const endpoint = `/drugs/${encodeURIComponent(prefix)}`;
+        
+        // Check if baseUrl already includes the pricing/v1 path
+        const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
+        
+        const url = `${baseUrl}${fullEndpoint}`;
         
         console.log(`API: Making API request to ${url}`);
         
