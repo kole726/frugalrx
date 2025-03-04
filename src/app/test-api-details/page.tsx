@@ -457,43 +457,74 @@ export default function TestApiDetailsPage() {
 
   // Function to fetch drug name based on GSN
   const fetchDrugName = async (gsn: number) => {
-    if (!gsn || drugNameLookup[gsn]) return;
+    if (!gsn) {
+      addToLog(`Cannot lookup drug name: No GSN provided`);
+      return;
+    }
+    
+    // If we already have this GSN in our lookup, don't fetch again unless it's an error or unknown
+    if (drugNameLookup[gsn] && 
+        drugNameLookup[gsn] !== 'Unknown Drug' && 
+        drugNameLookup[gsn] !== 'Error fetching name') {
+      return;
+    }
     
     setDrugNameLoading(prev => ({ ...prev, [gsn]: true }));
     addToLog(`Looking up drug name for GSN ${gsn}...`);
     
     try {
-      // First try to get the drug name from the API
+      // Try to get the drug name from our dedicated API endpoint
       const response = await fetch(`/api/drugs/name?gsn=${gsn}`);
+      const data = await response.json();
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.name) {
-          setDrugNameLookup(prev => ({ ...prev, [gsn]: data.name }));
-          addToLog(`Found drug name for GSN ${gsn}: ${data.name}`);
-          return;
-        }
+      if (response.ok && data.name) {
+        setDrugNameLookup(prev => ({ ...prev, [gsn]: data.name }));
+        addToLog(`Found drug name for GSN ${gsn}: ${data.name}`);
+        return;
       }
       
-      // If the API doesn't return a name, try to get it from the drug info endpoint
+      // Handle case where API is working but GSN is invalid
+      if (data.validApiConnection) {
+        setDrugNameLookup(prev => ({ ...prev, [gsn]: 'Invalid GSN' }));
+        addToLog(`${data.message || 'GSN appears to be invalid'}`);
+        toast.error(`Invalid GSN: ${gsn}. Try a different GSN number.`);
+        return;
+      }
+      
+      // If the dedicated endpoint fails, try the drug info endpoint directly
       const infoResponse = await fetch(`/api/drugs/info/gsn?gsn=${gsn}`);
       
       if (infoResponse.ok) {
         const infoData = await infoResponse.json();
-        if (infoData.data?.drugName) {
-          setDrugNameLookup(prev => ({ ...prev, [gsn]: infoData.data.drugName }));
-          addToLog(`Found drug name for GSN ${gsn}: ${infoData.data.drugName}`);
+        
+        // Try to extract drug name from various possible fields
+        let drugName = '';
+        if (infoData.data?.brandName) {
+          drugName = infoData.data.brandName;
+        } else if (infoData.data?.genericName) {
+          drugName = infoData.data.genericName;
+        } else if (infoData.data?.drugName) {
+          drugName = infoData.data.drugName;
+        } else if (infoData.data?.drugInfo?.brandName) {
+          drugName = infoData.data.drugInfo.brandName;
+        } else if (infoData.data?.drugInfo?.genericName) {
+          drugName = infoData.data.drugInfo.genericName;
+        }
+        
+        if (drugName) {
+          setDrugNameLookup(prev => ({ ...prev, [gsn]: drugName }));
+          addToLog(`Found drug name for GSN ${gsn}: ${drugName}`);
           return;
         }
       }
       
       // If we still don't have a name, set a placeholder
       setDrugNameLookup(prev => ({ ...prev, [gsn]: 'Unknown Drug' }));
-      addToLog(`Could not find drug name for GSN ${gsn}`);
+      addToLog(`Could not find drug name for GSN ${gsn}. The GSN may be invalid or not in the database.`);
       
     } catch (error) {
       console.error('Error fetching drug name:', error);
-      addToLog(`Error looking up drug name for GSN ${gsn}`);
+      addToLog(`Error looking up drug name for GSN ${gsn}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setDrugNameLookup(prev => ({ ...prev, [gsn]: 'Error fetching name' }));
     } finally {
       setDrugNameLoading(prev => ({ ...prev, [gsn]: false }));
