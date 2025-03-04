@@ -1,5 +1,11 @@
 import { DrugInfo, DrugDetails, PharmacyPrice, DrugPriceResponse } from '@/types/api';
 import { findGsnByDrugName } from '@/lib/drug-gsn-mapping';
+import { 
+  USE_MOCK_DRUG_SEARCH, 
+  USE_MOCK_DRUG_INFO, 
+  USE_MOCK_PHARMACY_PRICES,
+  FALLBACK_TO_MOCK
+} from '@/config/environment';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
@@ -31,6 +37,11 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     // Convert query to lowercase before encoding to ensure consistent URL format
     const normalizedQuery = query.toLowerCase();
     console.log(`Client: Searching for medications with query: "${normalizedQuery}"`);
+    
+    // Log if we're using mock data
+    if (USE_MOCK_DRUG_SEARCH) {
+      console.log(`Client: Using mock data for drug search (USE_MOCK_DRUG_SEARCH=${USE_MOCK_DRUG_SEARCH})`);
+    }
     
     // First try the new autocomplete endpoint that mimics America's Pharmacy
     try {

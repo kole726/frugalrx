@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { searchDrugs } from '@/lib/server/medicationService'
 import { findGsnByDrugName } from '@/lib/drug-gsn-mapping'
 import { getMockDrugSearchResults } from '@/lib/mockData'
+import { USE_MOCK_DRUG_SEARCH, FALLBACK_TO_MOCK } from '@/config/environment'
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
@@ -49,6 +50,20 @@ export async function GET(request: Request) {
     
     console.log(`API: Searching for drugs with query: "${query}"`);
     
+    // Check if we should use mock data
+    if (USE_MOCK_DRUG_SEARCH) {
+      console.log(`API: Using mock data for drug search (USE_MOCK_DRUG_SEARCH=${USE_MOCK_DRUG_SEARCH})`);
+      const mockResults = getMockDrugSearchResults(query);
+      console.log(`API: Returning ${mockResults.length} mock results for "${query}"`);
+      return NextResponse.json(
+        { 
+          results: mockResults,
+          usingMockData: true
+        },
+        { headers: corsHeaders }
+      );
+    }
+    
     try {
       // Get drug results from the API
       const results = await searchDrugs(query);
@@ -72,20 +87,35 @@ export async function GET(request: Request) {
         { headers: corsHeaders }
       );
     } catch (apiError) {
-      console.error('API: Error searching drugs, falling back to mock data:', apiError);
+      console.error('API: Error searching drugs:', apiError);
       
-      // Fall back to mock data if API fails
-      const mockResults = getMockDrugSearchResults(query);
-      
-      console.log(`API: Returning ${mockResults.length} mock results for "${query}"`);
-      return NextResponse.json(
-        { 
-          results: mockResults,
-          error: apiError instanceof Error ? apiError.message : 'Unknown error',
-          usingMockData: true
-        },
-        { headers: corsHeaders }
-      );
+      // Fall back to mock data only if FALLBACK_TO_MOCK is true
+      if (FALLBACK_TO_MOCK) {
+        console.log(`API: Falling back to mock data (FALLBACK_TO_MOCK=${FALLBACK_TO_MOCK})`);
+        const mockResults = getMockDrugSearchResults(query);
+        console.log(`API: Returning ${mockResults.length} mock results for "${query}"`);
+        return NextResponse.json(
+          { 
+            results: mockResults,
+            error: apiError instanceof Error ? apiError.message : 'Unknown error',
+            usingMockData: true
+          },
+          { headers: corsHeaders }
+        );
+      } else {
+        // Return error without mock data
+        console.log(`API: Not falling back to mock data (FALLBACK_TO_MOCK=${FALLBACK_TO_MOCK})`);
+        return NextResponse.json(
+          { 
+            error: apiError instanceof Error ? apiError.message : 'Unknown error',
+            results: []
+          },
+          { 
+            status: 500,
+            headers: corsHeaders
+          }
+        );
+      }
     }
   } catch (error) {
     console.error('Error in drug search API:', error);

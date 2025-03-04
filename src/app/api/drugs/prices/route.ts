@@ -2,9 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDrugPrices } from '@/lib/server/medicationService'
 import { DrugPriceRequest, APIError } from '@/types/api'
 import { MOCK_PHARMACY_PRICES } from '@/lib/mockData'
+import { USE_MOCK_PHARMACY_PRICES, FALLBACK_TO_MOCK } from '@/config/environment'
 
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
+
+// Define CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
 
 // Map of zip codes to default coordinates
 const zipCodeCoordinates: Record<string, { latitude: number; longitude: number }> = {
@@ -37,8 +50,17 @@ export async function POST(request: Request) {
     if ((!criteria.drugName && !criteria.gsn && !criteria.ndcCode)) {
       return NextResponse.json(
         { error: 'Missing required fields: either drugName, gsn, or ndcCode must be provided' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
+    }
+    
+    // Check if we should use mock data
+    if (USE_MOCK_PHARMACY_PRICES) {
+      console.log(`API: Using mock data for pharmacy prices (USE_MOCK_PHARMACY_PRICES=${USE_MOCK_PHARMACY_PRICES})`);
+      return NextResponse.json({
+        pharmacies: MOCK_PHARMACY_PRICES,
+        usingMockData: true
+      }, { headers: corsHeaders });
     }
     
     const priceRequest: DrugPriceRequest = {
@@ -67,22 +89,38 @@ export async function POST(request: Request) {
     try {
       const data = await getDrugPrices(priceRequest);
       console.log(`Found ${data.pharmacies?.length || 0} pharmacies with prices`);
-      return NextResponse.json(data);
+      return NextResponse.json(data, { headers: corsHeaders });
     } catch (error) {
-      console.error('Error fetching drug prices, falling back to mock data:', error);
+      console.error('Error fetching drug prices:', error);
       
-      // Fall back to mock data if API fails
-      return NextResponse.json({
-        pharmacies: MOCK_PHARMACY_PRICES,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        usingMockData: true
-      });
+      // Fall back to mock data only if FALLBACK_TO_MOCK is true
+      if (FALLBACK_TO_MOCK) {
+        console.log(`API: Falling back to mock data (FALLBACK_TO_MOCK=${FALLBACK_TO_MOCK})`);
+        return NextResponse.json({
+          pharmacies: MOCK_PHARMACY_PRICES,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          usingMockData: true
+        }, { headers: corsHeaders });
+      } else {
+        // Return error without mock data
+        console.log(`API: Not falling back to mock data (FALLBACK_TO_MOCK=${FALLBACK_TO_MOCK})`);
+        return NextResponse.json(
+          { 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            pharmacies: []
+          },
+          { 
+            status: 500,
+            headers: corsHeaders
+          }
+        );
+      }
     }
   } catch (error) {
     console.error('Server error in drug prices API:', error);
     return NextResponse.json(
       { error: `Failed to fetch drug prices: ${error instanceof Error ? error.message : 'Unknown error'}` },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -98,8 +136,17 @@ export async function GET(request: Request) {
     if (!drugName && !gsnParam && !ndcCode) {
       return NextResponse.json(
         { error: 'Either drugName, gsn, or ndcCode is required' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
+    }
+    
+    // Check if we should use mock data
+    if (USE_MOCK_PHARMACY_PRICES) {
+      console.log(`API: Using mock data for pharmacy prices (USE_MOCK_PHARMACY_PRICES=${USE_MOCK_PHARMACY_PRICES})`);
+      return NextResponse.json({
+        pharmacies: MOCK_PHARMACY_PRICES,
+        usingMockData: true
+      }, { headers: corsHeaders });
     }
     
     // Convert GSN to number if provided
@@ -128,22 +175,38 @@ export async function GET(request: Request) {
     
     try {
       const data = await getDrugPrices(priceRequest);
-      return NextResponse.json(data);
+      return NextResponse.json(data, { headers: corsHeaders });
     } catch (error) {
-      console.error('Error fetching drug prices, falling back to mock data:', error);
+      console.error('Error fetching drug prices:', error);
       
-      // Fall back to mock data if API fails
-      return NextResponse.json({
-        pharmacies: MOCK_PHARMACY_PRICES,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        usingMockData: true
-      });
+      // Fall back to mock data only if FALLBACK_TO_MOCK is true
+      if (FALLBACK_TO_MOCK) {
+        console.log(`API: Falling back to mock data (FALLBACK_TO_MOCK=${FALLBACK_TO_MOCK})`);
+        return NextResponse.json({
+          pharmacies: MOCK_PHARMACY_PRICES,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          usingMockData: true
+        }, { headers: corsHeaders });
+      } else {
+        // Return error without mock data
+        console.log(`API: Not falling back to mock data (FALLBACK_TO_MOCK=${FALLBACK_TO_MOCK})`);
+        return NextResponse.json(
+          { 
+            error: error instanceof Error ? error.message : 'Unknown error',
+            pharmacies: []
+          },
+          { 
+            status: 500,
+            headers: corsHeaders
+          }
+        );
+      }
     }
   } catch (error) {
     console.error('Error in drug prices API:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 } 
