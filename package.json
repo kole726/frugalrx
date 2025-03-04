@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test-drug-api": "node src/scripts/test-drug-api.js"
+    "test-drug-api": "node src/scripts/test-drug-api.js",
+    "test-api-endpoints": "node -r dotenv/config src/scripts/test-api-endpoints.js"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.8",
