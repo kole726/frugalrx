@@ -15,9 +15,20 @@
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "@tailwindcss/typography": "^0.5.10",
+    "@types/google.maps": "^3.58.1",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@typescript-eslint/eslint-plugin": "^6.9.0",
+    "@typescript-eslint/parser": "^6.9.0",
+    "autoprefixer": "^10",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.0",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.477.0",
     "next": "^14.2.24",
+    "node-fetch": "^2.7.0",
+    "postcss": "^8",
     "puppeteer": "^24.3.1",
     "react": "^18",
     "react-dom": "^18",
@@ -25,20 +36,9 @@
     "react-icons": "^5.5.0",
     "react-share": "^5.0.3",
     "tailwindcss": "^3",
-    "postcss": "^8",
-    "autoprefixer": "^10"
+    "typescript": "^5"
   },
   "devDependencies": {
-    "@types/google.maps": "^3.58.1",
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "@typescript-eslint/eslint-plugin": "^6.9.0",
-    "@typescript-eslint/parser": "^6.9.0",
-    "dotenv": "^16.4.7",
-    "eslint": "^8",
-    "eslint-config-next": "14.0.0",
-    "node-fetch": "^2.7.0",
-    "typescript": "^5"
+    "dotenv": "^16.4.7"
   }
 }
