@@ -36,6 +36,29 @@ interface FormDataType {
   }
 }
 
+// Define the type for API connection test results
+interface ConnectionTestResult {
+  timestamp: string
+  envVars: {
+    apiUrl: string
+    apiKey: string
+    apiSecret: string
+    apiVersion: string
+  }
+  tests: {
+    authentication: {
+      success: boolean
+      message: string
+      token?: string
+    }
+    apiConnection: {
+      success: boolean
+      message: string
+      details?: any
+    }
+  }
+}
+
 export default function TestApiDetailsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [results, setResults] = useState<Record<string, ApiTestResult>>({})
@@ -44,6 +67,11 @@ export default function TestApiDetailsPage() {
   const [expandedResults, setExpandedResults] = useState<string[]>([])
   const [testLog, setTestLog] = useState<string[]>([])
   const [showRawResponse, setShowRawResponse] = useState(false)
+  
+  // State for API connection test
+  const [connectionTestLoading, setConnectionTestLoading] = useState(false)
+  const [connectionTestResults, setConnectionTestResults] = useState<ConnectionTestResult | null>(null)
+  const [connectionTestError, setConnectionTestError] = useState<string | null>(null)
 
   // Define all API operations
   const apiOperations: Record<string, TestOperation[]> = {
@@ -550,51 +578,106 @@ export default function TestApiDetailsPage() {
     toast.success('Copied to clipboard')
   }
 
+  // Function to run API connection test
+  const runConnectionTest = async () => {
+    setConnectionTestLoading(true)
+    setConnectionTestError(null)
+    setConnectionTestResults(null)
+    
+    try {
+      const startTime = Date.now()
+      const response = await fetch('/api/test-connection')
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to test API connection')
+      }
+      
+      setConnectionTestResults(data)
+      toast.success('API connection test completed')
+    } catch (error) {
+      console.error('Error testing API connection:', error)
+      setConnectionTestError(error instanceof Error ? error.message : 'An unknown error occurred')
+      toast.error('Failed to test API connection')
+    } finally {
+      setConnectionTestLoading(false)
+    }
+  }
+
+  // Function to safely get token preview
+  const getTokenPreview = (token: string | undefined) => {
+    if (!token) return '';
+    return token.substring(0, 40) + '...';
+  }
+
+  // Helper function to safely format duration
+  const formatDuration = (result: ApiTestResult | undefined) => {
+    if (!result || typeof result.duration !== 'number') return '';
+    return ` - ${result.duration.toFixed(0)}ms`;
+  };
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">America's Pharmacy API Testing Tool</h1>
-        <div className="space-x-2">
-          <button
-            onClick={runAllTests}
-            disabled={isLoading}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md disabled:opacity-50"
-          >
-            {isLoading ? 'Running Tests...' : 'Run All Tests'}
-          </button>
-          <button
-            onClick={clearResults}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md"
-          >
-            Clear Results
-          </button>
-          <Link href="/" className="inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md">
-            Back to Home
-          </Link>
-        </div>
+        <h1 className="text-2xl font-bold text-gray-800">API Testing Tool</h1>
+        <Link href="/" className="text-blue-600 hover:text-blue-800">
+          Back to Home
+        </Link>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-6 border-b border-gray-200">
-        <div className="flex overflow-x-auto">
-          {Object.entries(apiOperations).map(([category, operations]) => (
-            <button
-              key={category}
-              className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${
-                activeTab === category
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveTab(category)}
-            >
-              {category.split(/(?=[A-Z])/).join(' ')} ({operations.length})
-            </button>
-          ))}
+      <div className="mb-6">
+        <div className="flex flex-wrap border-b border-gray-200">
           <button
-            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${
-              activeTab === 'log'
-                ? 'border-b-2 border-blue-500 text-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
+            className={`px-4 py-2 font-medium text-sm ${
+              activeTab === 'connection' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('connection')}
+          >
+            API Connection Test
+          </button>
+          <button
+            className={`px-4 py-2 font-medium text-sm ${
+              activeTab === 'drugInfo' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('drugInfo')}
+          >
+            Drug Info
+          </button>
+          <button
+            className={`px-4 py-2 font-medium text-sm ${
+              activeTab === 'drugPricing' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('drugPricing')}
+          >
+            Drug Pricing
+          </button>
+          <button
+            className={`px-4 py-2 font-medium text-sm ${
+              activeTab === 'drugSearch' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('drugSearch')}
+          >
+            Drug Search
+          </button>
+          <button
+            className={`px-4 py-2 font-medium text-sm ${
+              activeTab === 'groupPricing' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('groupPricing')}
+          >
+            Group Pricing
+          </button>
+          <button
+            className={`px-4 py-2 font-medium text-sm ${
+              activeTab === 'multiDrugPricing' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setActiveTab('multiDrugPricing')}
+          >
+            Multi-Drug Pricing
+          </button>
+          <button
+            className={`px-4 py-2 font-medium text-sm ${
+              activeTab === 'log' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
             }`}
             onClick={() => setActiveTab('log')}
           >
@@ -603,8 +686,111 @@ export default function TestApiDetailsPage() {
         </div>
       </div>
 
-      {/* Test Log Tab */}
-      {activeTab === 'log' ? (
+      {/* API Connection Test Tab */}
+      {activeTab === 'connection' ? (
+        <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="bg-gray-50 p-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">API Connection Test</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Tests connectivity to the API endpoints including authentication, drug search, pharmacy pricing, and pharmacy map.
+                </p>
+              </div>
+              <button
+                onClick={runConnectionTest}
+                disabled={connectionTestLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm disabled:opacity-50"
+              >
+                {connectionTestLoading ? 'Testing...' : 'Run Connection Test'}
+              </button>
+            </div>
+          </div>
+
+          {connectionTestError && (
+            <div className="p-4 border-t border-gray-200 bg-red-50">
+              <div className="mb-4 p-3 bg-red-100 text-red-800 rounded-md text-sm">
+                {connectionTestError}
+              </div>
+            </div>
+          )}
+
+          {connectionTestResults && (
+            <div className="p-4 border-t border-gray-200">
+              <div className="mb-4">
+                <h4 className="font-medium text-sm text-gray-700 mb-2">Environment Variables</h4>
+                <div className="bg-gray-100 p-3 rounded-md">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                    <div><span className="font-medium">API URL:</span> {connectionTestResults.envVars.apiUrl}</div>
+                    <div><span className="font-medium">API Key:</span> {connectionTestResults.envVars.apiKey ? '✓ Set' : '✗ Not Set'}</div>
+                    <div><span className="font-medium">API Secret:</span> {connectionTestResults.envVars.apiSecret ? '✓ Set' : '✗ Not Set'}</div>
+                    <div><span className="font-medium">API Version:</span> {connectionTestResults.envVars.apiVersion}</div>
+                    <div><span className="font-medium">Timestamp:</span> {connectionTestResults.timestamp}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <h4 className="font-medium text-sm text-gray-700 mb-2">Authentication Test</h4>
+                <div className={`p-3 rounded-md ${connectionTestResults.tests.authentication.success ? 'bg-green-100' : 'bg-red-100'}`}>
+                  <div className="flex items-center mb-2">
+                    {connectionTestResults.tests.authentication.success ? (
+                      <span className="text-green-500 mr-2">✓</span>
+                    ) : (
+                      <span className="text-red-500 mr-2">✗</span>
+                    )}
+                    <span className={connectionTestResults.tests.authentication.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
+                      {connectionTestResults.tests.authentication.success ? 'Authentication Successful' : 'Authentication Failed'}
+                    </span>
+                  </div>
+                  <div className="text-sm">
+                    {connectionTestResults.tests.authentication.message}
+                    {connectionTestResults.tests.authentication.token ? (
+                      <div className="mt-2">
+                        <div className="font-medium">Token Preview:</div>
+                        <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
+                          <pre className="text-green-400 text-xs">
+                            {connectionTestResults.tests.authentication.token.substring(0, 40)}...
+                          </pre>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-sm text-gray-700 mb-2">API Connection Test</h4>
+                <div className={`p-3 rounded-md ${connectionTestResults.tests.apiConnection.success ? 'bg-green-100' : 'bg-red-100'}`}>
+                  <div className="flex items-center mb-2">
+                    {connectionTestResults.tests.apiConnection.success ? (
+                      <span className="text-green-500 mr-2">✓</span>
+                    ) : (
+                      <span className="text-red-500 mr-2">✗</span>
+                    )}
+                    <span className={connectionTestResults.tests.apiConnection.success ? 'text-green-700 font-medium' : 'text-red-700 font-medium'}>
+                      {connectionTestResults.tests.apiConnection.success ? 'API Connection Successful' : 'API Connection Failed'}
+                    </span>
+                  </div>
+                  <div className="text-sm">
+                    {connectionTestResults.tests.apiConnection.message}
+                    {connectionTestResults.tests.apiConnection.details && (
+                      <div className="mt-2">
+                        <div className="font-medium">Response Preview:</div>
+                        <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
+                          <pre className="text-green-400 text-xs">
+                            {JSON.stringify(connectionTestResults.tests.apiConnection.details, null, 2)}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : activeTab === 'log' ? (
         <div className="bg-gray-900 text-green-400 p-4 rounded-md font-mono text-sm h-[600px] overflow-y-auto">
           {testLog.length > 0 ? (
             testLog.map((log, index) => (
@@ -681,8 +867,8 @@ export default function TestApiDetailsPage() {
                         )}
                         <span className={results[operation.id].success ? 'text-green-700' : 'text-red-700'}>
                           {results[operation.id].success ? 'Success' : 'Failed'}
-                          {results[operation.id].status && ` (${results[operation.id].status})`}
-                          {results[operation.id].duration && ` - ${results[operation.id].duration.toFixed(0)}ms`}
+                          {results[operation.id]?.status && ` (${results[operation.id].status})`}
+                          {formatDuration(results[operation.id])}
                         </span>
                       </div>
                       <svg

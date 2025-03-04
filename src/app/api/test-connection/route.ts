@@ -4,9 +4,10 @@ import { testApiConnection } from '@/lib/server/medicationService';
 
 export const dynamic = 'force-dynamic';
 
+// CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
@@ -15,74 +16,95 @@ export async function OPTIONS() {
 }
 
 export async function GET() {
+  console.log('Testing connection and authentication...');
+  
+  // Get environment variables
+  const apiUrl = process.env.API_URL || '';
+  const apiKey = process.env.API_KEY || '';
+  const apiSecret = process.env.API_SECRET || '';
+  const apiVersion = process.env.API_VERSION || '';
+  
+  console.log('Environment variables:', { 
+    apiUrl: apiUrl ? 'Set' : 'Not set',
+    apiKey: apiKey ? 'Set' : 'Not set',
+    apiSecret: apiSecret ? 'Set' : 'Not set',
+    apiVersion: apiVersion ? 'Set' : 'Not set'
+  });
+  
+  // Test authentication
+  let authResult = {
+    success: false,
+    message: 'Authentication failed',
+    token: ''
+  };
+  
   try {
-    console.log('API: Testing connection and authentication');
+    console.log('Testing authentication...');
+    const token = await getAuthToken();
     
-    // Get environment variables (excluding secrets)
-    const envInfo = {
-      apiUrl: process.env.AMERICAS_PHARMACY_API_URL ? 'Set' : 'Not set',
-      authUrl: process.env.AMERICAS_PHARMACY_AUTH_URL ? 'Set' : 'Not set',
-      clientId: process.env.AMERICAS_PHARMACY_CLIENT_ID ? 'Set' : 'Not set',
-      clientSecret: process.env.AMERICAS_PHARMACY_CLIENT_SECRET ? 'Set' : 'Not set',
-      hqMapping: process.env.AMERICAS_PHARMACY_HQ_MAPPING,
-      useMockDrugInfo: process.env.NEXT_PUBLIC_USE_MOCK_DRUG_INFO,
-      useMockPharmacyPrices: process.env.NEXT_PUBLIC_USE_MOCK_PHARMACY_PRICES,
-      useMockDrugSearch: process.env.NEXT_PUBLIC_USE_MOCK_DRUG_SEARCH,
-      useRealApi: process.env.NEXT_PUBLIC_USE_REAL_API,
-      fallbackToMock: process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK,
-      nodeEnv: process.env.NODE_ENV
-    };
-    
-    console.log('API: Environment variables:', envInfo);
-    
-    // Test authentication
-    let authStatus = 'Not tested';
-    let token = null;
-    
-    try {
-      console.log('API: Testing authentication...');
-      token = await getAuthToken();
-      authStatus = token ? 'Success' : 'Failed (no token returned)';
-      console.log('API: Authentication test result:', authStatus);
-    } catch (authError) {
-      authStatus = `Failed: ${authError instanceof Error ? authError.message : 'Unknown error'}`;
-      console.error('API: Authentication test error:', authError);
+    if (token) {
+      authResult = {
+        success: true,
+        message: 'Successfully authenticated with the API',
+        token
+      };
+      console.log('Authentication successful');
+    } else {
+      authResult.message = 'Failed to obtain authentication token';
+      console.log('Authentication failed: No token received');
     }
-    
-    // Test API connection
-    let apiConnectionStatus = 'Not tested';
-    
-    try {
-      console.log('API: Testing API connection...');
-      if (token) {
-        const apiConnection = await testApiConnection();
-        apiConnectionStatus = apiConnection ? 'Success' : 'Failed';
-      } else {
-        apiConnectionStatus = 'Skipped (authentication failed)';
-      }
-      console.log('API: API connection test result:', apiConnectionStatus);
-    } catch (apiError) {
-      apiConnectionStatus = `Failed: ${apiError instanceof Error ? apiError.message : 'Unknown error'}`;
-      console.error('API: API connection test error:', apiError);
-    }
-    
-    // Return the results
-    return NextResponse.json({
-      timestamp: new Date().toISOString(),
-      environment: envInfo,
-      tests: {
-        authentication: authStatus,
-        apiConnection: apiConnectionStatus
-      }
-    }, { headers: corsHeaders });
   } catch (error) {
-    console.error('Error in test-connection API:', error);
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    }, { 
-      status: 500,
-      headers: corsHeaders
-    });
+    authResult.message = `Authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error('Authentication error:', error);
   }
+  
+  // Test API connection
+  let apiConnectionResult = {
+    success: false,
+    message: 'API connection failed',
+    details: null as any
+  };
+  
+  if (authResult.success) {
+    try {
+      console.log('Testing API connection...');
+      const result = await testApiConnection();
+      
+      apiConnectionResult = {
+        success: result,
+        message: result ? 'Successfully connected to the API' : 'Failed to connect to the API',
+        details: result ? { success: true } : null
+      };
+      console.log('API connection test result:', result ? 'successful' : 'failed');
+    } catch (error) {
+      apiConnectionResult.message = `API connection error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error('API connection error:', error);
+    }
+  } else {
+    apiConnectionResult.message = 'Skipped API connection test due to authentication failure';
+    console.log('Skipping API connection test due to authentication failure');
+  }
+  
+  // Return results
+  return NextResponse.json({
+    timestamp: new Date().toISOString(),
+    envVars: {
+      apiUrl,
+      apiKey: !!apiKey,
+      apiSecret: !!apiSecret,
+      apiVersion
+    },
+    tests: {
+      authentication: {
+        success: authResult.success,
+        message: authResult.message,
+        token: authResult.token
+      },
+      apiConnection: {
+        success: apiConnectionResult.success,
+        message: apiConnectionResult.message,
+        details: apiConnectionResult.details
+      }
+    }
+  }, { headers: corsHeaders });
 } 
