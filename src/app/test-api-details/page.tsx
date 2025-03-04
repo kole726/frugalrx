@@ -1113,7 +1113,7 @@ export default function TestApiDetailsPage() {
                     {connectionTestResults.tests.apiConnection?.endpointTests?.drugInfo?.data && (
                       <div className="mt-2">
                         <div className="font-medium text-xs">Response:</div>
-                        <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
+                        <div className="bg-gray-900 p-3 rounded-md overflow-x-auto max-h-96 overflow-y-auto">
                           <pre className="text-green-400 text-xs">
                             {typeof connectionTestResults.tests.apiConnection.endpointTests.drugInfo.data === 'string' 
                               ? connectionTestResults.tests.apiConnection.endpointTests.drugInfo.data 
@@ -1147,7 +1147,7 @@ export default function TestApiDetailsPage() {
                     {connectionTestResults.tests.apiConnection?.endpointTests?.drugSearch?.data && (
                       <div className="mt-2">
                         <div className="font-medium text-xs">Response:</div>
-                        <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
+                        <div className="bg-gray-900 p-3 rounded-md overflow-x-auto max-h-96 overflow-y-auto">
                           <pre className="text-green-400 text-xs">
                             {typeof connectionTestResults.tests.apiConnection.endpointTests.drugSearch.data === 'string' 
                               ? connectionTestResults.tests.apiConnection.endpointTests.drugSearch.data 
@@ -1181,7 +1181,7 @@ export default function TestApiDetailsPage() {
                     {connectionTestResults.tests.apiConnection?.endpointTests?.pharmacyPrices?.data && (
                       <div className="mt-2">
                         <div className="font-medium text-xs">Response:</div>
-                        <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
+                        <div className="bg-gray-900 p-3 rounded-md overflow-x-auto max-h-96 overflow-y-auto">
                           <pre className="text-green-400 text-xs">
                             {typeof connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices.data === 'string' 
                               ? connectionTestResults.tests.apiConnection.endpointTests.pharmacyPrices.data 
@@ -1197,7 +1197,7 @@ export default function TestApiDetailsPage() {
               {connectionTestResults.tests.apiConnection?.details && (
                 <div className="mt-4">
                   <div className="font-medium text-sm">Additional Details:</div>
-                  <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
+                  <div className="bg-gray-900 p-3 rounded-md overflow-x-auto max-h-96 overflow-y-auto">
                     <pre className="text-green-400 text-xs">
                       {JSON.stringify(connectionTestResults.tests.apiConnection.details, null, 2)}
                     </pre>
@@ -1352,18 +1352,24 @@ export default function TestApiDetailsPage() {
                         </div>
                       </div>
 
-                      <div className="bg-gray-900 p-2 rounded-md overflow-x-auto mt-1">
-                        <pre className="text-blue-400 text-xs">
-                          {showRawResponse 
-                            ? results[operation.id].rawResponse || JSON.stringify(results[operation.id].data, null, 2)
-                            : JSON.stringify(results[operation.id].data, null, 2)
-                          }
-                        </pre>
+                      <div className="mt-2">
+                        <div className="font-medium text-xs">Response:</div>
+                        <div className="bg-gray-900 p-3 rounded-md overflow-x-auto max-h-96 overflow-y-auto">
+                          <pre className="text-green-400 text-xs">
+                            {showRawResponse 
+                              ? results[operation.id].rawResponse || JSON.stringify(results[operation.id].data, null, 2)
+                              : JSON.stringify(results[operation.id].data, null, 2)
+                            }
+                          </pre>
+                        </div>
                       </div>
 
                       {/* Add Drug Info Details for drug info endpoint */}
                       {operation.endpoint.includes('/api/drugs/info/gsn') && results[operation.id]?.success && (
-                        <DrugInfoDetails data={results[operation.id].data} onGsnChange={(gsn) => handleInputChange(operation.id, 'gsn', gsn)} />
+                        <DrugInfoDetails 
+                          data={results[operation.id].data} 
+                          onGsnChange={(gsn) => handleInputChange(operation.id, 'gsn', gsn)} 
+                        />
                       )}
                     </div>
                   )}
