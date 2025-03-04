@@ -6,6 +6,10 @@ import { MOCK_PHARMACY_PRICES } from '@/lib/mockData'
 // Mark this route as dynamic
 export const dynamic = 'force-dynamic'
 
+// Check if mock data should be used
+const USE_MOCK_PHARMACY_PRICES = process.env.NEXT_PUBLIC_USE_MOCK_PHARMACY_PRICES === 'true';
+const FALLBACK_TO_MOCK = process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true';
+
 // Map of zip codes to default coordinates
 const zipCodeCoordinates: Record<string, { latitude: number; longitude: number }> = {
   '78759': { latitude: 30.4014, longitude: -97.7525 }, // Austin, TX
@@ -41,6 +45,15 @@ export async function POST(request: Request) {
       );
     }
     
+    // If mock data is explicitly requested, return mock results
+    if (USE_MOCK_PHARMACY_PRICES) {
+      console.log(`API: Using mock data for pharmacy prices as specified by NEXT_PUBLIC_USE_MOCK_PHARMACY_PRICES`);
+      return NextResponse.json({
+        pharmacies: MOCK_PHARMACY_PRICES,
+        usingMockData: true
+      });
+    }
+    
     const priceRequest: DrugPriceRequest = {
       latitude: latitude,
       longitude: longitude,
@@ -69,14 +82,26 @@ export async function POST(request: Request) {
       console.log(`Found ${data.pharmacies?.length || 0} pharmacies with prices`);
       return NextResponse.json(data);
     } catch (error) {
-      console.error('Error fetching drug prices, falling back to mock data:', error);
+      console.error('Error fetching drug prices:', error);
       
-      // Fall back to mock data if API fails
-      return NextResponse.json({
-        pharmacies: MOCK_PHARMACY_PRICES,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        usingMockData: true
-      });
+      // Fall back to mock data only if FALLBACK_TO_MOCK is true
+      if (FALLBACK_TO_MOCK) {
+        console.log('API: Falling back to mock data as specified by NEXT_PUBLIC_FALLBACK_TO_MOCK');
+        return NextResponse.json({
+          pharmacies: MOCK_PHARMACY_PRICES,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          usingMockData: true
+        });
+      } else {
+        // Return error without mock data
+        console.log('API: Not falling back to mock data as specified by NEXT_PUBLIC_FALLBACK_TO_MOCK');
+        return NextResponse.json(
+          { 
+            error: `Failed to fetch drug prices: ${error instanceof Error ? error.message : 'Unknown error'}`
+          },
+          { status: 500 }
+        );
+      }
     }
   } catch (error) {
     console.error('Server error in drug prices API:', error);
@@ -100,6 +125,15 @@ export async function GET(request: Request) {
         { error: 'Either drugName, gsn, or ndcCode is required' },
         { status: 400 }
       );
+    }
+    
+    // If mock data is explicitly requested, return mock results
+    if (USE_MOCK_PHARMACY_PRICES) {
+      console.log(`API: Using mock data for pharmacy prices as specified by NEXT_PUBLIC_USE_MOCK_PHARMACY_PRICES`);
+      return NextResponse.json({
+        pharmacies: MOCK_PHARMACY_PRICES,
+        usingMockData: true
+      });
     }
     
     // Convert GSN to number if provided
@@ -130,14 +164,26 @@ export async function GET(request: Request) {
       const data = await getDrugPrices(priceRequest);
       return NextResponse.json(data);
     } catch (error) {
-      console.error('Error fetching drug prices, falling back to mock data:', error);
+      console.error('Error fetching drug prices:', error);
       
-      // Fall back to mock data if API fails
-      return NextResponse.json({
-        pharmacies: MOCK_PHARMACY_PRICES,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        usingMockData: true
-      });
+      // Fall back to mock data only if FALLBACK_TO_MOCK is true
+      if (FALLBACK_TO_MOCK) {
+        console.log('API: Falling back to mock data as specified by NEXT_PUBLIC_FALLBACK_TO_MOCK');
+        return NextResponse.json({
+          pharmacies: MOCK_PHARMACY_PRICES,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          usingMockData: true
+        });
+      } else {
+        // Return error without mock data
+        console.log('API: Not falling back to mock data as specified by NEXT_PUBLIC_FALLBACK_TO_MOCK');
+        return NextResponse.json(
+          { 
+            error: error instanceof Error ? error.message : 'Unknown error'
+          },
+          { status: 500 }
+        );
+      }
     }
   } catch (error) {
     console.error('Error in drug prices API:', error);

@@ -2,6 +2,9 @@ import { DrugInfo, DrugDetails, PharmacyPrice, DrugPriceResponse } from '@/types
 import { findGsnByDrugName } from '@/lib/drug-gsn-mapping';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+const USE_MOCK_DRUG_SEARCH = process.env.NEXT_PUBLIC_USE_MOCK_DRUG_SEARCH === 'true';
+const USE_MOCK_DRUG_INFO = process.env.NEXT_PUBLIC_USE_MOCK_DRUG_INFO === 'true';
+const USE_MOCK_PHARMACY_PRICES = process.env.NEXT_PUBLIC_USE_MOCK_PHARMACY_PRICES === 'true';
 
 interface DrugSearchResponse {
   drugName: string;
@@ -46,9 +49,12 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
         if (Array.isArray(data) && data.length > 0) {
           // Convert from America's Pharmacy format to our format
           const results = data.map(item => {
-            // Extract GSN from label if present
-            const gsnMatch = item.label.match(/\(GSN: (\d+)\)/);
-            const gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
+            // Only extract GSN if we're using mock data
+            let gsn;
+            if (USE_MOCK_DRUG_SEARCH) {
+              const gsnMatch = item.label.match(/\(GSN: (\d+)\)/);
+              gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
+            }
             
             return {
               drugName: item.value,
@@ -509,6 +515,188 @@ export async function getDrugDetailsByGsn(gsn: number, languageCode?: string): P
   } catch (error) {
     console.error('Error fetching drug details:', error);
     throw error;
+  }
+}
+
+/**
+ * Get drug variations (brands, forms, strengths, quantities) for a given drug
+ * @param drugName The name of the drug
+ * @param gsn Optional GSN for more accurate results
+ * @returns Object containing brands, forms, strengths, and quantities
+ */
+export async function getDrugVariations(drugName: string, gsn?: number): Promise<{
+  brands: { name: string, isGeneric: boolean }[];
+  forms: string[];
+  strengths: string[];
+  quantities: string[];
+}> {
+  try {
+    console.log(`Client: Getting drug variations for: "${drugName}", GSN: ${gsn || 'not provided'}`);
+    
+    // Default empty response
+    const defaultResponse = {
+      brands: [] as { name: string, isGeneric: boolean }[],
+      forms: [] as string[],
+      strengths: [] as string[],
+      quantities: [] as string[]
+    };
+    
+    // If we have a GSN, use it to get detailed drug info
+    if (gsn) {
+      try {
+        // Get detailed drug info using GSN
+        const detailedInfo = await getDetailedDrugInfo(gsn);
+        console.log('Detailed drug info for variations:', detailedInfo);
+        
+        // Extract variations from the detailed info
+        if (detailedInfo) {
+          const response = {
+            brands: [] as { name: string, isGeneric: boolean }[],
+            forms: [] as string[],
+            strengths: [] as string[],
+            quantities: [] as string[]
+          };
+          
+          // Extract brands
+          if (detailedInfo.brandName && detailedInfo.genericName) {
+            // Add generic as first option
+            response.brands.push({ 
+              name: `${detailedInfo.genericName.toUpperCase()} (generic)`, 
+              isGeneric: true 
+            });
+            
+            // Add brand name if different from generic
+            if (detailedInfo.brandName.toLowerCase() !== detailedInfo.genericName.toLowerCase()) {
+              response.brands.push({ 
+                name: detailedInfo.brandName.toUpperCase(), 
+                isGeneric: false 
+              });
+            }
+            
+            // If there are related brands in the response, add them
+            if (detailedInfo.relatedBrands && Array.isArray(detailedInfo.relatedBrands)) {
+              detailedInfo.relatedBrands.forEach((brand: any) => {
+                if (brand && brand.name) {
+                  response.brands.push({ 
+                    name: `${brand.name.toUpperCase()} (brand)`, 
+                    isGeneric: false 
+                  });
+                }
+              });
+            }
+          }
+          
+          // Extract forms
+          if (detailedInfo.form) {
+            response.forms.push(detailedInfo.form.toUpperCase());
+          }
+          
+          if (detailedInfo.availableForms && Array.isArray(detailedInfo.availableForms)) {
+            detailedInfo.availableForms.forEach((form: string) => {
+              if (form && !response.forms.includes(form.toUpperCase())) {
+                response.forms.push(form.toUpperCase());
+              }
+            });
+          }
+          
+          // Extract strengths
+          if (detailedInfo.strength) {
+            response.strengths.push(detailedInfo.strength);
+          }
+          
+          if (detailedInfo.availableStrengths && Array.isArray(detailedInfo.availableStrengths)) {
+            detailedInfo.availableStrengths.forEach((strength: string) => {
+              if (strength && !response.strengths.includes(strength)) {
+                response.strengths.push(strength);
+              }
+            });
+          }
+          
+          // Extract quantities
+          if (detailedInfo.packageSize) {
+            const form = detailedInfo.form || 'TABLET';
+            response.quantities.push(`${detailedInfo.packageSize} ${form.toUpperCase()}`);
+          }
+          
+          if (detailedInfo.availableQuantities && Array.isArray(detailedInfo.availableQuantities)) {
+            detailedInfo.availableQuantities.forEach((quantity: any) => {
+              if (quantity && quantity.value) {
+                const form = detailedInfo.form || 'TABLET';
+                const quantityStr = `${quantity.value} ${form.toUpperCase()}`;
+                if (!response.quantities.includes(quantityStr)) {
+                  response.quantities.push(quantityStr);
+                }
+              }
+            });
+          }
+          
+          // Add common quantities if none found
+          if (response.quantities.length === 0) {
+            const form = detailedInfo.form || 'TABLET';
+            ['30', '60', '90'].forEach(qty => {
+              response.quantities.push(`${qty} ${form.toUpperCase()}`);
+            });
+          }
+          
+          // Add custom option for quantities
+          response.quantities.push('custom');
+          
+          return response;
+        }
+      } catch (error) {
+        console.error('Error fetching detailed drug info for variations:', error);
+        // Continue to fallback approach
+      }
+    }
+    
+    // Fallback approach - search for the drug and extract variations from search results
+    try {
+      const searchResults = await searchMedications(drugName);
+      console.log('Search results for variations:', searchResults);
+      
+      if (searchResults && searchResults.length > 0) {
+        const response = {
+          brands: [{ name: `${drugName.toUpperCase()} (generic)`, isGeneric: true }],
+          forms: ['TABLET', 'CAPSULE'],
+          strengths: [],
+          quantities: ['30 TABLET', '60 TABLET', '90 TABLET', 'custom']
+        };
+        
+        // Try to extract variations from search results
+        searchResults.forEach(result => {
+          // Extract brand names
+          if (result.drugName && !response.brands.some(b => b.name.toLowerCase() === result.drugName.toLowerCase())) {
+            if (result.drugName.toLowerCase() !== drugName.toLowerCase()) {
+              response.brands.push({ 
+                name: `${result.drugName.toUpperCase()} (brand)`, 
+                isGeneric: false 
+              });
+            }
+          }
+        });
+        
+        return response;
+      }
+    } catch (error) {
+      console.error('Error fetching drug variations from search:', error);
+    }
+    
+    // Return default values if all else fails
+    return {
+      brands: [{ name: drugName.toUpperCase(), isGeneric: true }],
+      forms: ['TABLET', 'CAPSULE'],
+      strengths: ['50 mcg', '100 mcg', '25 mcg'],
+      quantities: ['30 TABLET', '90 TABLET', '60 TABLET', 'custom']
+    };
+  } catch (error) {
+    console.error('Error in getDrugVariations:', error);
+    // Return default values on error
+    return {
+      brands: [{ name: drugName.toUpperCase(), isGeneric: true }],
+      forms: ['TABLET', 'CAPSULE'],
+      strengths: ['50 mcg', '100 mcg', '25 mcg'],
+      quantities: ['30 TABLET', '90 TABLET', '60 TABLET', 'custom']
+    };
   }
 }
 
