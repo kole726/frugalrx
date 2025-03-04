@@ -1,6 +1,6 @@
 'use server';
 
-import { DrugPriceRequest, DrugInfo, DrugPrice, PharmacyPrice, DrugPriceResponse, DrugDetails, APIError } from '@/types/api';
+import { DrugPriceRequest, DrugInfo, DrugPrice, PharmacyPrice, DrugPriceResponse, DrugDetails, APIError, DrugVariation, DrugForm, DrugStrength, DrugQuantity } from '@/types/api';
 import { getAuthToken } from './auth';
 
 // Define the interface for drug search response
@@ -31,7 +31,7 @@ export async function searchDrugs(query: string): Promise<DrugSearchResponse[]> 
     // Try the endpoint from the API documentation first
     try {
       // Use the endpoint from the API documentation (opFindDrugByName)
-      const endpoint = `/v1/drugs/${encodeURIComponent(query)}`;
+      const endpoint = `/pricing/v1/drugs/${encodeURIComponent(query)}`;
       console.log(`Server: Trying GET request to ${baseUrl}${endpoint}`);
       
       // Get authentication token
@@ -325,7 +325,7 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
           form: form.form,
           gsn: form.gsn
         }));
-        console.log(`Server: Found ${result.forms.length} drug forms`);
+        console.log(`Server: Found ${result.forms?.length || 0} drug forms`);
       }
       
       // Extract strengths/dosages if available
@@ -334,7 +334,7 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
           strength: strength.strength,
           gsn: strength.gsn
         }));
-        console.log(`Server: Found ${result.strengths.length} drug strengths`);
+        console.log(`Server: Found ${result.strengths?.length || 0} drug strengths`);
       }
       
       // Extract quantities if available
@@ -343,7 +343,7 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<DrugPric
           quantity: qty.quantity,
           uom: qty.uom
         }));
-        console.log(`Server: Found ${result.quantities.length} drug quantities`);
+        console.log(`Server: Found ${result.quantities?.length || 0} drug quantities`);
       }
     } else if (data.drugInfo && data.drugInfo.brandVariations) {
       // Handle the previous response format for backward compatibility
@@ -730,7 +730,7 @@ export async function getDetailedDrugInfo(gsn: number, languageCode?: string): P
     const token = await getAuthToken();
     
     // Create URL with optional query parameters
-    const url = new URL(`${baseUrl}/v1/druginfo/${gsn}`);
+    const url = new URL(`${baseUrl}/pricing/v1/druginfo/${gsn}`);
     
     // Add language code if provided
     if (languageCode) {
@@ -788,7 +788,7 @@ async function findGsnForDrugName(drugName: string): Promise<number | undefined>
     const token = await getAuthToken();
     
     // First search for the drug to get its GSN
-    const searchEndpoint = `/v1/drugs/${encodeURIComponent(drugName)}`;
+    const searchEndpoint = `/pricing/v1/drugs/${encodeURIComponent(drugName)}`;
     console.log(`Searching for drug "${drugName}" at ${baseUrl}${searchEndpoint}`);
     
     const searchResponse = await fetch(`${baseUrl}${searchEndpoint}?count=1&hqAlias=${process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx'}`, {
