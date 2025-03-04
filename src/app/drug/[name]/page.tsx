@@ -236,7 +236,15 @@ export default function DrugPage({ params }: Props) {
             }
           ];
           
-          setPharmacyPrices(mockPharmacies);
+          setPharmacyPrices(prevPrices => {
+            // Only set mock data if we still don't have real data
+            if (prevPrices.length === 0) {
+              console.log('Setting mock pharmacy prices');
+              return mockPharmacies;
+            }
+            console.log('Real pharmacy prices already set, not using mock data');
+            return prevPrices;
+          });
         }
         
         // If we don't have brand variations by now, add mock data
@@ -259,7 +267,15 @@ export default function DrugPage({ params }: Props) {
             }
           ];
           
-          setBrandVariations(mockVariations);
+          setBrandVariations(prevVariations => {
+            // Only set mock data if we still don't have real data
+            if (prevVariations.length === 0) {
+              console.log('Setting mock brand variations');
+              return mockVariations;
+            }
+            console.log('Real brand variations already set, not using mock data');
+            return prevVariations;
+          });
           
           // Set the first one as selected if no brand is selected
           if (!selectedBrand) {
@@ -388,7 +404,7 @@ export default function DrugPage({ params }: Props) {
             address: pharmacy.streetAddress || '',
             city: pharmacy.city || '',
             state: pharmacy.state || '',
-            postalCode: pharmacy.zipCode || '',
+            zipCode: pharmacy.zipCode || '',
             phone: pharmacy.phone || '',
             latitude: pharmacy.latitude,
             longitude: pharmacy.longitude,
@@ -632,7 +648,7 @@ export default function DrugPage({ params }: Props) {
       address: pharmacy.address || `${index + 100} Main St`, // Use API address or fallback
       city: pharmacy.city || "Austin", // Use API city or fallback
       state: pharmacy.state || "TX", // Use API state or fallback
-      postalCode: pharmacy.zipCode || userLocation.zipCode,
+      zipCode: pharmacy.zipCode || '',
       phone: pharmacy.phone || `555-${100 + index}-${1000 + index}`,
       distance: distanceValue,
       latitude: pharmacy.latitude || (userLocation.latitude + (Math.sin(index) * 0.05)),
@@ -693,6 +709,61 @@ export default function DrugPage({ params }: Props) {
       pharmacyListRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+
+  // Add a useEffect to log pharmacy prices when they change
+  useEffect(() => {
+    if (pharmacyPrices.length > 0) {
+      console.log(`Pharmacy prices updated: ${pharmacyPrices.length} pharmacies available`);
+      console.log('First pharmacy:', pharmacyPrices[0]);
+      
+      // Ensure all pharmacy prices have the required properties
+      const validatedPrices = pharmacyPrices.map(pharmacy => {
+        // Ensure price is a number
+        const price = typeof pharmacy.price === 'number' ? pharmacy.price : 
+                     (typeof pharmacy.price === 'string' ? parseFloat(pharmacy.price) : 0);
+        
+        return {
+          ...pharmacy,
+          price: price,
+          // Ensure other required properties have defaults
+          name: pharmacy.name || 'Unknown Pharmacy',
+          distance: pharmacy.distance || '0.0 miles',
+          address: pharmacy.address || '',
+          city: pharmacy.city || '',
+          state: pharmacy.state || '',
+          zipCode: pharmacy.zipCode || '',
+          phone: pharmacy.phone || '',
+          latitude: pharmacy.latitude || userLocation.latitude,
+          longitude: pharmacy.longitude || userLocation.longitude,
+          open24H: !!pharmacy.open24H
+        };
+      });
+      
+      // Only update if we need to fix any pharmacy data
+      if (JSON.stringify(validatedPrices) !== JSON.stringify(pharmacyPrices)) {
+        console.log('Updating pharmacy prices with validated data');
+        setPharmacyPrices(validatedPrices);
+      }
+    }
+  }, [pharmacyPrices, userLocation]);
+  
+  // Add a useEffect to log when the component is about to render pharmacy prices
+  useEffect(() => {
+    if (!isLoading && !isLoadingPharmacies && pharmacyPrices.length > 0) {
+      console.log('Ready to render pharmacy prices:', pharmacyPrices.length);
+      
+      // Force a re-render of the pharmacy list
+      const pharmacyListElement = pharmacyListRef.current;
+      if (pharmacyListElement) {
+        console.log('Forcing pharmacy list re-render');
+        // This will trigger a DOM update
+        pharmacyListElement.style.opacity = '0.99';
+        setTimeout(() => {
+          pharmacyListElement.style.opacity = '1';
+        }, 50);
+      }
+    }
+  }, [isLoading, isLoadingPharmacies, pharmacyPrices.length]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -1031,23 +1102,25 @@ export default function DrugPage({ params }: Props) {
                           .map((pharmacy, index) => {
                             // Calculate the actual index in the full array for proper identification
                             const actualIndex = (currentPage - 1) * pharmaciesPerPage + index;
+                            
+                            // Convert to the format expected by PharmacyMap
                             return {
                               pharmacyId: actualIndex,
-                              name: pharmacy.name,
+                              name: pharmacy.name || '',
                               address: pharmacy.address || '',
                               city: pharmacy.city || '',
                               state: pharmacy.state || '',
-                              postalCode: pharmacy.zipCode || '',
+                              postalCode: pharmacy.zipCode || '', // Map zipCode to postalCode
                               phone: pharmacy.phone || '',
                               distance: typeof pharmacy.distance === 'string' 
                                 ? parseFloat(pharmacy.distance.replace(' miles', '').replace(' mi', '')) 
-                                : pharmacy.distance,
+                                : 0,
                               latitude: pharmacy.latitude,
                               longitude: pharmacy.longitude,
-                              price: pharmacy.price
+                              price: pharmacy.price,
+                              open24H: pharmacy.open24H
                             };
-                          })
-                        }
+                          })}
                         zipCode={userLocation.zipCode}
                         centerLat={userLocation.latitude}
                         centerLng={userLocation.longitude}
