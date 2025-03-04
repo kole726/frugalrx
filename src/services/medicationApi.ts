@@ -239,47 +239,67 @@ export async function getDrugInfo(drugName: string, languageCode?: string): Prom
       url += `&languageCode=${encodeURIComponent(languageCode)}`;
     }
     
-    console.log(`Using API endpoint: ${url}`);
+    console.log(`Client: Using API endpoint: ${url}`);
     
     // Try to get real data from API
-    const response = await fetch(url, {
-      // Add cache: 'no-store' to prevent caching of failed responses
-      cache: 'no-store'
-    });
-    
-    if (!response.ok) {
-      let errorMessage = `API error: ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch (e) {
-        // If we can't parse the error as JSON, use the status code
-        console.error('Could not parse error response as JSON:', e);
+    try {
+      const response = await fetch(url, {
+        // Add cache: 'no-store' to prevent caching of failed responses
+        cache: 'no-store',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        let errorMessage = `API error: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          
+          // If we got mock data with an error, log it but don't throw
+          if (errorData.usingMockData) {
+            console.warn(`Client: Using mock data for "${normalizedDrugName}" due to API error:`, errorMessage);
+            return errorData;
+          }
+        } catch (e) {
+          // If we can't parse the error as JSON, use the status code
+          console.error('Client: Could not parse error response as JSON:', e);
+        }
+        
+        console.error(`Client: API error when getting info for "${normalizedDrugName}":`, errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      
+      // Check if we got mock data
+      if (data.usingMockData) {
+        console.warn(`Client: Using mock data for "${normalizedDrugName}"`);
+      } else {
+        console.log(`Client: Received real drug info for "${normalizedDrugName}"`);
       }
       
-      console.error(`Client: API error when getting info for "${normalizedDrugName}":`, errorMessage);
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
-    console.log(`Client: Received drug info for "${normalizedDrugName}":`, data);
-    
-    // Format drug names with proper capitalization
-    if (data) {
-      if (data.genericName) {
-        data.genericName = data.genericName.charAt(0).toUpperCase() + data.genericName.slice(1).toLowerCase();
+      // Format drug names with proper capitalization
+      if (data) {
+        if (data.genericName) {
+          data.genericName = data.genericName.charAt(0).toUpperCase() + data.genericName.slice(1).toLowerCase();
+        }
+        if (data.brandName) {
+          // Brand names may have multiple words, so capitalize each word
+          data.brandName = data.brandName.split(' ')
+            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+        }
       }
-      if (data.brandName) {
-        // Brand names may have multiple words, so capitalize each word
-        data.brandName = data.brandName.split(' ')
-          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ');
-      }
+      
+      return data;
+    } catch (fetchError) {
+      console.error(`Client: Fetch error for "${normalizedDrugName}":`, fetchError);
+      throw fetchError;
     }
-    
-    return data;
   } catch (error) {
-    console.error('Error fetching drug info:', error);
+    console.error('Client: Error fetching drug info:', error);
     
     // Provide a more user-friendly error message
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -294,7 +314,8 @@ export async function getDrugInfo(drugName: string, languageCode?: string): Prom
       throw new Error('Error loading drug information. Our service is currently experiencing issues. Please try again later.');
     }
     
-    throw error;
+    // For other errors, provide a generic message
+    throw new Error(`Error loading information for ${drugName}. ${errorMessage}`);
   }
 }
 

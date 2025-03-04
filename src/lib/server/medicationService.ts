@@ -768,7 +768,7 @@ export async function compareMedications(
  */
 export async function getDetailedDrugInfo(gsn: number, languageCode?: string): Promise<any> {
   try {
-    console.log(`Server: Getting detailed drug info for GSN: ${gsn}`);
+    console.log(`Server: Getting detailed drug info for GSN: ${gsn}, language: ${languageCode || 'default'}`);
     
     // Validate API URL
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
@@ -781,40 +781,52 @@ export async function getDetailedDrugInfo(gsn: number, languageCode?: string): P
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
     
     // Get authentication token
-    const token = await getAuthToken();
-    
-    // Create URL with optional query parameters
-    const url = new URL(`${baseUrl}/pricing/v1/druginfo/${gsn}`);
-    
-    // Add language code if provided
-    if (languageCode) {
-      url.searchParams.append('languageCode', languageCode);
+    try {
+      const token = await getAuthToken();
+      
+      // Create URL with optional query parameters
+      const url = new URL(`${baseUrl}/pricing/v1/druginfo/${gsn}`);
+      
+      // Add language code if provided
+      if (languageCode) {
+        url.searchParams.append('languageCode', languageCode);
+      }
+      
+      console.log(`Server: Making API request to ${url.toString()}`);
+      
+      // Make API request
+      try {
+        const response = await fetch(url.toString(), {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        });
+        
+        // Check if the response is OK
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`Server: API error (${response.status}): ${errorText}`);
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+        
+        // Parse response
+        const data = await response.json();
+        console.log(`Server: Successfully retrieved detailed drug info for GSN: ${gsn}`);
+        
+        return data;
+      } catch (fetchError) {
+        console.error(`Server: Fetch error for GSN ${gsn}:`, fetchError);
+        throw new Error(`Error fetching drug info: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+      }
+    } catch (authError) {
+      console.error('Server: Authentication error:', authError);
+      throw new Error(`Authentication error: ${authError instanceof Error ? authError.message : 'Unknown error'}`);
     }
-    
-    console.log(`Server: Making API request to ${url.toString()}`);
-    
-    // Make API request
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-      },
-      cache: 'no-store' // Ensure we don't use cached responses
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Drug info API error: ${response.status}`, errorText);
-      throw new Error(`API Error ${response.status}: ${errorText}`);
-    }
-    
-    const data = await response.json();
-    console.log(`Server: Received detailed drug info for GSN ${gsn}`);
-    
-    return data;
   } catch (error) {
-    console.error('Error in getDetailedDrugInfo:', error);
+    console.error(`Server: Error in getDetailedDrugInfo for GSN ${gsn}:`, error);
     throw error;
   }
 }

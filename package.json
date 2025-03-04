@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test-drug-api": "node src/scripts/test-drug-api.js"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^1.16.8",
@@ -15,6 +16,7 @@
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.477.0",
     "next": "^14.2.24",
+    "puppeteer": "^24.3.1",
     "react": "^18",
     "react-dom": "^18",
     "react-hot-toast": "^2.5.2",

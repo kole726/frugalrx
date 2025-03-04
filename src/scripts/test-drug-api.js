@@ -1,183 +1,183 @@
 /**
- * Test script to diagnose issues with drug API communication
+ * Test script for the drug info API
  * 
- * This script tests the API with various drug names to identify which ones are failing
- * and provides detailed error information.
+ * This script tests the drug info API endpoints to verify they are working correctly.
+ * It makes requests to both the drug info and drug prices endpoints.
  * 
- * Run with: node --experimental-json-modules -r dotenv/config src/scripts/test-drug-api.js
+ * Usage:
+ * node src/scripts/test-drug-api.js
  */
 
-// Import required modules
-import fetch from 'node-fetch';
-import { URLSearchParams } from 'url';
+// Use fetch in Node.js
+const fetch = require('node-fetch');
 
-// Test drug names - a mix of common medications
+// Base URL for API requests
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
+
+// Test drug names and GSNs
 const TEST_DRUGS = [
-  'amoxicillin',
-  'lisinopril',
-  'atorvastatin',
-  'metformin',
-  'simvastatin',
-  'omeprazole',
-  'losartan',
-  'albuterol',
-  'gabapentin',
-  'hydrochlorothiazide',
-  'metoprolol',
-  'amlodipine',
-  'levothyroxine',
-  'prednisone',
-  'ibuprofen',
-  'acetaminophen',
-  'aspirin',
-  'fluoxetine',
-  'sertraline',
-  'citalopram'
+  { name: 'tylenol', gsn: 1790 },
+  { name: 'advil', gsn: 1717 },
+  { name: 'lipitor', gsn: 19323 },
+  { name: 'ibuprofen', gsn: 1717 }
 ];
 
-// Authentication function
-async function getAuthToken() {
-  try {
-    const authUrl = process.env.AMERICAS_PHARMACY_AUTH_URL;
-    const clientId = process.env.AMERICAS_PHARMACY_CLIENT_ID;
-    const clientSecret = process.env.AMERICAS_PHARMACY_CLIENT_SECRET;
+// Test location (Austin, TX)
+const TEST_LOCATION = {
+  latitude: 30.2672,
+  longitude: -97.7431,
+  radius: 10
+};
+
+/**
+ * Test the drug info API
+ */
+async function testDrugInfoAPI() {
+  console.log('\n=== Testing Drug Info API ===\n');
+  
+  for (const drug of TEST_DRUGS) {
+    console.log(`\nTesting drug info for: ${drug.name} (GSN: ${drug.gsn})`);
     
-    if (!authUrl || !clientId || !clientSecret) {
-      console.error('Missing required environment variables for authentication');
-      throw new Error('Missing API credentials in environment variables');
+    // Test drug info by name
+    try {
+      console.log(`\n1. Testing /api/drugs/info/name?name=${drug.name}`);
+      const nameResponse = await fetch(`${API_BASE_URL}/drugs/info/name?name=${drug.name}`);
+      
+      console.log(`Status: ${nameResponse.status} ${nameResponse.statusText}`);
+      
+      if (nameResponse.ok) {
+        const data = await nameResponse.json();
+        console.log('Response data:', JSON.stringify(data, null, 2));
+        
+        if (data.usingMockData) {
+          console.log('⚠️ WARNING: Using mock data');
+        } else {
+          console.log('✅ SUCCESS: Received real data');
+        }
+      } else {
+        console.log('❌ ERROR: Failed to get drug info by name');
+        try {
+          const errorText = await nameResponse.text();
+          console.log('Error details:', errorText);
+        } catch (e) {
+          console.log('Could not parse error response');
+        }
+      }
+    } catch (error) {
+      console.log('❌ ERROR: Exception when fetching drug info by name:', error.message);
     }
     
-    const params = new URLSearchParams();
-    params.append('grant_type', 'client_credentials');
-    params.append('client_id', clientId);
-    params.append('client_secret', clientSecret);
-    params.append('scope', 'ccds.read');
-
-    console.log(`Requesting auth token from: ${authUrl}`);
-    
-    const response = await fetch(authUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Authentication failed: ${response.status} ${response.statusText}`, errorText);
-      throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
+    // Test drug info by GSN
+    try {
+      console.log(`\n2. Testing /api/drugs/info/gsn?gsn=${drug.gsn}`);
+      const gsnResponse = await fetch(`${API_BASE_URL}/drugs/info/gsn?gsn=${drug.gsn}`);
+      
+      console.log(`Status: ${gsnResponse.status} ${gsnResponse.statusText}`);
+      
+      if (gsnResponse.ok) {
+        const data = await gsnResponse.json();
+        console.log('Response data:', JSON.stringify(data, null, 2));
+        
+        if (data.usingMockData) {
+          console.log('⚠️ WARNING: Using mock data');
+        } else {
+          console.log('✅ SUCCESS: Received real data');
+        }
+      } else {
+        console.log('❌ ERROR: Failed to get drug info by GSN');
+        try {
+          const errorText = await gsnResponse.text();
+          console.log('Error details:', errorText);
+        } catch (e) {
+          console.log('Could not parse error response');
+        }
+      }
+    } catch (error) {
+      console.log('❌ ERROR: Exception when fetching drug info by GSN:', error.message);
     }
-
-    const data = await response.json();
-    
-    if (!data.access_token) {
-      console.error('Invalid token response:', data);
-      throw new Error('Invalid authentication response from API');
-    }
-    
-    console.log('Successfully obtained auth token');
-    return data.access_token;
-  } catch (error) {
-    console.error('Error getting authentication token:', error);
-    throw new Error('Failed to authenticate with the medication API');
   }
 }
 
-// Search drugs function
-async function searchDrugs(query, token) {
-  try {
-    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
-    if (!apiUrl) {
-      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
-      throw new Error('API URL not configured');
+/**
+ * Test the drug prices API
+ */
+async function testDrugPricesAPI() {
+  console.log('\n=== Testing Drug Prices API ===\n');
+  
+  for (const drug of TEST_DRUGS) {
+    console.log(`\nTesting drug prices for: ${drug.name} (GSN: ${drug.gsn})`);
+    
+    // Test drug prices
+    try {
+      console.log(`\nTesting /api/drugs/prices`);
+      
+      const requestBody = {
+        drugName: drug.name,
+        gsn: drug.gsn,
+        latitude: TEST_LOCATION.latitude,
+        longitude: TEST_LOCATION.longitude,
+        radius: TEST_LOCATION.radius
+      };
+      
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+      
+      const pricesResponse = await fetch(`${API_BASE_URL}/drugs/prices`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log(`Status: ${pricesResponse.status} ${pricesResponse.statusText}`);
+      
+      if (pricesResponse.ok) {
+        const data = await pricesResponse.json();
+        console.log('Response data:', JSON.stringify(data, null, 2));
+        
+        if (data.usingMockData) {
+          console.log('⚠️ WARNING: Using mock data');
+        } else {
+          console.log('✅ SUCCESS: Received real data');
+        }
+        
+        // Check if we have pharmacy prices
+        if (data.pharmacies && data.pharmacies.length > 0) {
+          console.log(`Found ${data.pharmacies.length} pharmacies with prices`);
+        } else {
+          console.log('❌ WARNING: No pharmacy prices found');
+        }
+      } else {
+        console.log('❌ ERROR: Failed to get drug prices');
+        try {
+          const errorText = await pricesResponse.text();
+          console.log('Error details:', errorText);
+        } catch (e) {
+          console.log('Could not parse error response');
+        }
+      }
+    } catch (error) {
+      console.log('❌ ERROR: Exception when fetching drug prices:', error.message);
     }
-    
-    // Convert query to lowercase to ensure consistent API requests
-    const normalizedQuery = query.toLowerCase();
-    console.log(`\nSearching for drugs with query: "${normalizedQuery}" at ${apiUrl}/drugs/names`);
-    
-    // Make API request
-    const response = await fetch(`${apiUrl}/drugs/names`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        hqMappingName: 'walkerrx',
-        prefixText: normalizedQuery
-      })
-    });
-
-    // Handle response
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Drug search API error: ${response.status}`, errorText);
-      console.error(`Request details: query="${normalizedQuery}", endpoint=${apiUrl}/drugs/names`);
-      throw new Error(`API Error ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log(`Found ${Array.isArray(data) ? data.length : 0} drug matches for "${normalizedQuery}"`);
-    
-    // Return the data
-    return data;
-  } catch (error) {
-    console.error('Error searching drugs:', error);
-    return { error: error.message };
   }
 }
 
-// Main test function
-async function testDrugAPI() {
-  console.log('Starting drug API test...');
+/**
+ * Main function to run all tests
+ */
+async function runTests() {
+  console.log('Starting API tests...');
   
   try {
-    // Get authentication token
-    const token = await getAuthToken();
+    await testDrugInfoAPI();
+    await testDrugPricesAPI();
     
-    // Test results
-    const results = {
-      successful: [],
-      failed: []
-    };
-    
-    // Test each drug
-    for (const drug of TEST_DRUGS) {
-      try {
-        const result = await searchDrugs(drug, token);
-        
-        if (result.error) {
-          results.failed.push({ drug, error: result.error });
-        } else {
-          results.successful.push({ drug, count: Array.isArray(result) ? result.length : 0 });
-        }
-      } catch (error) {
-        results.failed.push({ drug, error: error.message });
-      }
-    }
-    
-    // Print summary
-    console.log('\n\n=== TEST RESULTS SUMMARY ===');
-    console.log(`Total drugs tested: ${TEST_DRUGS.length}`);
-    console.log(`Successful: ${results.successful.length}`);
-    console.log(`Failed: ${results.failed.length}`);
-    
-    console.log('\n=== SUCCESSFUL DRUGS ===');
-    results.successful.forEach(item => {
-      console.log(`- ${item.drug}: Found ${item.count} results`);
-    });
-    
-    console.log('\n=== FAILED DRUGS ===');
-    results.failed.forEach(item => {
-      console.log(`- ${item.drug}: ${item.error}`);
-    });
-    
+    console.log('\n=== Test Summary ===\n');
+    console.log('All tests completed. Check the logs above for details on any failures.');
   } catch (error) {
-    console.error('Test failed:', error);
+    console.error('Error running tests:', error);
   }
 }
 
-// Run the test
-testDrugAPI(); 
+// Run the tests
+runTests(); 
