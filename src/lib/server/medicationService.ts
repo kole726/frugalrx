@@ -497,53 +497,7 @@ export async function testApiConnection(): Promise<boolean> {
     
     const hqMapping = process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx';
     
-    // Test drug info endpoint with a known GSN (Tylenol)
-    const gsn = 1790;
-    
-    // Try different URL structures based on the Postman collection
-    console.log('Server: Testing drug prices by GSN endpoint');
-    try {
-      // Check if baseUrl already includes the pricing/v1 path
-      const url = baseUrl.includes('/pricing/v1') 
-        ? `${baseUrl}/drugprices/byGSN`
-        : `${baseUrl}/pricing/v1/drugprices/byGSN`;
-        
-      console.log(`Server: Testing API connection with URL: ${url}`);
-      
-      // Create request payload based on Postman collection
-      const payload = {
-        hqMappingName: hqMapping,
-        gsn: gsn,
-        latitude: 30.2672,
-        longitude: -97.7431,
-        customizedQuantity: false,
-        quantity: 30 // Default quantity
-      };
-      
-      console.log('Server: Request payload:', JSON.stringify(payload));
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (response.ok) {
-        console.log(`Server: API connection successful with URL: ${url}`);
-        return true;
-      } else {
-        const errorText = await response.text();
-        console.error(`Server: API connection failed with URL ${url}: ${response.status} ${response.statusText}`, errorText);
-      }
-    } catch (error) {
-      console.error(`Server: Error testing drug prices by GSN endpoint:`, error);
-    }
-    
-    // Try drug names endpoint
+    // Try drug names endpoint first (this one works)
     console.log('Server: Testing drug names endpoint');
     try {
       // Check if baseUrl already includes the pricing/v1 path
@@ -582,7 +536,68 @@ export async function testApiConnection(): Promise<boolean> {
       console.error(`Server: Error testing drug names endpoint:`, error);
     }
     
-    // If we get here, all URL structures failed
+    // Try drug prices endpoint with multiple GSN values
+    console.log('Server: Testing drug prices by GSN endpoint');
+    
+    // Try multiple GSN values
+    const gsnValues = [
+      1790,  // Tylenol
+      62733, // From Postman collection
+      70954, // Another common medication
+      2323,  // Try another value
+      4815   // Try another value
+    ];
+    
+    // Check if baseUrl already includes the pricing/v1 path
+    const url = baseUrl.includes('/pricing/v1') 
+      ? `${baseUrl}/drugprices/byGSN`
+      : `${baseUrl}/pricing/v1/drugprices/byGSN`;
+    
+    for (const gsn of gsnValues) {
+      try {
+        console.log(`Server: Testing API connection with URL: ${url} and GSN: ${gsn}`);
+        
+        // Create request payload based on Postman collection
+        const payload = {
+          hqMappingName: hqMapping,
+          gsn: gsn,
+          latitude: 30.2672,
+          longitude: -97.7431,
+          customizedQuantity: false,
+          quantity: 30 // Default quantity
+        };
+        
+        console.log(`Server: Request payload for GSN ${gsn}:`, JSON.stringify(payload));
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        // 204 No Content is a valid response, but means no data for this GSN
+        if (response.status === 204) {
+          console.log(`Server: Received 204 No Content for GSN ${gsn} - no data available`);
+          continue; // Try next GSN
+        }
+        
+        if (response.ok) {
+          console.log(`Server: API connection successful with URL: ${url} and GSN: ${gsn}`);
+          return true;
+        } else {
+          const errorText = await response.text();
+          console.error(`Server: API connection failed with URL ${url} and GSN ${gsn}: ${response.status} ${response.statusText}`, errorText);
+        }
+      } catch (error) {
+        console.error(`Server: Error testing drug prices by GSN endpoint with GSN ${gsn}:`, error);
+      }
+    }
+    
+    // If we get here, all API connection tests failed
     console.error('Server: All API connection tests failed');
     return false;
   } catch (error) {

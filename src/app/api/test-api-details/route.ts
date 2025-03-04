@@ -95,8 +95,14 @@ async function testDrugInfoEndpoint(token: string) {
   try {
     console.log('API: Testing drug info endpoint');
     
-    // Test GSN
-    const gsn = 1790; // Tylenol
+    // Try multiple GSN values
+    const gsnValues = [
+      1790,  // Tylenol
+      62733, // From Postman collection
+      70954, // Another common medication
+      2323,  // Try another value
+      4815   // Try another value
+    ];
     
     // Get API URL and HQ mapping
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
@@ -123,77 +129,77 @@ async function testDrugInfoEndpoint(token: string) {
       
     console.log(`API: Making request to: ${url}`);
     
-    // Create request payload based on Postman collection
-    const payload = {
-      hqMappingName: hqMapping,
-      gsn: gsn,
-      latitude: 30.2672,
-      longitude: -97.7431,
-      // Add these fields based on Postman collection
-      customizedQuantity: false,
-      quantity: 30 // Default quantity
-    };
-    
-    console.log('API: Request payload:', JSON.stringify(payload));
-    
-    // Make API request
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-    
-    // Check response
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API: Drug info endpoint error (${response.status}):`, errorText);
+    // Try each GSN value
+    for (const gsn of gsnValues) {
+      console.log(`API: Trying GSN value: ${gsn}`);
       
-      return {
-        success: false,
-        status: response.status,
-        error: errorText,
-        url: url
+      // Create request payload based on Postman collection
+      const payload = {
+        hqMappingName: hqMapping,
+        gsn: gsn,
+        latitude: 30.2672,
+        longitude: -97.7431,
+        customizedQuantity: false,
+        quantity: 30 // Default quantity
       };
-    }
-    
-    // Try to parse the response
-    let data;
-    try {
-      const responseText = await response.text();
-      console.log('API: Raw response:', responseText);
       
-      // Only try to parse if there's content
-      if (responseText && responseText.trim()) {
-        data = JSON.parse(responseText);
-      } else {
-        return {
-          success: false,
-          status: response.status,
-          error: 'Empty response from API',
-          url: url
-        };
+      console.log(`API: Request payload for GSN ${gsn}:`, JSON.stringify(payload));
+      
+      // Make API request
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      // Check for 204 No Content response
+      if (response.status === 204) {
+        console.log(`API: Received 204 No Content for GSN ${gsn} - no data available`);
+        continue; // Try next GSN
       }
-    } catch (parseError) {
-      console.error('API: Error parsing response:', parseError);
-      return {
-        success: false,
-        status: response.status,
-        error: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
-        url: url
-      };
+      
+      // Check response
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API: Drug info endpoint error for GSN ${gsn} (${response.status}):`, errorText);
+        continue; // Try next GSN
+      }
+      
+      // Try to parse the response
+      try {
+        const responseText = await response.text();
+        console.log(`API: Raw response for GSN ${gsn}:`, responseText);
+        
+        // Only try to parse if there's content
+        if (responseText && responseText.trim()) {
+          const data = JSON.parse(responseText);
+          console.log(`API: Drug info endpoint success for GSN ${gsn}`);
+          
+          return {
+            success: true,
+            status: response.status,
+            data: `Data retrieved successfully for GSN ${gsn}`,
+            url: url,
+            gsn: gsn
+          };
+        }
+      } catch (parseError) {
+        console.error(`API: Error parsing response for GSN ${gsn}:`, parseError);
+        continue; // Try next GSN
+      }
     }
     
-    console.log('API: Drug info endpoint success');
-    
+    // If we get here, all GSN values failed
     return {
-      success: true,
-      status: response.status,
-      data: 'Data retrieved successfully',
-      url: url
+      success: false,
+      status: 204,
+      error: 'No data available for any of the tested GSN values',
+      url: url,
+      testedGsns: gsnValues
     };
   } catch (error) {
     console.error('API: Error testing drug info endpoint:', error);
@@ -334,14 +340,19 @@ async function testPharmacyPricesEndpoint(token: string) {
   try {
     console.log('API: Testing pharmacy prices endpoint');
     
-    // Test GSN
-    const gsn = 1790; // Tylenol
+    // Try multiple GSN values
+    const gsnValues = [
+      1790,  // Tylenol
+      62733, // From Postman collection
+      70954, // Another common medication
+      2323,  // Try another value
+      4815   // Try another value
+    ];
     
     // Test location (Austin, TX)
     const location = {
       latitude: 30.2672,
-      longitude: -97.7431,
-      radius: 10
+      longitude: -97.7431
     };
     
     // Get API URL and HQ mapping
@@ -369,76 +380,77 @@ async function testPharmacyPricesEndpoint(token: string) {
       
     console.log(`API: Making request to: ${url}`);
     
-    // Create request payload based on Postman collection
-    const payload = {
-      hqMappingName: hqMapping,
-      gsn: gsn,
-      latitude: location.latitude,
-      longitude: location.longitude,
-      customizedQuantity: false,
-      quantity: 30 // Default quantity
-    };
-    
-    console.log('API: Request payload:', JSON.stringify(payload));
-    
-    // Make API request
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-    
-    // Check response
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`API: Pharmacy prices endpoint error (${response.status}):`, errorText);
+    // Try each GSN value
+    for (const gsn of gsnValues) {
+      console.log(`API: Trying GSN value: ${gsn}`);
       
-      return {
-        success: false,
-        status: response.status,
-        error: errorText,
-        url: url
+      // Create request payload based on Postman collection
+      const payload = {
+        hqMappingName: hqMapping,
+        gsn: gsn,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        customizedQuantity: false,
+        quantity: 30 // Default quantity
       };
-    }
-    
-    // Try to parse the response
-    let data;
-    try {
-      const responseText = await response.text();
-      console.log('API: Raw response:', responseText);
       
-      // Only try to parse if there's content
-      if (responseText && responseText.trim()) {
-        data = JSON.parse(responseText);
-      } else {
-        return {
-          success: false,
-          status: response.status,
-          error: 'Empty response from API',
-          url: url
-        };
+      console.log(`API: Request payload for GSN ${gsn}:`, JSON.stringify(payload));
+      
+      // Make API request
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      // Check for 204 No Content response
+      if (response.status === 204) {
+        console.log(`API: Received 204 No Content for GSN ${gsn} - no data available`);
+        continue; // Try next GSN
       }
-    } catch (parseError) {
-      console.error('API: Error parsing response:', parseError);
-      return {
-        success: false,
-        status: response.status,
-        error: parseError instanceof Error ? parseError.message : 'Unknown parsing error',
-        url: url
-      };
+      
+      // Check response
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API: Pharmacy prices endpoint error for GSN ${gsn} (${response.status}):`, errorText);
+        continue; // Try next GSN
+      }
+      
+      // Try to parse the response
+      try {
+        const responseText = await response.text();
+        console.log(`API: Raw response for GSN ${gsn}:`, responseText);
+        
+        // Only try to parse if there's content
+        if (responseText && responseText.trim()) {
+          const data = JSON.parse(responseText);
+          console.log(`API: Pharmacy prices endpoint success for GSN ${gsn}`);
+          
+          return {
+            success: true,
+            status: response.status,
+            data: `Data retrieved successfully for GSN ${gsn}`,
+            url: url,
+            gsn: gsn
+          };
+        }
+      } catch (parseError) {
+        console.error(`API: Error parsing response for GSN ${gsn}:`, parseError);
+        continue; // Try next GSN
+      }
     }
     
-    console.log('API: Pharmacy prices endpoint success');
-    
+    // If we get here, all GSN values failed
     return {
-      success: true,
-      status: response.status,
-      data: 'Data retrieved successfully',
-      url: url
+      success: false,
+      status: 204,
+      error: 'No data available for any of the tested GSN values',
+      url: url,
+      testedGsns: gsnValues
     };
   } catch (error) {
     console.error('API: Error testing pharmacy prices endpoint:', error);
