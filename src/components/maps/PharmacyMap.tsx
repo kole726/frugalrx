@@ -618,9 +618,9 @@ export default function PharmacyMap({
         
         <div 
           ref={mapRef} 
-          className="w-full h-full min-h-[400px]"
+          className="w-full h-full"
           aria-label={`Map showing pharmacies near ${zipCode}`}
-          style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
+          style={{ position: 'absolute', inset: 0 }}
         />
       </div>
     </div>

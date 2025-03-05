@@ -1281,8 +1281,8 @@ export default function DrugPage({ params }: Props) {
           {/* Main Content - Prices and Map */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Pharmacy Prices */}
-            <div>
-              <div className="bg-white rounded-lg shadow p-4 mb-4">
+            <div className="h-full">
+              <div className="bg-white rounded-lg shadow p-4 mb-4 h-full">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Pharmacy Prices</h3>
                   <div className="flex space-x-2">
@@ -1426,12 +1426,12 @@ export default function DrugPage({ params }: Props) {
             </div>
             
             {/* Pharmacy Map */}
-            <div>
-              <div className="bg-white rounded-lg shadow p-4 mb-4">
+            <div className="h-full flex flex-col">
+              <div className="bg-white rounded-lg shadow p-4 mb-4 h-full flex flex-col">
                 <h3 className="text-lg font-semibold mb-2">Pharmacy Map</h3>
                 <p className="text-sm text-gray-600 mb-4">Showing pharmacies from page {currentPage}</p>
                 
-                <div className="h-[600px]">
+                <div className="flex-grow relative" style={{ minHeight: '500px' }}>
                   <PharmacyMap 
                     pharmacies={pharmacyPrices
                       .slice((currentPage - 1) * pharmaciesPerPage, currentPage * pharmaciesPerPage)
