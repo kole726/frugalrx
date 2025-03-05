@@ -2,6 +2,7 @@
 
 import { DrugPriceRequest, DrugInfo, DrugPrice, PharmacyPrice, DrugPriceResponse, DrugDetails, DrugVariation, DrugForm, DrugStrength, DrugQuantity } from '@/types/api';
 import { getAuthToken } from './auth';
+import { generateMockPharmacies } from '@/lib/mockData';
 
 // Define known working GSN values for fallback
 const KNOWN_WORKING_GSNS = [
@@ -362,159 +363,68 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
     console.log(`Server: Making request to ${endpoint} with body:`, requestBody);
     
     // Make the API request
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(requestBody),
-      cache: 'no-store' // Ensure we don't use cached responses
-    });
-    
-    // Log the response status and headers for debugging
-    console.log(`Server: Response status: ${response.status}`);
-    console.log(`Server: Response headers:`, Object.fromEntries(response.headers.entries()));
-    
-    // Check for 204 No Content response (no data available)
-    if (response.status === 204 || response.status === 200) {
-      let responseData;
+    try {
+      console.log(`Server: Starting API request to ${endpoint}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
-      // For 200 responses, try to parse the data
-      if (response.status === 200) {
-        const responseText = await response.text();
-        console.log(`Server: Response text length: ${responseText.length}`);
-        if (responseText.length > 0) {
-          console.log(`Server: First 200 chars of response: ${responseText.substring(0, 200)}...`);
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log(`Server: Received response from ${endpoint} with status: ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Could not read error response');
+        console.error(`Server: API error from ${endpoint}: ${response.status}`, errorText);
+        
+        // If we're in development or fallback is enabled, return mock data
+        if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
+          console.log('Server: Falling back to mock data due to API error');
+          return {
+            pharmacies: generateMockPharmacies(request.latitude, request.longitude, request.drugName || 'Unknown', request.radius || 50),
+            isMockData: true
+          };
         }
         
-        if (responseText) {
-          try {
-            responseData = JSON.parse(responseText);
-            
-            // Log the response structure for debugging
-            console.log(`Server: Response data keys:`, Object.keys(responseData));
-            
-            // Check if we got empty results (prices and pharmacies arrays are empty)
-            if (responseData && 
-                ((!responseData.prices || responseData.prices.length === 0) && 
-                 (!responseData.pharmacies || responseData.pharmacies.length === 0))) {
-              
-              console.log(`Server: Received empty results for ${request.drugName || request.gsn}, trying fallback...`);
-              
-              // If we were using a GSN, try another known working GSN
-              if (request.gsn) {
-                // Find a GSN that's different from the current one
-                const fallbackGsn = KNOWN_WORKING_GSNS.find(gsn => gsn !== request.gsn);
-                
-                if (fallbackGsn) {
-                  console.log(`Server: Trying fallback GSN ${fallbackGsn}`);
-                  
-                  // Create a new request with the fallback GSN
-                  const fallbackRequest = {
-                    ...request,
-                    gsn: fallbackGsn
-                  };
-                  
-                  // Try the fallback GSN
-                  const fallbackResponse = await getDrugPrices(fallbackRequest);
-                  
-                  // If the fallback has results, use them but mark as mock data
-                  if ((fallbackResponse.prices && fallbackResponse.prices.length > 0) || 
-                      (fallbackResponse.pharmacies && fallbackResponse.pharmacies.length > 0)) {
-                    console.log(`Server: Fallback GSN ${fallbackGsn} returned results, using as mock data`);
-                    
-                    return {
-                      ...responseData,
-                      prices: fallbackResponse.prices || [],
-                      pharmacies: fallbackResponse.pharmacies || [],
-                      isMockData: true,
-                      originalRequest: {
-                        gsn: request.gsn
-                      }
-                    };
-                  }
-                }
-              }
-              // If we were using a drug name, try a known working drug name
-              else if (request.drugName) {
-                console.log(`Server: Trying fallback to a known working drug name`);
-                
-                // Try with "lipitor" as a fallback
-                const fallbackRequest = {
-                  ...request,
-                  drugName: "lipitor"
-                };
-                
-                // Try the fallback drug name
-                const fallbackResponse = await getDrugPrices(fallbackRequest);
-                
-                // If the fallback has results, use them but mark as mock data
-                if ((fallbackResponse.prices && fallbackResponse.prices.length > 0) || 
-                    (fallbackResponse.pharmacies && fallbackResponse.pharmacies.length > 0)) {
-                  console.log(`Server: Fallback drug name returned results, using as mock data`);
-                  
-                  return {
-                    ...responseData,
-                    prices: fallbackResponse.prices || [],
-                    pharmacies: fallbackResponse.pharmacies || [],
-                    isMockData: true,
-                    originalRequest: {
-                      drugName: request.drugName
-                    }
-                  };
-                }
-              }
-            } else if (responseData) {
-              // We got actual results, return them
-              console.log(`Server: Successfully retrieved drug prices with ${responseData.pharmacies?.length || 0} pharmacies`);
-              return {
-                ...responseData,
-                isMockData: false
-              };
-            }
-          } catch (error) {
-            console.error('Error parsing response:', error);
-          }
+        throw new APIError(`API returned status ${response.status}: ${errorText}`, response.status);
+      }
+      
+      // Parse the response
+      const data = await response.json();
+      console.log(`Server: Successfully parsed response from ${endpoint}`);
+      return data;
+    } catch (error: any) {
+      console.error(`Server: Error during API request to ${endpoint}:`, error);
+      
+      // If the error is an abort error (timeout), provide a specific message
+      if (error.name === 'AbortError') {
+        console.error(`Server: Request to ${endpoint} timed out after 30 seconds`);
+        
+        // If we're in development or fallback is enabled, return mock data
+        if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
+          console.log('Server: Falling back to mock data due to timeout');
+          return {
+            pharmacies: generateMockPharmacies(request.latitude, request.longitude, request.drugName || 'Unknown', request.radius || 50),
+            isMockData: true
+          };
         }
+        
+        throw new APIError('Request timed out after 30 seconds', 504);
       }
       
-      console.log(`Server: No data available for ${request.drugName || request.gsn}, returning mock data`);
-      return getMockDrugPrices(request);
+      // Rethrow the error
+      throw error;
     }
-    
-    // Check for other errors
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Server: API error (${response.status}):`, errorText);
-      
-      // Try to parse the error response
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new APIError(
-          errorJson.message || `API error: ${response.status}`,
-          response.status,
-          errorJson
-        );
-      } catch (e) {
-        // If we can't parse the error, throw a generic one
-        throw new APIError(`API error: ${response.status}`, response.status);
-      }
-    }
-    
-    // Parse the response
-    const data = await response.json();
-    console.log(`Server: Successfully retrieved drug prices`);
-    
-    // Format the response
-    return {
-      drugName: request.drugName || data.drugName || '',
-      gsn: request.gsn || data.gsn,
-      prices: data.prices || [],
-      pharmacies: data.pharmacies || [],
-      isMockData: false
-    };
   } catch (error) {
     console.error('Server: Error getting drug prices:', error);
     

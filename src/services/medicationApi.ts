@@ -627,8 +627,8 @@ export async function getDrugPricesByName(
       useUsualAndCustomary: true
     };
     
-    // Make a direct request to the byName endpoint
-    const response = await fetch(`${API_BASE_URL}/pricing/v1/drugprices/byName`, {
+    // Make a request to our internal API endpoint
+    const response = await fetch(`${API_BASE_URL}/drugs/prices`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
