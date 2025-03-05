@@ -119,7 +119,19 @@ export async function getDrugPrices(criteria: DrugPriceRequest): Promise<DrugPri
     // Create a copy of the criteria to avoid modifying the original
     const requestCriteria = { ...criteria };
     
-    // Make the initial API request
+    // If we have a drug name, use the direct byName endpoint
+    if (requestCriteria.drugName) {
+      console.log(`Client: Using direct byName endpoint for drug "${requestCriteria.drugName}"`);
+      return getDrugPricesByName(
+        requestCriteria.drugName,
+        requestCriteria.latitude,
+        requestCriteria.longitude,
+        requestCriteria.radius,
+        requestCriteria.quantity
+      );
+    }
+    
+    // Make the initial API request for GSN or NDC
     let response = await fetch(`${API_BASE_URL}/drugs/prices`, {
       method: 'POST',
       headers: {
@@ -581,6 +593,69 @@ export async function getDrugDetailsByGsn(gsn: number, languageCode?: string): P
     return formattedData;
   } catch (error) {
     console.error('Error fetching drug details:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get prices for a medication by name directly using the byName endpoint
+ * @param drugName The name of the medication
+ * @param latitude User's latitude
+ * @param longitude User's longitude
+ * @param radius Search radius in miles (optional)
+ * @param quantity Medication quantity (optional)
+ * @returns Price information for the medication
+ */
+export async function getDrugPricesByName(
+  drugName: string,
+  latitude: number,
+  longitude: number,
+  radius?: number,
+  quantity?: number
+): Promise<DrugPriceResponse> {
+  try {
+    console.log(`Client: Getting drug prices by name for "${drugName}"`);
+    
+    // Create the request body according to the API documentation
+    const requestBody = {
+      drugName: drugName.toUpperCase().trim(),
+      latitude,
+      longitude,
+      radius: radius || 50,
+      quantity: quantity || 30,
+      customizedQuantity: quantity ? true : false,
+      useUsualAndCustomary: true
+    };
+    
+    // Make a direct request to the byName endpoint
+    const response = await fetch(`${API_BASE_URL}/pricing/v1/drugprices/byName`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorStatus = response.status;
+      let errorMessage = `Failed to fetch drug prices by name: ${errorStatus}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If we can't parse the error as JSON, use the status code
+        console.error('Could not parse error response as JSON:', e);
+      }
+      
+      console.error(`Client: API error when fetching drug prices by name:`, errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Client: Error fetching drug prices by name:', error);
     throw error;
   }
 }

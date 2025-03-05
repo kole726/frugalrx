@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     latitude = latitude || DEFAULT_LATITUDE;
     longitude = longitude || DEFAULT_LONGITUDE;
     const radius = body.radius || 50;
-    const hqMappingName = body.hqMappingName || 'walkerrx';
+    const hqMappingName = body.hqMappingName || process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx';
     
     // Get authentication token
     let token;
@@ -70,49 +70,109 @@ export async function POST(request: Request) {
     
     // Ensure the URL is properly formatted by removing trailing slashes
     const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-    const endpoint = '/drugprices/byName';
     
-    console.log(`Making API request to ${baseUrl}${endpoint}`);
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+    // Make sure we're using the correct path according to the API documentation
+    const endpoint = baseUrl.includes('/pricing/v1') 
+      ? '/drugprices/byName' 
+      : '/pricing/v1/drugprices/byName';
+    
+    const fullUrl = `${baseUrl}${endpoint}`;
+    console.log(`Making API request to ${fullUrl}`);
+    
+    const requestBody = {
+      hqMappingName: hqMappingName,
+      drugName: body.drugName.toUpperCase().trim(),
+      latitude: latitude,
+      longitude: longitude,
+      radius: radius,
+      useUsualAndCustomary: true,
+      quantity: body.quantity || 30,
+      customizedQuantity: body.quantity ? true : false
+    };
+    
+    console.log('Request body:', JSON.stringify(requestBody));
+    
+    const response = await fetch(fullUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
-      body: JSON.stringify({
-        hqMappingName: hqMappingName,
-        drugName: body.drugName,
-        latitude: latitude,
-        longitude: longitude,
-        radius: radius,
-        useUsualAndCustomary: true,
-        quantity: body.quantity || 30,
-        customizedQuantity: body.quantity ? true : false
-      }),
+      body: JSON.stringify(requestBody),
       cache: 'no-store' // Ensure we don't use cached responses
     });
 
     // Handle response
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Drug prices API error: ${response.status}`, errorText);
+      const errorStatus = response.status;
+      let errorText = '';
       
-      // If we get an error from the external API, return mock data for development
-      return NextResponse.json({
-        pharmacies: generateMockPharmacies(latitude, longitude, body.drugName, radius)
-      });
+      try {
+        errorText = await response.text();
+        console.error(`Drug prices API error (${errorStatus}):`, errorText);
+      } catch (e) {
+        console.error(`Could not read error response: ${e}`);
+      }
+      
+      // If we're in development, return mock data instead of an error
+      if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
+        console.log('Falling back to mock data due to API error');
+        return NextResponse.json({
+          pharmacies: generateMockPharmacies(latitude, longitude, body.drugName, radius),
+          usingMockData: true,
+          apiError: errorText
+        });
+      }
+      
+      // In production, return the actual error
+      return NextResponse.json(
+        { error: errorText || `API returned status ${errorStatus}` },
+        { status: errorStatus }
+      );
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    // Parse and return the successful response
+    try {
+      const data = await response.json();
+      return NextResponse.json(data);
+    } catch (parseError) {
+      console.error('Error parsing API response:', parseError);
+      return NextResponse.json(
+        { error: 'Failed to parse API response' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Server error in drug prices by name API:', error);
     
     // Return mock data in case of error for development
-    return NextResponse.json({
-      pharmacies: generateMockPharmacies(DEFAULT_LATITUDE, DEFAULT_LONGITUDE, 'Unknown Drug', 50)
-    });
+    if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
+      return NextResponse.json({
+        pharmacies: generateMockPharmacies(DEFAULT_LATITUDE, DEFAULT_LONGITUDE, 'Unknown Drug', 50),
+        usingMockData: true,
+        serverError: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+    
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
+      { status: 500 }
+    );
   }
+}
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS() {
+  return NextResponse.json({});
+}
+
+// Return a clear error for GET requests
+export async function GET() {
+  return NextResponse.json(
+    { error: 'This endpoint only accepts POST requests' },
+    { status: 405 }
+  );
 }
 
 // Function to generate mock pharmacy data for development

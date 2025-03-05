@@ -266,4 +266,97 @@ export function getMockDrugSearchResults(query: string) {
   return MOCK_DRUG_SEARCH_RESULTS.filter(med => 
     med.drugName.toLowerCase().includes(query.toLowerCase())
   );
+}
+
+/**
+ * Generate mock pharmacy data for testing
+ * @param latitude Center latitude
+ * @param longitude Center longitude
+ * @param drugName Drug name for the mock data
+ * @param radius Search radius in miles
+ * @returns Array of mock pharmacy price data
+ */
+export function generateMockPharmacies(
+  latitude: number,
+  longitude: number,
+  drugName: string,
+  radius: number = 50
+) {
+  // Common pharmacy chains
+  const pharmacyChains = [
+    { name: 'Walgreens', chainId: 'WAG' },
+    { name: 'CVS', chainId: 'CVS' },
+    { name: 'Walmart', chainId: 'WAL' },
+    { name: 'Kroger', chainId: 'KRO' },
+    { name: 'Costco', chainId: 'COS' },
+    { name: 'Rite Aid', chainId: 'RIT' },
+    { name: 'Target', chainId: 'TAR' },
+    { name: 'Publix', chainId: 'PUB' },
+    { name: 'Safeway', chainId: 'SAF' },
+    { name: 'HEB', chainId: 'HEB' }
+  ];
+  
+  // Generate random coordinates within the radius
+  function randomCoordinate(center: number, radiusInDegrees: number): number {
+    // Approximate conversion from miles to degrees (very rough)
+    const degreesPerMile = 0.01;
+    const radiusDegrees = radius * degreesPerMile;
+    return center + (Math.random() * 2 - 1) * radiusDegrees;
+  }
+  
+  // Generate a random price between $5 and $200
+  function randomPrice(): number {
+    return Math.round((5 + Math.random() * 195) * 100) / 100;
+  }
+  
+  // Generate random distance in miles (1-radius)
+  function randomDistance(): number {
+    return Math.round((1 + Math.random() * (radius - 1)) * 10) / 10;
+  }
+  
+  // Generate a random phone number
+  function randomPhone(): string {
+    return `(${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`;
+  }
+  
+  // Generate random address
+  function randomAddress(): string {
+    const streets = ['Main St', 'Oak Ave', 'Maple Rd', 'Washington Blvd', 'Park Lane', 'Broadway', 'Market St'];
+    const street = streets[Math.floor(Math.random() * streets.length)];
+    return `${Math.floor(Math.random() * 9000) + 1000} ${street}`;
+  }
+  
+  // Generate between 5-15 pharmacies
+  const count = Math.floor(Math.random() * 10) + 5;
+  const pharmacies = [];
+  
+  for (let i = 0; i < count; i++) {
+    const pharmacy = pharmacyChains[i % pharmacyChains.length];
+    const lat = randomCoordinate(latitude, 0.5);
+    const lng = randomCoordinate(longitude, 0.5);
+    const distance = randomDistance();
+    const price = randomPrice();
+    
+    pharmacies.push({
+      pharmacyId: `MOCK-${i + 1}`,
+      pharmacyName: `${pharmacy.name} #${Math.floor(Math.random() * 9000) + 1000}`,
+      chainId: pharmacy.chainId,
+      address: randomAddress(),
+      city: 'Austin',
+      state: 'TX',
+      zipCode: `${Math.floor(Math.random() * 90000) + 10000}`,
+      phoneNumber: randomPhone(),
+      latitude: lat,
+      longitude: lng,
+      distance: distance,
+      price: price,
+      discountPrice: price * 0.8, // 20% discount
+      quantity: 30,
+      drugName: drugName.toUpperCase(),
+      isMock: true
+    });
+  }
+  
+  // Sort by price
+  return pharmacies.sort((a, b) => a.price - b.price);
 } 
