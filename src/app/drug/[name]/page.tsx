@@ -1307,121 +1307,123 @@ export default function DrugPage({ params }: Props) {
                 </div>
                 <p className="text-sm text-gray-600 mb-4">Compare prices at nearby pharmacies</p>
                 
-                {/* Pharmacy list */}
-                <div ref={pharmacyListRef} className="space-y-4">
-                  {isLoadingPharmacies ? (
-                    <div className="text-center py-8">
-                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
-                      <p className="text-gray-600">Loading pharmacy prices...</p>
-                    </div>
-                  ) : error ? (
-                    <div className="text-center py-8">
-                      <p className="text-red-500">{error}</p>
-                    </div>
-                  ) : pharmacyPrices.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">No pharmacy prices found for this medication in your area.</p>
-                      <p className="text-gray-500 mt-2">Try increasing your search radius or changing your location.</p>
-                    </div>
-                  ) : (
-                    // Get current pharmacies for pagination
-                    pharmacyPrices
-                      .slice((currentPage - 1) * pharmaciesPerPage, currentPage * pharmaciesPerPage)
-                      .map((pharmacy, index) => {
-                        // Calculate the actual index in the full array for badges and numbering
-                        const actualIndex = (currentPage - 1) * pharmaciesPerPage + index;
-                        // Determine if this is the best price
-                        const isBestPrice = actualIndex === 0 && selectedSort === 'PRICE';
-                        // Determine if this is the closest pharmacy
-                        const isClosest = actualIndex === 0 && selectedSort === 'DISTANCE';
-                      
-                      return (
-                        <div 
-                          key={`${pharmacy.name}-${actualIndex}`}
-                          data-pharmacy-id={actualIndex}
-                          className={`relative border rounded-lg p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
-                            selectedPharmacy === pharmacy 
-                              ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
-                              : 'hover:border-emerald-300'
-                          }`}
-                          onClick={() => setSelectedPharmacy(pharmacy)}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center">
-                                <span className="flex items-center justify-center w-6 h-6 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium mr-2">
-                                  {actualIndex + 1}
-                                </span>
-                                <h4 className="font-semibold text-gray-800">{pharmacy.name}</h4>
+                {/* Pharmacy list with fixed height to match map */}
+                <div className="h-[500px] overflow-y-auto">
+                  <div ref={pharmacyListRef} className="space-y-4">
+                    {isLoadingPharmacies ? (
+                      <div className="text-center py-8">
+                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
+                        <p className="text-gray-600">Loading pharmacy prices...</p>
+                      </div>
+                    ) : error ? (
+                      <div className="text-center py-8">
+                        <p className="text-red-500">{error}</p>
+                      </div>
+                    ) : pharmacyPrices.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500">No pharmacy prices found for this medication in your area.</p>
+                        <p className="text-gray-500 mt-2">Try increasing your search radius or changing your location.</p>
+                      </div>
+                    ) : (
+                      // Get current pharmacies for pagination
+                      pharmacyPrices
+                        .slice((currentPage - 1) * pharmaciesPerPage, currentPage * pharmaciesPerPage)
+                        .map((pharmacy, index) => {
+                          // Calculate the actual index in the full array for badges and numbering
+                          const actualIndex = (currentPage - 1) * pharmaciesPerPage + index;
+                          // Determine if this is the best price
+                          const isBestPrice = actualIndex === 0 && selectedSort === 'PRICE';
+                          // Determine if this is the closest pharmacy
+                          const isClosest = actualIndex === 0 && selectedSort === 'DISTANCE';
+                        
+                        return (
+                          <div 
+                            key={`${pharmacy.name}-${actualIndex}`}
+                            data-pharmacy-id={actualIndex}
+                            className={`relative border rounded-lg p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                              selectedPharmacy === pharmacy 
+                                ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
+                                : 'hover:border-emerald-300'
+                            }`}
+                            onClick={() => setSelectedPharmacy(pharmacy)}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center">
+                                  <span className="flex items-center justify-center w-6 h-6 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium mr-2">
+                                    {actualIndex + 1}
+                                  </span>
+                                  <h4 className="font-semibold text-gray-800">{pharmacy.name}</h4>
+                                </div>
+                                <div className="flex items-center mt-1 text-sm text-gray-600">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1 1 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                  <span>{pharmacy.distance}</span>
+                                </div>
+                                {pharmacy.address && (
+                                  <p className="text-xs text-gray-500 mt-1 ml-5">{pharmacy.address}</p>
+                                )}
                               </div>
-                              <div className="flex items-center mt-1 text-sm text-gray-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1 1 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <span>{pharmacy.distance}</span>
-                              </div>
-                              {pharmacy.address && (
-                                <p className="text-xs text-gray-500 mt-1 ml-5">{pharmacy.address}</p>
-                              )}
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <button 
-                                className="px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleGetCoupon(pharmacy);
-                                }}
-                              >
-                                Get Coupon
-                              </button>
-                              <div className="bg-emerald-50 px-3 py-1 rounded-lg">
-                                <p className="text-xl font-bold text-emerald-600">${pharmacy.price.toFixed(2)}</p>
+                              <div className="flex items-center space-x-2">
+                                <button 
+                                  className="px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleGetCoupon(pharmacy);
+                                  }}
+                                >
+                                  Get Coupon
+                                </button>
+                                <div className="bg-emerald-50 px-3 py-1 rounded-lg">
+                                  <p className="text-xl font-bold text-emerald-600">${pharmacy.price.toFixed(2)}</p>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })
+                    )}
+                  </div>
+                  
+                  {/* Pagination Controls */}
+                  {!isLoadingPharmacies && !error && pharmacyPrices.length > 0 && (
+                    <div className="flex justify-center items-center mt-6 space-x-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`px-3 py-1 rounded-md ${
+                          currentPage === 1
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                        }`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      
+                      <div className="text-sm text-gray-600">
+                        Page {currentPage} of {totalPages}
+                      </div>
+                      
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`px-3 py-1 rounded-md ${
+                          currentPage === totalPages
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                        }`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
                   )}
                 </div>
-                
-                {/* Pagination Controls */}
-                {!isLoadingPharmacies && !error && pharmacyPrices.length > 0 && (
-                  <div className="flex justify-center items-center mt-6 space-x-2">
-                    <button
-                      onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className={`px-3 py-1 rounded-md ${
-                        currentPage === 1
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                      }`}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    
-                    <div className="text-sm text-gray-600">
-                      Page {currentPage} of {totalPages}
-                    </div>
-                    
-                    <button
-                      onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className={`px-3 py-1 rounded-md ${
-                        currentPage === totalPages
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                      }`}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
             
