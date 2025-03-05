@@ -321,7 +321,19 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
       endpoint = baseUrl.includes('/pricing/v1') 
         ? `${baseUrl}/drugprices/byGSN`
         : `${baseUrl}/pricing/v1/drugprices/byGSN`;
-      requestBody.gsn = request.gsn;
+      
+      // Ensure GSN is a number
+      const gsnNumber = typeof request.gsn === 'string' ? parseInt(request.gsn, 10) : request.gsn;
+      
+      requestBody = {
+        hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+        gsn: gsnNumber,
+        latitude: request.latitude,
+        longitude: request.longitude,
+        radius: request.radius || 50, // Use a larger default radius (50 miles)
+        customizedQuantity: request.quantity ? true : false,
+        quantity: request.quantity || 30 // Default quantity
+      };
     } 
     // If we have a drug name, use it
     else if (request.drugName) {

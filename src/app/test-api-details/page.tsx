@@ -1008,8 +1008,51 @@ export default function TestApiDetailsPage() {
         }
       }
       
+      // Special handling for drug pricing operations
+      if (operation.id.includes('opGetPharmacyDrugPricing') && activeTab === 'drugPricing') {
+        const processedData = { ...data };
+        
+        // Ensure GSN is a number for GSN-based pricing
+        if (operation.id === 'opGetPharmacyDrugPricingbyGSN' && processedData.gsn) {
+          processedData.gsn = typeof processedData.gsn === 'string' ? parseInt(processedData.gsn, 10) : processedData.gsn;
+        }
+        
+        // Ensure NDC is properly formatted for NDC-based pricing
+        if (operation.id === 'opGetPharmacyDrugPricingbyNDC' && processedData.ndcCode) {
+          // NDC codes should be strings, but ensure no spaces
+          processedData.ndcCode = processedData.ndcCode.toString().trim();
+        }
+        
+        // Ensure drug name is properly formatted for name-based pricing
+        if (operation.id === 'opGetPharmacyDrugPricingbyName' && processedData.drugName) {
+          // Drug names should be strings, ensure lowercase for consistency
+          processedData.drugName = processedData.drugName.toString().toLowerCase().trim();
+        }
+        
+        // Common processing for all drug pricing operations
+        
+        // Ensure radius is set to a reasonable value
+        processedData.radius = processedData.radius || 50;
+        
+        // Set customizedQuantity flag based on whether quantity is provided
+        processedData.customizedQuantity = !!processedData.quantity;
+        
+        // Ensure quantity is a number
+        if (processedData.quantity) {
+          processedData.quantity = typeof processedData.quantity === 'string' 
+            ? parseInt(processedData.quantity, 10) 
+            : processedData.quantity;
+        } else {
+          processedData.quantity = 30; // Default quantity
+        }
+        
+        // Ensure hqMappingName is set
+        processedData.hqMappingName = processedData.hqMappingName || 'walkerrx';
+        
+        requestOptions.body = JSON.stringify(processedData);
+      }
       // Handle different request methods
-      if (operation.method === 'GET') {
+      else if (operation.method === 'GET') {
         // For GET requests, add parameters to URL
         const params = new URLSearchParams()
         Object.entries(data).forEach(([key, value]) => {
