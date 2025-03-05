@@ -516,6 +516,53 @@ export default function DrugPage({ params }: Props) {
           const basicInfo = await getDrugInfo(drugName)
           console.log('Basic drug info:', basicInfo)
           
+          // Set drug info from detailed info
+          setDrugInfo({
+            brandName: detailedInfo.brandName || basicInfo.brandName || drugName,
+            genericName: detailedInfo.genericName || basicInfo.genericName || drugName,
+            gsn: gsnNumber,
+            ndcCode: detailedInfo.ndcCode || '',
+          })
+          
+          // Set drug details from detailed info
+          setDrugDetails(detailedInfo)
+          
+          // Create brand variations if we have both brand and generic names
+          if (detailedInfo.brandName && detailedInfo.genericName && 
+              detailedInfo.brandName !== detailedInfo.genericName) {
+            const variations = [
+              {
+                name: `${detailedInfo.brandName} (Brand)`,
+                type: 'brand',
+                gsn: gsnNumber
+              },
+              {
+                name: `${detailedInfo.genericName} (Generic)`,
+                type: 'generic',
+                gsn: gsnNumber
+              }
+            ]
+            console.log('Setting brand variations:', variations)
+            setBrandVariations(variations)
+            
+            // Set selected brand based on the drug name
+            const isBrand = drugName.toLowerCase() === detailedInfo.brandName.toLowerCase()
+            setSelectedBrand(isBrand ? 'brand' : 'generic')
+          } else {
+            // If we only have one name, create a single variation
+            const name = detailedInfo.brandName || detailedInfo.genericName || drugName
+            const variations = [
+              {
+                name: name,
+                type: 'brand',
+                gsn: gsnNumber
+              }
+            ]
+            console.log('Setting single brand variation:', variations)
+            setBrandVariations(variations)
+            setSelectedBrand('brand')
+          }
+          
           // Extract filter options from detailed info
           if (detailedInfo) {
             // Extract forms
@@ -593,43 +640,7 @@ export default function DrugPage({ params }: Props) {
               setAvailableQuantities(defaultQuantities)
               setSelectedQuantity(`${defaultQuantities[0].quantity} ${defaultQuantities[0].uom}`)
             }
-            
-            // Set brand options
-            if (detailedInfo.brandName && detailedInfo.genericName && detailedInfo.brandName !== detailedInfo.genericName) {
-              // If both brand and generic names are available and different, set up brand variations
-              const variations = [
-                { name: detailedInfo.brandName, type: 'brand', gsn: gsnNumber },
-                { name: detailedInfo.genericName, type: 'generic', gsn: gsnNumber }
-              ]
-              setBrandVariations(variations)
-              
-              // Set default selected brand based on the current GSN or preference
-              setSelectedBrand(detailedInfo.genericName ? 'generic' : 'brand')
-            } else if (detailedInfo.brandName || detailedInfo.genericName) {
-              // If only one name is available, use it
-              const name = detailedInfo.brandName || detailedInfo.genericName
-              const variations = [
-                { name, type: 'generic', gsn: gsnNumber }
-              ]
-              setBrandVariations(variations)
-              setSelectedBrand('generic')
-            }
           }
-          
-          // Combine the information
-          setDrugInfo({
-            brandName: detailedInfo.brandName || basicInfo.brandName || drugName,
-            genericName: detailedInfo.genericName || basicInfo.genericName || drugName,
-            gsn: gsnNumber,
-            ndcCode: detailedInfo.ndcCode || '',
-            description: detailedInfo.description || basicInfo.description || '',
-            sideEffects: detailedInfo.sideEffects || basicInfo.sideEffects || '',
-            dosage: detailedInfo.dosage || basicInfo.dosage || '',
-            storage: detailedInfo.storage || basicInfo.storage || '',
-            contraindications: detailedInfo.contraindications || basicInfo.contraindications || ''
-          })
-          
-          setDrugDetails(basicInfo)
           
           // Fetch pharmacy prices with the current location and GSN
           await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius)
@@ -728,67 +739,142 @@ export default function DrugPage({ params }: Props) {
           }
         }
       } else {
-        // If we don't have a GSN, just get basic drug info
+        // If we don't have a GSN, search for the drug by name
+        console.log(`No GSN provided, searching for drug by name: ${drugName}`)
+        
         try {
-          console.log(`Attempting to fetch basic drug info for: ${drugName}`)
+          // Get basic drug info by name
           const basicInfo = await getDrugInfo(drugName)
           console.log('Basic drug info:', basicInfo)
           
-          // Try to find the drug in the search results to get a GSN
-          console.log(`Searching for drug: ${drugName} to find GSN`)
-          const searchResults = await searchMedications(drugName)
-          console.log('Search results:', searchResults)
-          
-          const matchingDrug = searchResults.find(
-            drug => drug.drugName.toLowerCase() === drugName.toLowerCase()
-          )
-          
-          const gsnFromSearch = matchingDrug?.gsn
-          console.log(`GSN from search: ${gsnFromSearch || 'not found'}`)
-          
-          // Set default forms, strengths, and quantities
-          const defaultForms = [
-            { form: 'TABLET', gsn: gsnFromSearch || 0 },
-            { form: 'CAPSULE', gsn: gsnFromSearch || 0 }
-          ]
-          setAvailableForms(defaultForms)
-          setSelectedForm(defaultForms[0].form)
-          
-          const defaultStrengths = [
-            { strength: '500 mg', gsn: gsnFromSearch || 0 },
-            { strength: '250 mg', gsn: gsnFromSearch || 0 }
-          ]
-          setAvailableStrengths(defaultStrengths)
-          setSelectedStrength(defaultStrengths[0].strength)
-          
-          const defaultQuantities = [
-            { quantity: 30, uom: 'TABLET' },
-            { quantity: 60, uom: 'TABLET' },
-            { quantity: 90, uom: 'TABLET' }
-          ]
-          setAvailableQuantities(defaultQuantities)
-          setSelectedQuantity(`${defaultQuantities[0].quantity} ${defaultQuantities[0].uom}`)
-          
+          // Set drug info from basic info
           setDrugInfo({
             brandName: basicInfo.brandName || drugName,
             genericName: basicInfo.genericName || drugName,
-            gsn: gsnFromSearch || 0,
-            ndcCode: '',
-            description: basicInfo.description || '',
-            sideEffects: basicInfo.sideEffects || '',
-            dosage: basicInfo.dosage || '',
-            storage: basicInfo.storage || '',
-            contraindications: basicInfo.contraindications || ''
+            gsn: basicInfo.gsn || 0,
+            ndcCode: basicInfo.ndcCode || '',
           })
           
+          // Set drug details from basic info
           setDrugDetails(basicInfo)
           
-          // If we found a GSN, update the URL
-          if (gsnFromSearch && typeof window !== 'undefined') {
-            const url = new URL(window.location.href)
-            url.searchParams.set('gsn', gsnFromSearch.toString())
-            window.history.replaceState({}, '', url.toString())
+          // Create brand variations if we have both brand and generic names
+          if (basicInfo.brandName && basicInfo.genericName && 
+              basicInfo.brandName !== basicInfo.genericName) {
+            const variations = [
+              {
+                name: `${basicInfo.brandName} (Brand)`,
+                type: 'brand',
+                gsn: basicInfo.gsn
+              },
+              {
+                name: `${basicInfo.genericName} (Generic)`,
+                type: 'generic',
+                gsn: basicInfo.gsn
+              }
+            ]
+            console.log('Setting brand variations from basic info:', variations)
+            setBrandVariations(variations)
+            
+            // Set selected brand based on the drug name
+            const isBrand = drugName.toLowerCase() === basicInfo.brandName.toLowerCase()
+            setSelectedBrand(isBrand ? 'brand' : 'generic')
+          } else {
+            // If we only have one name, create a single variation
+            const name = basicInfo.brandName || basicInfo.genericName || drugName
+            const variations = [
+              {
+                name: name,
+                type: 'brand',
+                gsn: basicInfo.gsn
+              }
+            ]
+            console.log('Setting single brand variation from basic info:', variations)
+            setBrandVariations(variations)
+            setSelectedBrand('brand')
           }
+          
+          // Extract filter options from basic info
+          if (basicInfo) {
+            // Extract forms
+            if (basicInfo.forms && Array.isArray(basicInfo.forms) && basicInfo.forms.length > 0) {
+              console.log(`Found ${basicInfo.forms.length} forms:`, basicInfo.forms)
+              setAvailableForms(basicInfo.forms)
+              
+              // Set default selected form if available
+              const selectedFormObj = basicInfo.forms[0]
+              setSelectedForm(selectedFormObj.form)
+              
+              // If the form has a GSN, update the URL
+              if (selectedFormObj.gsn && selectedFormObj.gsn !== basicInfo.gsn) {
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href)
+                  url.searchParams.set('gsn', selectedFormObj.gsn.toString())
+                  window.history.replaceState({}, '', url.toString())
+                }
+              }
+            } else {
+              console.log('No forms found in basic info, using defaults')
+              // Set default forms if none are available
+              const defaultForms = [
+                { form: 'TABLET', gsn: basicInfo.gsn },
+                { form: 'CAPSULE', gsn: basicInfo.gsn }
+              ]
+              setAvailableForms(defaultForms)
+              setSelectedForm(defaultForms[0].form)
+            }
+            
+            // Extract strengths
+            if (basicInfo.strengths && Array.isArray(basicInfo.strengths) && basicInfo.strengths.length > 0) {
+              console.log(`Found ${basicInfo.strengths.length} strengths:`, basicInfo.strengths)
+              setAvailableStrengths(basicInfo.strengths)
+              
+              // Set default selected strength if available
+              const selectedStrengthObj = basicInfo.strengths[0]
+              setSelectedStrength(selectedStrengthObj.strength)
+              
+              // If the strength has a GSN and it's different from the current GSN, update the URL
+              if (selectedStrengthObj.gsn && selectedStrengthObj.gsn !== basicInfo.gsn) {
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href)
+                  url.searchParams.set('gsn', selectedStrengthObj.gsn.toString())
+                  window.history.replaceState({}, '', url.toString())
+                }
+              }
+            } else {
+              console.log('No strengths found in basic info, using defaults')
+              // Set default strengths if none are available
+              const defaultStrengths = [
+                { strength: '500 mg', gsn: basicInfo.gsn },
+                { strength: '250 mg', gsn: basicInfo.gsn }
+              ]
+              setAvailableStrengths(defaultStrengths)
+              setSelectedStrength(defaultStrengths[0].strength)
+            }
+            
+            // Extract quantities
+            if (basicInfo.quantities && Array.isArray(basicInfo.quantities) && basicInfo.quantities.length > 0) {
+              console.log(`Found ${basicInfo.quantities.length} quantities:`, basicInfo.quantities)
+              setAvailableQuantities(basicInfo.quantities)
+              
+              // Set default selected quantity if available
+              const selectedQuantityObj = basicInfo.quantities[0]
+              setSelectedQuantity(`${selectedQuantityObj.quantity} ${selectedQuantityObj.uom}`)
+            } else {
+              console.log('No quantities found in basic info, using defaults')
+              // Set default quantities if none are available
+              const defaultQuantities = [
+                { quantity: 30, uom: 'TABLET' },
+                { quantity: 60, uom: 'TABLET' },
+                { quantity: 90, uom: 'TABLET' }
+              ]
+              setAvailableQuantities(defaultQuantities)
+              setSelectedQuantity(`${defaultQuantities[0].quantity} ${defaultQuantities[0].uom}`)
+            }
+          }
+          
+          // Fetch pharmacy prices with the current location and GSN
+          await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius)
         } catch (error) {
           console.error('Error fetching basic drug info:', error)
           
@@ -1090,7 +1176,7 @@ export default function DrugPage({ params }: Props) {
     // If we have brand variations, find the matching one and update GSN
     if (brandVariations.length > 0) {
       const selectedVariation = brandVariations.find(
-        variation => variation.type === newBrand || variation.name.toLowerCase() === newBrand.toLowerCase()
+        variation => variation.type === newBrand
       );
       
       if (selectedVariation && selectedVariation.gsn) {

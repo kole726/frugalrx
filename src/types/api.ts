@@ -99,6 +99,11 @@ export interface DrugDetails {
   monitor?: string;      // Monitoring requirements
   side?: string;         // Alternative field for side effects
   store?: string;        // Alternative field for storage
+  gsn?: number;          // Generic Sequence Number
+  ndcCode?: string;      // National Drug Code
+  forms?: DrugForm[];    // Available forms
+  strengths?: DrugStrength[]; // Available strengths
+  quantities?: DrugQuantity[]; // Available quantities
 }
 
 export interface APIError {
