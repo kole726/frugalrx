@@ -1173,443 +1173,322 @@ export default function DrugPage({ params }: Props) {
         </div>
       ) : (
         <>
-          {/* Breadcrumb Navigation */}
+          {/* Page Header */}
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
             className="mb-6"
           >
-            <div className="flex items-center text-sm text-gray-500 mb-6">
-              <Link href="/" className="hover:text-[#006142]">Home</Link>
-              <span className="mx-2">›</span>
-              <Link href="/search" className="hover:text-[#006142]">Find Your Medications</Link>
-              <span className="mx-2">›</span>
-              <span className="text-gray-700">{drugInfo?.brandName || params.name}</span>
-            </div>
-          </motion.div>
-
-          {/* Medication Title */}
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            className="mb-8"
-          >
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              {drugInfo?.genericName} Coupon
+              {drugInfo?.brandName || params.name} Coupon
             </h1>
             <p className="text-gray-600">
-              Pricing is displayed for {drugInfo?.genericName || 'generic medication'}
+              Pricing is displayed for {drugInfo?.genericName || params.name}
             </p>
           </motion.div>
 
-          {/* Drug Information */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="grid grid-cols-1 md:grid-cols-12 gap-6 mb-8"
-          >
-            {/* Drug Image */}
-            <div className="md:col-span-3 flex flex-col items-center">
-              <div className="bg-white rounded-xl shadow-lg p-6 w-full flex flex-col items-center">
-                <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <span className="text-4xl text-gray-400">Rx</span>
+          {/* Medication Form Selectors */}
+          <div className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Brand</label>
+                <select 
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedBrand}
+                  onChange={handleBrandChange}
+                  disabled={isLoading || brandVariations.length === 0}
+                >
+                  {brandVariations.map((variation, index) => (
+                    <option key={`brand-${index}`} value={variation.type}>
+                      {variation.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Form</label>
+                <select 
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedForm}
+                  onChange={handleFormChange}
+                  disabled={isLoading || availableForms.length === 0}
+                >
+                  {availableForms.length > 0 ? (
+                    availableForms.map((form, index) => (
+                      <option key={`form-${index}`} value={form.form}>
+                        {form.form}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="CAPSULE">CAPSULE</option>
+                      <option value="TABLET">TABLET</option>
+                      <option value="LIQUID">LIQUID</option>
+                    </>
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Dosage</label>
+                <select 
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedStrength}
+                  onChange={handleStrengthChange}
+                  disabled={isLoading || availableStrengths.length === 0}
+                >
+                  {availableStrengths.length > 0 ? (
+                    availableStrengths.map((strength, index) => (
+                      <option key={`strength-${index}`} value={strength.strength}>
+                        {strength.strength}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="500 mg">500 mg</option>
+                      <option value="250 mg">250 mg</option>
+                      <option value="125 mg">125 mg</option>
+                    </>
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+                <select 
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedQuantity}
+                  onChange={handleQuantityChange}
+                  disabled={isLoading || availableQuantities.length === 0}
+                >
+                  {availableQuantities.length > 0 ? (
+                    availableQuantities.map((qty, index) => (
+                      <option key={`qty-${index}`} value={`${qty.quantity} ${qty.uom}`}>
+                        {qty.quantity} {qty.uom}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="21 CAPSULE">21 CAPSULE</option>
+                      <option value="30 CAPSULE">30 CAPSULE</option>
+                      <option value="60 CAPSULE">60 CAPSULE</option>
+                    </>
+                  )}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Content - Prices and Map */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Pharmacy Prices */}
+            <div>
+              <div className="bg-white rounded-lg shadow p-4 mb-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">Pharmacy Prices</h3>
+                  <div className="flex space-x-2">
+                    <select 
+                      className="text-sm border border-gray-300 rounded p-1"
+                      value={selectedSort}
+                      onChange={handleSortChange}
+                    >
+                      <option value="PRICE">Sort by Price</option>
+                      <option value="DISTANCE">Sort by Distance</option>
+                    </select>
+                    <select 
+                      className="text-sm border border-gray-300 rounded p-1"
+                      value={pharmaciesPerPage}
+                      onChange={handlePharmaciesPerPageChange}
+                    >
+                      <option value="5">Show 5</option>
+                      <option value="10">Show 10</option>
+                      <option value="20">Show 20</option>
+                    </select>
+                  </div>
                 </div>
-                <h2 className="text-xl font-bold text-center text-gray-800">
-                  {drugInfo?.brandName || params.name}
-                </h2>
-                {drugInfo?.genericName && drugInfo.genericName !== drugInfo.brandName && (
-                  <p className="text-sm text-gray-500 text-center mt-1">
-                    {drugInfo.genericName}
-                  </p>
+                <p className="text-sm text-gray-600 mb-4">Compare prices at nearby pharmacies</p>
+                
+                {/* Pharmacy list */}
+                <div ref={pharmacyListRef} className="space-y-4">
+                  {isLoadingPharmacies ? (
+                    <div className="text-center py-8">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
+                      <p className="text-gray-600">Loading pharmacy prices...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="text-center py-8">
+                      <p className="text-red-500">{error}</p>
+                    </div>
+                  ) : pharmacyPrices.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No pharmacy prices found for this medication in your area.</p>
+                      <p className="text-gray-500 mt-2">Try increasing your search radius or changing your location.</p>
+                    </div>
+                  ) : (
+                    // Get current pharmacies for pagination
+                    pharmacyPrices
+                      .slice((currentPage - 1) * pharmaciesPerPage, currentPage * pharmaciesPerPage)
+                      .map((pharmacy, index) => {
+                        // Calculate the actual index in the full array for badges and numbering
+                        const actualIndex = (currentPage - 1) * pharmaciesPerPage + index;
+                        // Determine if this is the best price
+                        const isBestPrice = actualIndex === 0 && selectedSort === 'PRICE';
+                        // Determine if this is the closest pharmacy
+                        const isClosest = actualIndex === 0 && selectedSort === 'DISTANCE';
+                      
+                      return (
+                        <div 
+                          key={`${pharmacy.name}-${actualIndex}`}
+                          data-pharmacy-id={actualIndex}
+                          className={`relative border rounded-lg p-4 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
+                            selectedPharmacy === pharmacy 
+                              ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
+                              : 'hover:border-emerald-300'
+                          }`}
+                          onClick={() => setSelectedPharmacy(pharmacy)}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center">
+                                <span className="flex items-center justify-center w-6 h-6 bg-emerald-100 text-emerald-800 rounded-full text-sm font-medium mr-2">
+                                  {actualIndex + 1}
+                                </span>
+                                <h4 className="font-semibold text-gray-800">{pharmacy.name}</h4>
+                              </div>
+                              <div className="flex items-center mt-1 text-sm text-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1 1 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span>{pharmacy.distance}</span>
+                              </div>
+                              {pharmacy.address && (
+                                <p className="text-xs text-gray-500 mt-1 ml-5">{pharmacy.address}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <button 
+                                className="px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleGetCoupon(pharmacy);
+                                }}
+                              >
+                                Get Coupon
+                              </button>
+                              <div className="bg-emerald-50 px-3 py-1 rounded-lg">
+                                <p className="text-xl font-bold text-emerald-600">${pharmacy.price.toFixed(2)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                
+                {/* Pagination Controls */}
+                {!isLoadingPharmacies && !error && pharmacyPrices.length > 0 && (
+                  <div className="flex justify-center items-center mt-6 space-x-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-1 rounded-md ${
+                        currentPage === 1
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                    
+                    <div className="text-sm text-gray-600">
+                      Page {currentPage} of {totalPages}
+                    </div>
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-1 rounded-md ${
+                        currentPage === totalPages
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
             
-            {/* Drug Details */}
-            <div className="md:col-span-9">
-              <div className="bg-white rounded-xl shadow-lg p-6 h-full">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Medication Details</h3>
+            {/* Pharmacy Map */}
+            <div>
+              <div className="bg-white rounded-lg shadow p-4 mb-4">
+                <h3 className="text-lg font-semibold mb-2">Pharmacy Map</h3>
+                <p className="text-sm text-gray-600 mb-4">Showing pharmacies from page {currentPage}</p>
                 
-                {/* Description */}
-                <div className="mt-6">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-2">Description</h4>
-                  <p className="text-gray-600">
-                    {drugInfo?.description || 'No description available for this medication.'}
-                  </p>
+                <div className="h-[500px]">
+                  <PharmacyMap 
+                    pharmacies={pharmacyPrices
+                      .slice((currentPage - 1) * pharmaciesPerPage, currentPage * pharmaciesPerPage)
+                      .map((pharmacy, index) => {
+                        // Calculate the actual index in the full array for proper identification
+                        const actualIndex = (currentPage - 1) * pharmaciesPerPage + index;
+                        
+                        // Convert to the format expected by PharmacyMap
+                        return {
+                          pharmacyId: actualIndex,
+                          name: pharmacy.name || '',
+                          address: pharmacy.address || '',
+                          city: pharmacy.city || '',
+                          state: pharmacy.state || '',
+                          postalCode: pharmacy.zipCode || '', // Map zipCode to postalCode
+                          phone: pharmacy.phone || '',
+                          distance: typeof pharmacy.distance === 'string' 
+                            ? parseFloat(pharmacy.distance.replace(' miles', '').replace(' mi', '')) 
+                            : 0,
+                          latitude: pharmacy.latitude,
+                          longitude: pharmacy.longitude,
+                          price: pharmacy.price,
+                          open24H: pharmacy.open24H
+                        };
+                      })}
+                    zipCode={userLocation.zipCode}
+                    centerLat={userLocation.latitude}
+                    centerLng={userLocation.longitude}
+                    onMarkerClick={(pharmacy) => {
+                      const matchingPharmacy = pharmacyPrices.find((p, idx) => idx === pharmacy.pharmacyId);
+                      if (matchingPharmacy) {
+                        setSelectedPharmacy(matchingPharmacy);
+                        // Scroll to the pharmacy in the list
+                        const pharmacyIndex = pharmacyPrices.indexOf(matchingPharmacy);
+                        const page = Math.floor(pharmacyIndex / pharmaciesPerPage) + 1;
+                        if (page !== currentPage) {
+                          setCurrentPage(page);
+                        }
+                        // Wait for the DOM to update with the new page
+                        setTimeout(() => {
+                          const pharmacyElements = document.querySelectorAll('[data-pharmacy-id]');
+                          const targetElement = Array.from(pharmacyElements).find(
+                            (el) => el.getAttribute('data-pharmacy-id') === String(pharmacy.pharmacyId)
+                          );
+                          if (targetElement && pharmacyListRef.current) {
+                            targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                          }
+                        }, 100);
+                      }
+                    }}
+                    onZipCodeChange={handleZipCodeChange}
+                    searchRadius={Number(searchRadius)}
+                  />
                 </div>
-                
-                {/* Side Effects */}
-                {drugInfo?.sideEffects && (
-                  <div className="mt-6">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Side Effects</h4>
-                    <p className="text-gray-600">{drugInfo.sideEffects}</p>
-                  </div>
-                )}
-                
-                {/* Dosage */}
-                {drugInfo?.dosage && (
-                  <div className="mt-6">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">Dosage</h4>
-                    <p className="text-gray-600">{drugInfo.dosage}</p>
-                  </div>
-                )}
               </div>
             </div>
-          </motion.div>
-
-          {/* Medication Form Selectors */}
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
-            className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
-          >
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Brand</label>
-              <select 
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedBrand}
-                onChange={handleBrandChange}
-                disabled={isLoading || brandVariations.length === 0}
-              >
-                {brandVariations.map((variation, index) => (
-                  <option key={`brand-${index}`} value={variation.type}>
-                    {variation.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Form</label>
-              <select 
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedForm}
-                onChange={handleFormChange}
-                disabled={isLoading || availableForms.length === 0}
-              >
-                {availableForms.length > 0 ? (
-                  availableForms.map((form, index) => (
-                    <option key={`form-${index}`} value={form.form}>
-                      {form.form}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="CAPSULE">CAPSULE</option>
-                    <option value="TABLET">TABLET</option>
-                    <option value="LIQUID">LIQUID</option>
-                  </>
-                )}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Dosage</label>
-              <select 
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedStrength}
-                onChange={handleStrengthChange}
-                disabled={isLoading || availableStrengths.length === 0}
-              >
-                {availableStrengths.length > 0 ? (
-                  availableStrengths.map((strength, index) => (
-                    <option key={`strength-${index}`} value={strength.strength}>
-                      {strength.strength}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="500 mg">500 mg</option>
-                    <option value="250 mg">250 mg</option>
-                    <option value="125 mg">125 mg</option>
-                  </>
-                )}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
-              <select 
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={selectedQuantity}
-                onChange={handleQuantityChange}
-                disabled={isLoading || availableQuantities.length === 0}
-              >
-                {availableQuantities.length > 0 ? (
-                  availableQuantities.map((qty, index) => (
-                    <option key={`qty-${index}`} value={`${qty.quantity} ${qty.uom}`}>
-                      {qty.quantity} {qty.uom}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="21 CAPSULE">21 CAPSULE</option>
-                    <option value="30 CAPSULE">30 CAPSULE</option>
-                    <option value="60 CAPSULE">60 CAPSULE</option>
-                  </>
-                )}
-              </select>
-            </div>
-          </motion.div>
-
-          {/* Main Content - Prices and Map */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-            className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-full"
-          >
-            {showPrices && (
-              <>
-                <div className="lg:col-span-6 order-2 lg:order-1">
-                  <div className="bg-white rounded-xl shadow-lg p-5 mb-4 border border-gray-100 h-full">
-                    <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-800">Pharmacy Prices</h3>
-                        <p className="text-sm text-gray-500 mt-1">Compare prices at nearby pharmacies</p>
-                      </div>
-                      <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-                        <select 
-                          className="text-sm border border-gray-200 rounded-md p-2 bg-white hover:border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-colors"
-                          value={selectedSort}
-                          onChange={handleSortChange}
-                          disabled={isLoadingPharmacies}
-                        >
-                          <option value="PRICE">Sort by Price</option>
-                          <option value="DISTANCE">Sort by Distance</option>
-                        </select>
-                        <select 
-                          className="text-sm border border-gray-200 rounded-md p-2 bg-white hover:border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200 focus:ring-opacity-50 transition-colors"
-                          value={pharmaciesPerPage}
-                          onChange={handlePharmaciesPerPageChange}
-                          disabled={isLoadingPharmacies}
-                        >
-                          <option value="5">Show 5</option>
-                          <option value="10">Show 10</option>
-                          <option value="20">Show 20</option>
-                        </select>
-                      </div>
-                    </div>
-                    
-                    {/* Pharmacy list */}
-                    <div ref={pharmacyListRef} className="space-y-4">
-                      {isLoadingPharmacies ? (
-                        <div className="text-center py-8">
-                          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-2"></div>
-                          <p className="text-gray-600">Loading pharmacy prices...</p>
-                        </div>
-                      ) : error ? (
-                        <div className="text-center py-8">
-                          <p className="text-red-500">{error}</p>
-                        </div>
-                      ) : pharmacyPrices.length === 0 ? (
-                        <div className="text-center py-8">
-                          <p className="text-gray-500">No pharmacy prices found for this medication in your area.</p>
-                          <p className="text-gray-500 mt-2">Try increasing your search radius or changing your location.</p>
-                        </div>
-                      ) : (
-                        // Get current pharmacies for pagination
-                        pharmacyPrices
-                          .slice((currentPage - 1) * pharmaciesPerPage, currentPage * pharmaciesPerPage)
-                          .map((pharmacy, index) => {
-                            // Calculate the actual index in the full array for badges and numbering
-                            const actualIndex = (currentPage - 1) * pharmaciesPerPage + index;
-                            // Determine if this is the best price
-                            const isBestPrice = actualIndex === 0 && selectedSort === 'PRICE';
-                            // Determine if this is the closest pharmacy
-                            const isClosest = actualIndex === 0 && selectedSort === 'DISTANCE';
-                          
-                          return (
-                            <div 
-                              key={`${pharmacy.name}-${actualIndex}`}
-                              data-pharmacy-id={actualIndex}
-                              className={`relative border rounded-lg p-4 ${
-                                isBestPrice ? 'pt-8 mt-4' : 'pt-5'
-                              } cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md ${
-                                selectedPharmacy === pharmacy 
-                                  ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500' 
-                                  : isBestPrice
-                                    ? 'border-emerald-600 border-2 hover:border-emerald-700'
-                                    : 'hover:border-emerald-300'
-                              }`}
-                              onClick={() => setSelectedPharmacy(pharmacy)}
-                            >
-                              {isBestPrice && (
-                                <div className="absolute -top-3 left-3 px-2 py-1 bg-emerald-600 text-white text-xs font-medium rounded-md shadow-sm">
-                                  Best Price
-                                </div>
-                              )}
-                              {isClosest && (
-                                <div className="absolute -top-3 left-3 px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-md shadow-sm">
-                                  Closest
-                                </div>
-                              )}
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <div className="flex items-center">
-                                    <span className={`flex items-center justify-center w-6 h-6 ${
-                                      isBestPrice 
-                                        ? 'bg-emerald-600 text-white' 
-                                        : 'bg-emerald-100 text-emerald-800'
-                                      } rounded-full text-sm font-medium mr-2`}>
-                                      {actualIndex + 1}
-                                    </span>
-                                    <h4 className="font-semibold text-gray-800">{pharmacy.name}</h4>
-                                  </div>
-                                  <div className="flex items-center mt-1 text-sm text-gray-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1 1 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    <span>{pharmacy.distance}</span>
-                                  </div>
-                                  {pharmacy.address && (
-                                    <p className="text-xs text-gray-500 mt-1 ml-5">{pharmacy.address}</p>
-                                  )}
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <button 
-                                    className="px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-md hover:bg-emerald-700 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleGetCoupon(pharmacy);
-                                    }}
-                                  >
-                                    Get Coupon
-                                  </button>
-                                  <div className={`${isBestPrice ? 'bg-emerald-100' : 'bg-emerald-50'} px-3 py-1 rounded-lg`}>
-                                    <p className={`text-xl font-bold ${isBestPrice ? 'text-emerald-700' : 'text-emerald-600'}`}>${pharmacy.price.toFixed(2)}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                    
-                    {/* Pagination Controls */}
-                    {!isLoadingPharmacies && !error && pharmacyPrices.length > 0 && (
-                      <div className="flex justify-center items-center mt-6 space-x-2">
-                        <button
-                          onClick={() => handlePageChange(currentPage - 1)}
-                          disabled={currentPage === 1}
-                          className={`px-3 py-1 rounded-md ${
-                            currentPage === 1
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                          }`}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                        
-                        <div className="text-sm text-gray-600">
-                          Page {currentPage} of {totalPages}
-                        </div>
-                        
-                        <button
-                          onClick={() => handlePageChange(currentPage + 1)}
-                          disabled={currentPage === totalPages}
-                          className={`px-3 py-1 rounded-md ${
-                            currentPage === totalPages
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                          }`}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="lg:col-span-6 order-1 lg:order-2">
-                  <div className="bg-white rounded-xl shadow-lg p-5 h-full border border-gray-100">
-                    <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-800">Pharmacy Map</h3>
-                        <p className="text-sm text-gray-500 mt-1">Showing pharmacies from page {currentPage}</p>
-                      </div>
-                      <div className="flex items-center">
-                        {isLoadingPharmacies && (
-                          <div className="flex items-center text-emerald-600">
-                            <div className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent mr-2"></div>
-                            <span className="text-sm">Loading...</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="h-[600px]">
-                      <PharmacyMap 
-                        pharmacies={pharmacyPrices
-                          .slice((currentPage - 1) * pharmaciesPerPage, currentPage * pharmaciesPerPage)
-                          .map((pharmacy, index) => {
-                            // Calculate the actual index in the full array for proper identification
-                            const actualIndex = (currentPage - 1) * pharmaciesPerPage + index;
-                            
-                            // Convert to the format expected by PharmacyMap
-                            return {
-                              pharmacyId: actualIndex,
-                              name: pharmacy.name || '',
-                              address: pharmacy.address || '',
-                              city: pharmacy.city || '',
-                              state: pharmacy.state || '',
-                              postalCode: pharmacy.zipCode || '', // Map zipCode to postalCode
-                              phone: pharmacy.phone || '',
-                              distance: typeof pharmacy.distance === 'string' 
-                                ? parseFloat(pharmacy.distance.replace(' miles', '').replace(' mi', '')) 
-                                : 0,
-                              latitude: pharmacy.latitude,
-                              longitude: pharmacy.longitude,
-                              price: pharmacy.price,
-                              open24H: pharmacy.open24H
-                            };
-                          })}
-                        zipCode={userLocation.zipCode}
-                        centerLat={userLocation.latitude}
-                        centerLng={userLocation.longitude}
-                        onMarkerClick={(pharmacy) => {
-                          const matchingPharmacy = pharmacyPrices.find((p, idx) => idx === pharmacy.pharmacyId);
-                          if (matchingPharmacy) {
-                            setSelectedPharmacy(matchingPharmacy);
-                            // Scroll to the pharmacy in the list
-                            const pharmacyIndex = pharmacyPrices.indexOf(matchingPharmacy);
-                            const page = Math.floor(pharmacyIndex / pharmaciesPerPage) + 1;
-                            if (page !== currentPage) {
-                              setCurrentPage(page);
-                            }
-                            // Wait for the DOM to update with the new page
-                            setTimeout(() => {
-                              const pharmacyElements = document.querySelectorAll('[data-pharmacy-id]');
-                              const targetElement = Array.from(pharmacyElements).find(
-                                (el) => el.getAttribute('data-pharmacy-id') === String(pharmacy.pharmacyId)
-                              );
-                              if (targetElement && pharmacyListRef.current) {
-                                targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                              }
-                            }, 100);
-                          }
-                        }}
-                        onZipCodeChange={handleZipCodeChange}
-                        searchRadius={Number(searchRadius)}
-                        onRadiusChange={(radius) => {
-                          // Convert the radius to a string and update the state
-                          const newRadius = radius.toString();
-                          handleSearchRadiusChange({ target: { value: newRadius } } as React.ChangeEvent<HTMLSelectElement>);
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </motion.div>
+          </div>
 
           {/* Add an id to the alternatives section */}
           <motion.div 
