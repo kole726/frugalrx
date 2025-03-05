@@ -239,25 +239,25 @@ function getMockDrugPrices(request: DrugPriceRequest): EnhancedDrugPriceResponse
   // Create mock pharmacy prices
   const mockPrices: PharmacyPrice[] = [
     {
-      pharmacyName: 'Mock Pharmacy 1',
+      name: 'Mock Pharmacy 1',
       price: 19.99,
-      distance: 0.5,
+      distance: '0.5',
       address: '123 Main St, Austin, TX 78701',
       latitude: request.latitude,
       longitude: request.longitude
     },
     {
-      pharmacyName: 'Mock Pharmacy 2',
+      name: 'Mock Pharmacy 2',
       price: 24.99,
-      distance: 1.2,
+      distance: '1.2',
       address: '456 Oak St, Austin, TX 78702',
       latitude: request.latitude + 0.01,
       longitude: request.longitude - 0.01
     },
     {
-      pharmacyName: 'Mock Pharmacy 3',
+      name: 'Mock Pharmacy 3',
       price: 15.99,
-      distance: 2.3,
+      distance: '2.3',
       address: '789 Pine St, Austin, TX 78703',
       latitude: request.latitude - 0.02,
       longitude: request.longitude + 0.02
@@ -266,9 +266,9 @@ function getMockDrugPrices(request: DrugPriceRequest): EnhancedDrugPriceResponse
   
   // Create mock pharmacies (to satisfy the DrugPriceResponse interface)
   const mockPharmacies = mockPrices.map(price => ({
-    name: price.pharmacyName,
+    name: price.name,
     address: price.address,
-    distance: price.distance.toString(), // Convert to string to match expected type
+    distance: price.distance,
     latitude: price.latitude,
     longitude: price.longitude,
     price: price.price.toString() // Convert to string to match expected type
@@ -314,8 +314,9 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
       hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
       latitude: request.latitude,
       longitude: request.longitude,
-      customizedQuantity: false,
-      quantity: 30 // Default quantity
+      radius: request.radius || 50, // Use a larger default radius (50 miles)
+      customizedQuantity: true,
+      quantity: request.quantity || 30 // Default quantity
     };
     
     // If we have a GSN, use it
@@ -328,15 +329,7 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
       const gsnNumber = typeof request.gsn === 'string' ? parseInt(request.gsn, 10) : request.gsn;
       
       // Use the exact format from the Postman collection
-      requestBody = {
-        hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
-        gsn: gsnNumber,
-        latitude: request.latitude,
-        longitude: request.longitude,
-        radius: request.radius || 50, // Use a larger default radius (50 miles)
-        customizedQuantity: true, // Set to true as in the Postman collection
-        quantity: request.quantity || 30 // Default quantity
-      };
+      requestBody.gsn = gsnNumber;
       
       console.log(`Server: Making GSN pricing request with GSN ${gsnNumber}, lat: ${request.latitude}, long: ${request.longitude}`);
     } 
@@ -345,7 +338,11 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
       endpoint = baseUrl.includes('/pricing/v1') 
         ? `${baseUrl}/drugprices/byName`
         : `${baseUrl}/pricing/v1/drugprices/byName`;
-      requestBody.drugName = request.drugName.toLowerCase();
+      
+      // Ensure drug name is properly formatted
+      requestBody.drugName = request.drugName.toString().toLowerCase().trim();
+      
+      console.log(`Server: Making drug name pricing request with name "${requestBody.drugName}", lat: ${request.latitude}, long: ${request.longitude}`);
     }
     // If we have neither, throw an error
     else {
@@ -362,8 +359,13 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      cache: 'no-store' // Ensure we don't use cached responses
     });
+    
+    // Log the response status and headers for debugging
+    console.log(`Server: Response status: ${response.status}`);
+    console.log(`Server: Response headers:`, Object.fromEntries(response.headers.entries()));
     
     // Check for 204 No Content response (no data available)
     if (response.status === 204 || response.status === 200) {
@@ -372,9 +374,17 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
       // For 200 responses, try to parse the data
       if (response.status === 200) {
         const responseText = await response.text();
+        console.log(`Server: Response text length: ${responseText.length}`);
+        if (responseText.length > 0) {
+          console.log(`Server: First 200 chars of response: ${responseText.substring(0, 200)}...`);
+        }
+        
         if (responseText) {
           try {
             responseData = JSON.parse(responseText);
+            
+            // Log the response structure for debugging
+            console.log(`Server: Response data keys:`, Object.keys(responseData));
             
             // Check if we got empty results (prices and pharmacies arrays are empty)
             if (responseData && 
@@ -401,7 +411,8 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
                   const fallbackResponse = await getDrugPrices(fallbackRequest);
                   
                   // If the fallback has results, use them but mark as mock data
-                  if (fallbackResponse.prices?.length > 0 || fallbackResponse.pharmacies?.length > 0) {
+                  if ((fallbackResponse.prices && fallbackResponse.prices.length > 0) || 
+                      (fallbackResponse.pharmacies && fallbackResponse.pharmacies.length > 0)) {
                     console.log(`Server: Fallback GSN ${fallbackGsn} returned results, using as mock data`);
                     
                     return {
@@ -416,8 +427,38 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
                   }
                 }
               }
+              // If we were using a drug name, try a known working drug name
+              else if (request.drugName) {
+                console.log(`Server: Trying fallback to a known working drug name`);
+                
+                // Try with "lipitor" as a fallback
+                const fallbackRequest = {
+                  ...request,
+                  drugName: "lipitor"
+                };
+                
+                // Try the fallback drug name
+                const fallbackResponse = await getDrugPrices(fallbackRequest);
+                
+                // If the fallback has results, use them but mark as mock data
+                if ((fallbackResponse.prices && fallbackResponse.prices.length > 0) || 
+                    (fallbackResponse.pharmacies && fallbackResponse.pharmacies.length > 0)) {
+                  console.log(`Server: Fallback drug name returned results, using as mock data`);
+                  
+                  return {
+                    ...responseData,
+                    prices: fallbackResponse.prices || [],
+                    pharmacies: fallbackResponse.pharmacies || [],
+                    isMockData: true,
+                    originalRequest: {
+                      drugName: request.drugName
+                    }
+                  };
+                }
+              }
             } else if (responseData) {
               // We got actual results, return them
+              console.log(`Server: Successfully retrieved drug prices with ${responseData.pharmacies?.length || 0} pharmacies`);
               return {
                 ...responseData,
                 isMockData: false
