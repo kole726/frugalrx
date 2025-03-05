@@ -670,17 +670,17 @@ export default function DrugPage({ params }: Props) {
               console.log(`Found ${detailedInfo.forms.length} forms:`, detailedInfo.forms)
               setAvailableForms(detailedInfo.forms)
               
-              // Set default selected form if available
-              const selectedFormObj = detailedInfo.forms[0]
-              setSelectedForm(selectedFormObj.form)
+              // Check if the current form exists in the new forms list
+              const currentFormExists = detailedInfo.forms.some((form: DrugForm) => form.form === selectedForm);
               
-              // If the form has a GSN, update the URL
-              if (selectedFormObj.gsn && selectedFormObj.gsn !== gsnToUse) {
-                if (typeof window !== 'undefined') {
-                  const url = new URL(window.location.href)
-                  url.searchParams.set('gsn', selectedFormObj.gsn.toString())
-                  window.history.replaceState({}, '', url.toString())
-                }
+              if (currentFormExists) {
+                // Keep the current form if it exists in the new list
+                console.log(`Keeping current form: ${selectedForm}`);
+              } else {
+                // Set default selected form if current form doesn't exist
+                const selectedFormObj = detailedInfo.forms[0]
+                console.log(`Updating form from ${selectedForm} to ${selectedFormObj.form}`);
+                setSelectedForm(selectedFormObj.form)
               }
             } else {
               console.log('No forms found in detailed info, using defaults')
@@ -698,17 +698,17 @@ export default function DrugPage({ params }: Props) {
               console.log(`Found ${detailedInfo.strengths.length} strengths:`, detailedInfo.strengths)
               setAvailableStrengths(detailedInfo.strengths)
               
-              // Set default selected strength if available
-              const selectedStrengthObj = detailedInfo.strengths[0]
-              setSelectedStrength(selectedStrengthObj.strength)
+              // Check if the current strength exists in the new strengths list
+              const currentStrengthExists = detailedInfo.strengths.some((strength: DrugStrength) => strength.strength === selectedStrength);
               
-              // If the strength has a GSN and it's different from the current GSN, update the URL
-              if (selectedStrengthObj.gsn && selectedStrengthObj.gsn !== gsnToUse) {
-                if (typeof window !== 'undefined') {
-                  const url = new URL(window.location.href)
-                  url.searchParams.set('gsn', selectedStrengthObj.gsn.toString())
-                  window.history.replaceState({}, '', url.toString())
-                }
+              if (currentStrengthExists) {
+                // Keep the current strength if it exists in the new list
+                console.log(`Keeping current strength: ${selectedStrength}`);
+              } else {
+                // Set default selected strength if current strength doesn't exist
+                const selectedStrengthObj = detailedInfo.strengths[0]
+                console.log(`Updating strength from ${selectedStrength} to ${selectedStrengthObj.strength}`);
+                setSelectedStrength(selectedStrengthObj.strength)
               }
             } else {
               console.log('No strengths found in detailed info, using defaults')
@@ -726,9 +726,26 @@ export default function DrugPage({ params }: Props) {
               console.log(`Found ${detailedInfo.quantities.length} quantities:`, detailedInfo.quantities)
               setAvailableQuantities(detailedInfo.quantities)
               
-              // Set default selected quantity if available
-              const selectedQuantityObj = detailedInfo.quantities[0]
-              setSelectedQuantity(`${selectedQuantityObj.quantity} ${selectedQuantityObj.uom}`)
+              // Get the current quantity value and unit
+              const currentQuantityParts = selectedQuantity.split(' ');
+              const currentQuantityValue = parseInt(currentQuantityParts[0], 10);
+              const currentQuantityUnit = currentQuantityParts.slice(1).join(' ');
+              
+              // Check if the current quantity exists in the new quantities list
+              const currentQuantityExists = detailedInfo.quantities.some(
+                (qty: DrugQuantity) => qty.quantity === currentQuantityValue && qty.uom === currentQuantityUnit
+              );
+              
+              if (currentQuantityExists) {
+                // Keep the current quantity if it exists in the new list
+                console.log(`Keeping current quantity: ${selectedQuantity}`);
+              } else {
+                // Set default selected quantity if current quantity doesn't exist
+                const selectedQuantityObj = detailedInfo.quantities[0]
+                const newQuantity = `${selectedQuantityObj.quantity} ${selectedQuantityObj.uom}`;
+                console.log(`Updating quantity from ${selectedQuantity} to ${newQuantity}`);
+                setSelectedQuantity(newQuantity)
+              }
             } else {
               console.log('No quantities found in detailed info, using defaults')
               // Set default quantities if none are available
@@ -995,6 +1012,8 @@ export default function DrugPage({ params }: Props) {
     // Find the GSN for the selected form if available
     const selectedFormObj = availableForms.find(form => form.form === newForm);
     if (selectedFormObj && selectedFormObj.gsn) {
+      console.log(`Form changed to ${newForm}, GSN: ${selectedFormObj.gsn}`);
+      
       // Update the URL with the new GSN
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
@@ -1003,6 +1022,7 @@ export default function DrugPage({ params }: Props) {
       }
       
       // Refetch drug info with the new GSN
+      // This will update all dropdowns (form, strength, quantity) based on the new GSN
       await fetchDrugInfo();
     }
   };
@@ -1015,6 +1035,8 @@ export default function DrugPage({ params }: Props) {
     // Find the GSN for the selected strength if available
     const selectedStrengthObj = availableStrengths.find(strength => strength.strength === newStrength);
     if (selectedStrengthObj && selectedStrengthObj.gsn) {
+      console.log(`Strength changed to ${newStrength}, GSN: ${selectedStrengthObj.gsn}`);
+      
       // Update the URL with the new GSN
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
@@ -1023,15 +1045,22 @@ export default function DrugPage({ params }: Props) {
       }
       
       // Refetch drug info with the new GSN
+      // This will update all dropdowns (form, strength, quantity) based on the new GSN
       await fetchDrugInfo();
     }
   };
   
   // Handle quantity change
   const handleQuantityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedQuantity(e.target.value);
+    const newQuantity = e.target.value;
+    console.log(`Quantity changed to ${newQuantity}`);
+    setSelectedQuantity(newQuantity);
+    
     // Refetch pharmacy prices with the new quantity
-    fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+    const quantityValue = parseInt(newQuantity.split(' ')[0], 10);
+    if (!isNaN(quantityValue)) {
+      fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+    }
   };
   
   // Handle brand change
@@ -1183,6 +1212,7 @@ export default function DrugPage({ params }: Props) {
                     </>
                   )}
                 </select>
+                <p className="text-xs text-gray-500 mt-1">GSN: {gsn || 'N/A'}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Dosage</label>
