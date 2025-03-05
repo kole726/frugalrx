@@ -571,7 +571,24 @@ export default function DrugPage({ params }: Props) {
                   gsn: gsnToUse
                 }
               ]
-              console.log('Setting hardcoded brand variations for Trintellix:', variations)
+              
+              // Check if there are alternate drugs in the pricing data
+              if ((pricingData as any).alternateDrugs && Array.isArray((pricingData as any).alternateDrugs)) {
+                console.log('Found alternate drugs:', (pricingData as any).alternateDrugs);
+                
+                // Add alternate drugs to variations
+                (pricingData as any).alternateDrugs.forEach((altDrug: any, index: number) => {
+                  if (altDrug.medName || altDrug.genericName) {
+                    variations.push({
+                      name: `${altDrug.medName || altDrug.genericName} (Alternative)`,
+                      type: `alternate-${index}`,
+                      gsn: altDrug.gsn || gsnToUse
+                    });
+                  }
+                });
+              }
+              
+              console.log('Setting brand variations for Trintellix with alternates:', variations)
               setBrandVariations(variations)
               
               // Set selected brand based on the drug name
@@ -590,7 +607,24 @@ export default function DrugPage({ params }: Props) {
                   gsn: gsnToUse
                 }
               ]
-              console.log('Setting brand variations:', variations)
+              
+              // Check if there are alternate drugs in the pricing data
+              if ((pricingData as any).alternateDrugs && Array.isArray((pricingData as any).alternateDrugs)) {
+                console.log('Found alternate drugs:', (pricingData as any).alternateDrugs);
+                
+                // Add alternate drugs to variations
+                (pricingData as any).alternateDrugs.forEach((altDrug: any, index: number) => {
+                  if (altDrug.medName || altDrug.genericName) {
+                    variations.push({
+                      name: `${altDrug.medName || altDrug.genericName} (Alternative)`,
+                      type: `alternate-${index}`,
+                      gsn: altDrug.gsn || gsnToUse
+                    });
+                  }
+                });
+              }
+              
+              console.log('Setting brand variations with alternates:', variations)
               setBrandVariations(variations)
               
               // Set selected brand based on the drug name
@@ -607,7 +641,24 @@ export default function DrugPage({ params }: Props) {
                 gsn: gsnToUse
               }
             ]
-            console.log('Setting single brand variation:', variations)
+            
+            // Check if there are alternate drugs in the pricing data
+            if ((pricingData as any).alternateDrugs && Array.isArray((pricingData as any).alternateDrugs)) {
+              console.log('Found alternate drugs:', (pricingData as any).alternateDrugs);
+              
+              // Add alternate drugs to variations
+              (pricingData as any).alternateDrugs.forEach((altDrug: any, index: number) => {
+                if (altDrug.medName || altDrug.genericName) {
+                  variations.push({
+                    name: `${altDrug.medName || altDrug.genericName} (Alternative)`,
+                    type: `alternate-${index}`,
+                    gsn: altDrug.gsn || gsnToUse
+                  });
+                }
+              });
+            }
+            
+            console.log('Setting single brand variation with alternates:', variations)
             setBrandVariations(variations)
             setSelectedBrand('brand')
           }
@@ -999,6 +1050,20 @@ export default function DrugPage({ params }: Props) {
         if (typeof window !== 'undefined') {
           const url = new URL(window.location.href);
           url.searchParams.set('gsn', selectedVariation.gsn.toString());
+          
+          // If this is an alternate drug, we might need to update the drug name in the URL
+          if (newBrand.startsWith('alternate-') && selectedVariation.name) {
+            // Extract the drug name from the variation name (remove the " (Alternative)" part)
+            const drugName = selectedVariation.name.replace(/ \(Alternative\)$/, '');
+            
+            // Update the URL path to reflect the new drug name
+            const pathParts = window.location.pathname.split('/');
+            pathParts[pathParts.length - 1] = encodeURIComponent(drugName);
+            url.pathname = pathParts.join('/');
+            
+            console.log(`Updating URL for alternate drug: ${drugName}, GSN: ${selectedVariation.gsn}`);
+          }
+          
           window.history.replaceState({}, '', url.toString());
         }
         
