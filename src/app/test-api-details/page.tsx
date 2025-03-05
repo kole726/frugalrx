@@ -1129,23 +1129,70 @@ export default function TestApiDetailsPage() {
           toggleResultExpansion(operation.id)
         }
         
-        // If this is a drug info request and we have GSN, update the drug name
-        if (operation.endpoint.includes('/api/drugs/info/gsn') && data.gsn) {
+        // Extract and update drug name from various API responses
+        if (data.gsn) {
           const gsn = parseInt(data.gsn.toString());
-          
-          // Extract drug name from response
+          const gsnKey = gsn.toString();
           let drugName = '';
-          if (responseData.brandName) {
-            drugName = responseData.brandName;
-          } else if (responseData.genericName) {
-            drugName = responseData.genericName;
-          } else if (responseData.drugName) {
-            drugName = responseData.drugName;
+          
+          // For drug info endpoint
+          if (operation.endpoint.includes('/api/drugs/info/gsn')) {
+            if (responseData.brandName) {
+              drugName = responseData.brandName;
+            } else if (responseData.genericName) {
+              drugName = responseData.genericName;
+            } else if (responseData.drugName) {
+              drugName = responseData.drugName;
+            }
+          } 
+          // For drug pricing endpoint
+          else if (operation.endpoint.includes('/api/drugs/prices')) {
+            // Log the full response for debugging
+            console.log('Drug pricing response:', responseData);
+            
+            // First check the exact structure from the screenshot
+            if (responseData.drug && typeof responseData.drug === 'object') {
+              if (responseData.drug.medName) {
+                drugName = responseData.drug.medName;
+                addToLog(`Found drug name in drug.medName: ${drugName}`);
+              }
+            }
+            
+            // Check for drug name in different possible locations in the response
+            if (!drugName) {
+              if (responseData.drugName) {
+                drugName = responseData.drugName;
+              } else if (responseData.drug?.genericName) {
+                drugName = responseData.drug.genericName;
+              } else if (responseData.drug?.brandName) {
+                drugName = responseData.drug.brandName;
+              }
+            }
+            
+            // Check for the specific structure shown in the screenshot
+            if (!drugName && responseData.drug) {
+              addToLog(`Found drug object in response`);
+              drugName = responseData.drug.medName || '';
+            }
+            
+            // Try to find the drug name in the pharmacyPrices array if it exists
+            if (!drugName && responseData.pharmacyPrices && responseData.pharmacyPrices.length > 0) {
+              const firstPharmacy = responseData.pharmacyPrices[0];
+              if (firstPharmacy.drug && firstPharmacy.drug.medName) {
+                drugName = firstPharmacy.drug.medName;
+                addToLog(`Found drug name in pharmacyPrices: ${drugName}`);
+              }
+            }
+            
+            // Log the response structure for debugging
+            addToLog(`Drug pricing response structure: ${JSON.stringify(Object.keys(responseData))}`);
+            if (responseData.drug) {
+              addToLog(`Drug object structure: ${JSON.stringify(Object.keys(responseData.drug))}`);
+            }
           }
           
           // Update drug name lookup if we found a name
           if (drugName && drugName !== '') {
-            const gsnKey = gsn.toString();
             setDrugNameLookup(prev => ({ ...prev, [gsnKey]: drugName }));
             addToLog(`Updated drug name for GSN ${gsn}: ${drugName}`);
           }
