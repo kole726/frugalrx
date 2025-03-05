@@ -112,7 +112,17 @@ interface ConnectionTestResult {
 }
 
 // Component to display detailed drug information
-const DrugInfoDetails = ({ data, onGsnChange }: { data: DrugInfoResponse, onGsnChange?: (gsn: number) => void }) => {
+const DrugInfoDetails = ({ 
+  data, 
+  onGsnChange, 
+  currentOperation,
+  onRunTest 
+}: { 
+  data: DrugInfoResponse, 
+  onGsnChange?: (gsn: number) => void,
+  currentOperation?: TestOperation,
+  onRunTest?: (operation: TestOperation) => void
+}) => {
   const [selectedBrandType, setSelectedBrandType] = useState<'brand' | 'generic'>('brand');
   const [selectedForm, setSelectedForm] = useState<DrugForm | null>(null);
   const [selectedStrength, setSelectedStrength] = useState<DrugStrength | null>(null);
@@ -146,6 +156,49 @@ const DrugInfoDetails = ({ data, onGsnChange }: { data: DrugInfoResponse, onGsnC
       // Reset strength and quantity since they will be updated when new data arrives
       setSelectedStrength(null);
       setSelectedQuantity(null);
+      
+      // Automatically run the test if operation is provided
+      if (currentOperation && onRunTest) {
+        setTimeout(() => {
+          onRunTest(currentOperation);
+        }, 100); // Small delay to ensure form data is updated
+      }
+    }
+  };
+  
+  // Handle strength change
+  const handleStrengthChange = (strength: DrugStrength | null) => {
+    setSelectedStrength(strength);
+    
+    // If the strength has a GSN and it's different from the current form's GSN, update it
+    if (strength?.gsn && selectedForm?.gsn !== strength.gsn && onGsnChange) {
+      console.log(`Changing GSN to ${strength.gsn} for strength ${strength.strength}`);
+      onGsnChange(strength.gsn);
+      
+      // Automatically run the test if operation is provided
+      if (currentOperation && onRunTest) {
+        setTimeout(() => {
+          onRunTest(currentOperation);
+        }, 100); // Small delay to ensure form data is updated
+      }
+    }
+  };
+  
+  // Handle quantity change
+  const handleQuantityChange = (quantity: DrugQuantity | null) => {
+    setSelectedQuantity(quantity);
+    
+    // If the quantity has a GSN and it's different from the current form's GSN, update it
+    if (quantity?.gsn && selectedForm?.gsn !== quantity.gsn && onGsnChange) {
+      console.log(`Changing GSN to ${quantity.gsn} for quantity ${quantity.quantity} ${quantity.uom}`);
+      onGsnChange(quantity.gsn);
+      
+      // Automatically run the test if operation is provided
+      if (currentOperation && onRunTest) {
+        setTimeout(() => {
+          onRunTest(currentOperation);
+        }, 100); // Small delay to ensure form data is updated
+      }
     }
   };
   
@@ -235,7 +288,7 @@ const DrugInfoDetails = ({ data, onGsnChange }: { data: DrugInfoResponse, onGsnC
                   value={selectedStrength?.strength || ''}
                   onChange={(e) => {
                     const strength = data.strengths?.find(s => s.strength === e.target.value) || null;
-                    setSelectedStrength(strength);
+                    handleStrengthChange(strength);
                   }}
                 >
                   {data.strengths.map((strength, index) => (
@@ -265,7 +318,7 @@ const DrugInfoDetails = ({ data, onGsnChange }: { data: DrugInfoResponse, onGsnC
                     const quantityObj = data.quantities?.find(
                       q => q.quantity === parseFloat(quantity) && q.uom === uom
                     ) || null;
-                    setSelectedQuantity(quantityObj);
+                    handleQuantityChange(quantityObj);
                   }}
                 >
                   {data.quantities.map((quantity, index) => (
@@ -1385,6 +1438,8 @@ export default function TestApiDetailsPage() {
                         <DrugInfoDetails 
                           data={results[operation.id].data} 
                           onGsnChange={(gsn) => handleInputChange(operation.id, 'gsn', gsn)} 
+                          currentOperation={operation}
+                          onRunTest={runTest}
                         />
                       )}
                     </div>
