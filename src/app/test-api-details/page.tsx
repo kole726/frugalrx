@@ -40,15 +40,23 @@ interface FormDataType {
 interface DrugForm {
   form: string;
   gsn: number;
+  selected?: boolean;
+  rank?: number;
 }
 
 interface DrugStrength {
   strength: string;
+  gsn?: number;
+  selected?: boolean;
+  rank?: number;
 }
 
 interface DrugQuantity {
   quantity: number;
   uom: string;
+  gsn?: number;
+  selected?: boolean;
+  rank?: number;
 }
 
 interface DrugInfoResponse {
@@ -112,23 +120,17 @@ const DrugInfoDetails = ({ data, onGsnChange }: { data: DrugInfoResponse, onGsnC
   
   // Initialize selections when data changes
   useEffect(() => {
-    if (data.forms && data.forms.length > 0) {
-      setSelectedForm(data.forms[0]);
-    } else {
-      setSelectedForm(null);
-    }
+    // Find the selected form (if any)
+    const selectedFormItem = data.forms?.find(form => form.selected) || data.forms?.[0] || null;
+    setSelectedForm(selectedFormItem);
     
-    if (data.strengths && data.strengths.length > 0) {
-      setSelectedStrength(data.strengths[0]);
-    } else {
-      setSelectedStrength(null);
-    }
+    // Find the selected strength (if any)
+    const selectedStrengthItem = data.strengths?.find(strength => strength.selected) || data.strengths?.[0] || null;
+    setSelectedStrength(selectedStrengthItem);
     
-    if (data.quantities && data.quantities.length > 0) {
-      setSelectedQuantity(data.quantities[0]);
-    } else {
-      setSelectedQuantity(null);
-    }
+    // Find the selected quantity (if any)
+    const selectedQuantityItem = data.quantities?.find(quantity => quantity.selected) || data.quantities?.[0] || null;
+    setSelectedQuantity(selectedQuantityItem);
   }, [data]);
   
   // Determine if we have both brand and generic names
@@ -138,7 +140,12 @@ const DrugInfoDetails = ({ data, onGsnChange }: { data: DrugInfoResponse, onGsnC
   const handleFormChange = (form: DrugForm | null) => {
     setSelectedForm(form);
     if (form && onGsnChange) {
+      console.log(`Changing GSN to ${form.gsn} for form ${form.form}`);
       onGsnChange(form.gsn);
+      
+      // Reset strength and quantity since they will be updated when new data arrives
+      setSelectedStrength(null);
+      setSelectedQuantity(null);
     }
   };
   
@@ -250,7 +257,7 @@ const DrugInfoDetails = ({ data, onGsnChange }: { data: DrugInfoResponse, onGsnC
               onChange={(e) => {
                 const [quantity, uom] = e.target.value.split('-');
                 const quantityObj = data.quantities?.find(
-                  q => q.quantity === parseInt(quantity) && q.uom === uom
+                  q => q.quantity === parseFloat(quantity) && q.uom === uom
                 ) || null;
                 setSelectedQuantity(quantityObj);
               }}
