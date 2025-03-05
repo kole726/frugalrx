@@ -150,127 +150,135 @@ const DrugInfoDetails = ({ data, onGsnChange }: { data: DrugInfoResponse, onGsnC
   };
   
   return (
-    <div className="mt-4 p-4 bg-white rounded-md border border-gray-200">
-      <h3 className="text-lg font-semibold mb-3">Drug Details</h3>
+    <div className="mt-4 p-6 bg-white rounded-md border border-gray-200">
+      <h3 className="text-lg font-semibold mb-4">Drug Details</h3>
       
-      {/* Brand/Generic Name */}
-      <div className="mb-4">
-        <div className="flex items-center mb-1">
-          <span className="text-sm font-medium text-gray-700 mr-2">Name:</span>
-          {hasBothNames ? (
-            <div className="flex items-center">
-              <button
-                onClick={() => setSelectedBrandType('brand')}
-                className={`px-2 py-1 text-xs rounded-l-md ${
-                  selectedBrandType === 'brand' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Brand
-              </button>
-              <button
-                onClick={() => setSelectedBrandType('generic')}
-                className={`px-2 py-1 text-xs rounded-r-md ${
-                  selectedBrandType === 'generic' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Generic
-              </button>
-              <span className="ml-2 text-blue-600">
-                {selectedBrandType === 'brand' ? data.brandName : data.genericName}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+        {/* Brand/Generic Name */}
+        <div className="col-span-2">
+          <div className="flex items-center">
+            <span className="text-sm font-medium text-gray-700 mr-3 w-16">Name:</span>
+            {hasBothNames ? (
+              <div className="flex items-center flex-grow">
+                <button
+                  onClick={() => setSelectedBrandType('brand')}
+                  className={`px-3 py-1 text-xs rounded-l-md ${
+                    selectedBrandType === 'brand' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Brand
+                </button>
+                <button
+                  onClick={() => setSelectedBrandType('generic')}
+                  className={`px-3 py-1 text-xs rounded-r-md ${
+                    selectedBrandType === 'generic' 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Generic
+                </button>
+                <span className="ml-3 text-blue-600 font-medium">
+                  {selectedBrandType === 'brand' ? data.brandName : data.genericName}
+                </span>
+              </div>
+            ) : (
+              <span className="text-blue-600 font-medium">
+                {data.brandName || data.genericName || 'No Data Available'}
               </span>
-            </div>
-          ) : (
-            <span className="text-blue-600">
-              {data.brandName || data.genericName || 'No Data Available'}
-            </span>
-          )}
-        </div>
-      </div>
-      
-      {/* Forms */}
-      <div className="mb-4">
-        <div className="flex items-center mb-1">
-          <span className="text-sm font-medium text-gray-700 mr-2">Form:</span>
-          {data.forms && data.forms.length > 0 ? (
-            <select 
-              className="text-sm border border-gray-300 rounded-md px-2 py-1"
-              value={selectedForm?.form || ''}
-              onChange={(e) => {
-                const form = data.forms?.find(f => f.form === e.target.value) || null;
-                handleFormChange(form);
-              }}
-            >
-              {data.forms.map((form, index) => (
-                <option key={index} value={form.form}>
-                  {form.form}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className="text-gray-500 italic">No Data Available</span>
-          )}
-        </div>
-        {selectedForm && (
-          <div className="text-xs text-gray-500 ml-4">
-            GSN: {selectedForm.gsn}
+            )}
           </div>
-        )}
-      </div>
-      
-      {/* Strengths */}
-      <div className="mb-4">
-        <div className="flex items-center mb-1">
-          <span className="text-sm font-medium text-gray-700 mr-2">Dosage:</span>
-          {data.strengths && data.strengths.length > 0 ? (
-            <select 
-              className="text-sm border border-gray-300 rounded-md px-2 py-1"
-              value={selectedStrength?.strength || ''}
-              onChange={(e) => {
-                const strength = data.strengths?.find(s => s.strength === e.target.value) || null;
-                setSelectedStrength(strength);
-              }}
-            >
-              {data.strengths.map((strength, index) => (
-                <option key={index} value={strength.strength}>
-                  {strength.strength}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className="text-gray-500 italic">No Data Available</span>
-          )}
         </div>
-      </div>
-      
-      {/* Quantities */}
-      <div className="mb-4">
-        <div className="flex items-center mb-1">
-          <span className="text-sm font-medium text-gray-700 mr-2">Quantity:</span>
-          {data.quantities && data.quantities.length > 0 ? (
-            <select 
-              className="text-sm border border-gray-300 rounded-md px-2 py-1"
-              value={selectedQuantity ? `${selectedQuantity.quantity}-${selectedQuantity.uom}` : ''}
-              onChange={(e) => {
-                const [quantity, uom] = e.target.value.split('-');
-                const quantityObj = data.quantities?.find(
-                  q => q.quantity === parseFloat(quantity) && q.uom === uom
-                ) || null;
-                setSelectedQuantity(quantityObj);
-              }}
-            >
-              {data.quantities.map((quantity, index) => (
-                <option key={index} value={`${quantity.quantity}-${quantity.uom}`}>
-                  {quantity.quantity} {quantity.uom}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className="text-gray-500 italic">No Data Available</span>
-          )}
+        
+        {/* Forms */}
+        <div>
+          <div className="flex items-center">
+            <span className="text-sm font-medium text-gray-700 mr-3 w-16">Form:</span>
+            <div className="flex-grow">
+              {data.forms && data.forms.length > 0 ? (
+                <select 
+                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
+                  value={selectedForm?.form || ''}
+                  onChange={(e) => {
+                    const form = data.forms?.find(f => f.form === e.target.value) || null;
+                    handleFormChange(form);
+                  }}
+                >
+                  {data.forms.map((form, index) => (
+                    <option key={index} value={form.form}>
+                      {form.form}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-gray-500 italic">No Data Available</span>
+              )}
+              {selectedForm && (
+                <div className="text-xs text-gray-500 mt-1">
+                  GSN: {selectedForm.gsn}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Strengths */}
+        <div>
+          <div className="flex items-center">
+            <span className="text-sm font-medium text-gray-700 mr-3 w-16">Dosage:</span>
+            <div className="flex-grow">
+              {data.strengths && data.strengths.length > 0 ? (
+                <select 
+                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
+                  value={selectedStrength?.strength || ''}
+                  onChange={(e) => {
+                    const strength = data.strengths?.find(s => s.strength === e.target.value) || null;
+                    setSelectedStrength(strength);
+                  }}
+                >
+                  {data.strengths.map((strength, index) => (
+                    <option key={index} value={strength.strength}>
+                      {strength.strength}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-gray-500 italic">No Data Available</span>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Quantities */}
+        <div>
+          <div className="flex items-center">
+            <span className="text-sm font-medium text-gray-700 mr-3 w-16">Quantity:</span>
+            <div className="flex-grow">
+              {data.quantities && data.quantities.length > 0 ? (
+                <select 
+                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
+                  value={selectedQuantity ? `${selectedQuantity.quantity}-${selectedQuantity.uom}` : ''}
+                  onChange={(e) => {
+                    const [quantity, uom] = e.target.value.split('-');
+                    const quantityObj = data.quantities?.find(
+                      q => q.quantity === parseFloat(quantity) && q.uom === uom
+                    ) || null;
+                    setSelectedQuantity(quantityObj);
+                  }}
+                >
+                  {data.quantities.map((quantity, index) => (
+                    <option key={index} value={`${quantity.quantity}-${quantity.uom}`}>
+                      {quantity.quantity} {quantity.uom}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-gray-500 italic">No Data Available</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
