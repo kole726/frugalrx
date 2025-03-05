@@ -1344,6 +1344,7 @@ export default function TestApiDetailsPage() {
                             onClick={() => copyToClipboard(
                               showRawResponse 
                                 ? results[operation.id].rawResponse || JSON.stringify(results[operation.id].data, null, 2)
+                                : JSON.stringify(results[operation.id].data, null, 2)
                             )}
                             className="text-xs text-blue-600 hover:text-blue-800"
                           >
