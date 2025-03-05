@@ -1181,7 +1181,7 @@ export default function DrugPage({ params }: Props) {
             className="mb-6"
           >
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              {drugInfo?.brandName || params.name} Coupon
+              {drugInfo?.brandName || params.name}
             </h1>
             <p className="text-gray-600">
               Pricing is displayed for {drugInfo?.genericName || params.name}
