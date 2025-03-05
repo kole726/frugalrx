@@ -349,6 +349,9 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
       // Ensure drug name is properly formatted - use uppercase to match the GSN response format
       requestBody.drugName = request.drugName.toString().toUpperCase().trim();
       
+      // Add useUsualAndCustomary parameter for byName endpoint to force a search in the real pricing database
+      requestBody.useUsualAndCustomary = true;
+      
       console.log(`Server: Making drug name pricing request with name "${requestBody.drugName}", lat: ${request.latitude}, long: ${request.longitude}`);
     }
     // If we have neither, throw an error
@@ -1042,7 +1045,7 @@ export async function getDetailedDrugInfo(gsn: number, languageCode?: string): P
  */
 async function findGsnForDrugName(drugName: string): Promise<number | undefined> {
   try {
-    console.log(`Server: Finding GSN for drug name: "${drugName}"`);
+    console.log(`Server: Searching for GSN for drug: "${drugName}"`);
     
     // Validate API URL
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
@@ -1057,11 +1060,16 @@ async function findGsnForDrugName(drugName: string): Promise<number | undefined>
     // Get authentication token
     const token = await getAuthToken();
     
-    // First search for the drug to get its GSN
-    const searchEndpoint = `/pricing/v1/drugs/${encodeURIComponent(drugName)}`;
-    console.log(`Searching for drug "${drugName}" at ${baseUrl}${searchEndpoint}`);
+    // Use the correct endpoint from the API documentation
+    const endpoint = `/druginfo/${encodeURIComponent(drugName)}`;
     
-    const searchResponse = await fetch(`${baseUrl}${searchEndpoint}?count=1&hqAlias=${process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx'}`, {
+    // Check if baseUrl already includes the pricing/v1 path
+    const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
+    
+    console.log(`Server: Trying GET request to ${baseUrl}${fullEndpoint}`);
+    
+    // Make API request
+    const response = await fetch(`${baseUrl}${fullEndpoint}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1070,31 +1078,19 @@ async function findGsnForDrugName(drugName: string): Promise<number | undefined>
       cache: 'no-store'
     });
 
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      console.error(`Drug search API error: ${searchResponse.status}`, errorText);
-      return undefined;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Server: API error (${response.status}):`, errorText);
+      console.error(`Request details: GSN search for "${drugName}", endpoint=${baseUrl}${fullEndpoint}`);
+      throw new Error(`API Error ${response.status}: ${errorText}`);
     }
 
-    const searchResults = await searchResponse.json();
-    if (!searchResults || !Array.isArray(searchResults) || searchResults.length === 0) {
-      console.log(`No results found for drug "${drugName}"`);
-      return undefined;
-    }
-
-    // Try to find a result with a GSN
-    for (const result of searchResults) {
-      if (result.gsn) {
-        console.log(`Found GSN ${result.gsn} for drug "${drugName}"`);
-        return result.gsn;
-      }
-    }
+    const data = await response.json();
+    console.log(`Server: Successfully retrieved GSN for drug "${drugName}":`, data.gsn);
     
-    // If we get here, no GSN was found
-    console.log(`No GSN found for drug "${drugName}"`);
-    return undefined;
+    return data.gsn;
   } catch (error) {
-    console.error('Error finding GSN for drug name:', error);
-    return undefined;
+    console.error('Error finding GSN for drug:', error);
+    throw error;
   }
 }

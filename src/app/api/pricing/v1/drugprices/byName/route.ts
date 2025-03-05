@@ -84,7 +84,10 @@ export async function POST(request: Request) {
         drugName: body.drugName,
         latitude: latitude,
         longitude: longitude,
-        radius: radius
+        radius: radius,
+        useUsualAndCustomary: true,
+        quantity: body.quantity || 30,
+        customizedQuantity: body.quantity ? true : false
       }),
       cache: 'no-store' // Ensure we don't use cached responses
     });
