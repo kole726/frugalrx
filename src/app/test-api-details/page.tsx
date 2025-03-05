@@ -879,7 +879,12 @@ export default function TestApiDetailsPage() {
       
       // If this is a GSN field and the value has changed, fetch the drug name
       if (fieldName === 'gsn' && value !== currentOperationData[fieldName]) {
-        fetchDrugName(value);
+        // Convert value to number to ensure consistent comparison
+        const gsnNumber = typeof value === 'string' ? parseInt(value, 10) : value;
+        if (!isNaN(gsnNumber)) {
+          // Use setTimeout to ensure state update completes first
+          setTimeout(() => fetchDrugName(gsnNumber), 0);
+        }
       }
       
       return {
@@ -893,43 +898,49 @@ export default function TestApiDetailsPage() {
   }
 
   // Function to fetch drug name based on GSN
-  const fetchDrugName = async (gsn: number) => {
-    if (!gsn) {
-      addToLog(`Cannot lookup drug name: No GSN provided`);
+  const fetchDrugName = async (gsn: number | string) => {
+    // Convert gsn to number if it's a string
+    const gsnNumber = typeof gsn === 'string' ? parseInt(gsn, 10) : gsn;
+    
+    if (!gsnNumber || isNaN(gsnNumber)) {
+      addToLog(`Cannot lookup drug name: No valid GSN provided`);
       return;
     }
+    
+    // Convert to string for use as object key
+    const gsnKey = gsnNumber.toString();
     
     // If we already have this GSN in our lookup, don't fetch again unless it's an error or unknown
-    if (drugNameLookup[gsn] && 
-        drugNameLookup[gsn] !== 'Unknown Drug' && 
-        drugNameLookup[gsn] !== 'Error fetching name') {
+    if (drugNameLookup[gsnKey] && 
+        drugNameLookup[gsnKey] !== 'Unknown Drug' && 
+        drugNameLookup[gsnKey] !== 'Error fetching name') {
       return;
     }
     
-    setDrugNameLoading(prev => ({ ...prev, [gsn]: true }));
-    addToLog(`Looking up drug name for GSN ${gsn}...`);
+    setDrugNameLoading(prev => ({ ...prev, [gsnKey]: true }));
+    addToLog(`Looking up drug name for GSN ${gsnNumber}...`);
     
     try {
       // Try to get the drug name from our dedicated API endpoint
-      const response = await fetch(`/api/drugs/name?gsn=${gsn}`);
+      const response = await fetch(`/api/drugs/name?gsn=${gsnNumber}`);
       const data = await response.json();
       
       if (response.ok && data.name) {
-        setDrugNameLookup(prev => ({ ...prev, [gsn]: data.name }));
-        addToLog(`Found drug name for GSN ${gsn}: ${data.name}`);
+        setDrugNameLookup(prev => ({ ...prev, [gsnKey]: data.name }));
+        addToLog(`Found drug name for GSN ${gsnNumber}: ${data.name}`);
         return;
       }
       
       // Handle case where API is working but GSN is invalid
       if (data.validApiConnection) {
-        setDrugNameLookup(prev => ({ ...prev, [gsn]: 'Invalid GSN' }));
+        setDrugNameLookup(prev => ({ ...prev, [gsnKey]: 'Invalid GSN' }));
         addToLog(`${data.message || 'GSN appears to be invalid'}`);
-        toast.error(`Invalid GSN: ${gsn}. Try a different GSN number.`);
+        toast.error(`Invalid GSN: ${gsnNumber}. Try a different GSN number.`);
         return;
       }
       
       // If the dedicated endpoint fails, try the drug info endpoint directly
-      const infoResponse = await fetch(`/api/drugs/info/gsn?gsn=${gsn}`);
+      const infoResponse = await fetch(`/api/drugs/info/gsn?gsn=${gsnNumber}`);
       
       if (infoResponse.ok) {
         const infoData = await infoResponse.json();
@@ -949,22 +960,22 @@ export default function TestApiDetailsPage() {
         }
         
         if (drugName) {
-          setDrugNameLookup(prev => ({ ...prev, [gsn]: drugName }));
-          addToLog(`Found drug name for GSN ${gsn}: ${drugName}`);
+          setDrugNameLookup(prev => ({ ...prev, [gsnKey]: drugName }));
+          addToLog(`Found drug name for GSN ${gsnNumber}: ${drugName}`);
           return;
         }
       }
       
       // If we still don't have a name, set a placeholder
-      setDrugNameLookup(prev => ({ ...prev, [gsn]: 'Unknown Drug' }));
-      addToLog(`Could not find drug name for GSN ${gsn}. The GSN may be invalid or not in the database.`);
+      setDrugNameLookup(prev => ({ ...prev, [gsnKey]: 'Unknown Drug' }));
+      addToLog(`Could not find drug name for GSN ${gsnNumber}. The GSN may be invalid or not in the database.`);
       
     } catch (error) {
       console.error('Error fetching drug name:', error);
-      addToLog(`Error looking up drug name for GSN ${gsn}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setDrugNameLookup(prev => ({ ...prev, [gsn]: 'Error fetching name' }));
+      addToLog(`Error looking up drug name for GSN ${gsnNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setDrugNameLookup(prev => ({ ...prev, [gsnKey]: 'Error fetching name' }));
     } finally {
-      setDrugNameLoading(prev => ({ ...prev, [gsn]: false }));
+      setDrugNameLoading(prev => ({ ...prev, [gsnKey]: false }));
     }
   }
 
@@ -1088,7 +1099,8 @@ export default function TestApiDetailsPage() {
           
           // Update drug name lookup if we found a name
           if (drugName && drugName !== '') {
-            setDrugNameLookup(prev => ({ ...prev, [gsn]: drugName }));
+            const gsnKey = gsn.toString();
+            setDrugNameLookup(prev => ({ ...prev, [gsnKey]: drugName }));
             addToLog(`Updated drug name for GSN ${gsn}: ${drugName}`);
           }
         }
@@ -1595,12 +1607,12 @@ export default function TestApiDetailsPage() {
                       {/* Display drug name if this is a GSN field */}
                       {field.name === 'gsn' && formData[operation.id]?.[field.name] && (
                         <div className="mt-2">
-                          {drugNameLoading[formData[operation.id]?.[field.name]] ? (
+                          {drugNameLoading[formData[operation.id]?.[field.name].toString()] ? (
                             <p className="text-sm text-blue-600">Looking up drug name...</p>
-                          ) : drugNameLookup[formData[operation.id]?.[field.name]] ? (
+                          ) : drugNameLookup[formData[operation.id]?.[field.name].toString()] ? (
                             <div className="flex items-center">
                               <span className="text-sm font-medium text-gray-700 mr-2">Drug Name:</span>
-                              <span className="text-sm text-blue-600">{drugNameLookup[formData[operation.id]?.[field.name]]}</span>
+                              <span className="text-sm text-blue-600">{drugNameLookup[formData[operation.id]?.[field.name].toString()]}</span>
                             </div>
                           ) : (
                             <button
