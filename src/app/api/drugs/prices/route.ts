@@ -21,6 +21,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
+    // Log the incoming request for debugging
+    console.log('API: Received drug prices request:', JSON.stringify(body));
+    
     // Validate required fields
     if (!body.latitude || !body.longitude) {
       return NextResponse.json(
@@ -42,12 +45,18 @@ export async function POST(request: NextRequest) {
       ...body,
       latitude: typeof body.latitude === 'string' ? parseFloat(body.latitude) : body.latitude,
       longitude: typeof body.longitude === 'string' ? parseFloat(body.longitude) : body.longitude,
-      radius: body.radius ? (typeof body.radius === 'string' ? parseFloat(body.radius) : body.radius) : undefined,
-      quantity: body.quantity ? (typeof body.quantity === 'string' ? parseInt(body.quantity, 10) : body.quantity) : undefined,
-      gsn: body.gsn ? (typeof body.gsn === 'string' ? parseInt(body.gsn, 10) : body.gsn) : undefined
+      radius: body.radius ? (typeof body.radius === 'string' ? parseFloat(body.radius) : body.radius) : 50,
+      quantity: body.quantity ? (typeof body.quantity === 'string' ? parseInt(body.quantity, 10) : body.quantity) : 30,
+      gsn: body.gsn ? (typeof body.gsn === 'string' ? parseInt(body.gsn, 10) : body.gsn) : undefined,
+      customizedQuantity: true // Set to true as in the Postman collection
     };
     
+    console.log('API: Processed request data:', JSON.stringify(requestData));
+    
     const result = await getDrugPrices(requestData);
+    
+    // Log the result summary
+    console.log(`API: Drug prices result - Found ${result.prices?.length || 0} prices and ${result.pharmacies?.length || 0} pharmacies`);
     
     return NextResponse.json(result, { headers: corsHeaders });
   } catch (error) {

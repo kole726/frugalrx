@@ -8,6 +8,8 @@ const KNOWN_WORKING_GSNS = [
   62733, // Lipitor (atorvastatin) - confirmed working
   70954, // Metformin - potential alternative
   2323,  // Another potential alternative
+  1790,  // Tylenol
+  3774   // Xanax
 ];
 
 // Define the APIError class for better error handling
@@ -325,15 +327,18 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
       // Ensure GSN is a number
       const gsnNumber = typeof request.gsn === 'string' ? parseInt(request.gsn, 10) : request.gsn;
       
+      // Use the exact format from the Postman collection
       requestBody = {
         hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
         gsn: gsnNumber,
         latitude: request.latitude,
         longitude: request.longitude,
         radius: request.radius || 50, // Use a larger default radius (50 miles)
-        customizedQuantity: request.quantity ? true : false,
+        customizedQuantity: true, // Set to true as in the Postman collection
         quantity: request.quantity || 30 // Default quantity
       };
+      
+      console.log(`Server: Making GSN pricing request with GSN ${gsnNumber}, lat: ${request.latitude}, long: ${request.longitude}`);
     } 
     // If we have a drug name, use it
     else if (request.drugName) {
@@ -361,44 +366,70 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
     });
     
     // Check for 204 No Content response (no data available)
-    if (response.status === 204) {
-      console.log(`Server: Received 204 No Content - no data available for ${request.drugName || request.gsn}`);
+    if (response.status === 204 || response.status === 200) {
+      let responseData;
       
-      // If we were using a drug name, try to find its GSN and retry
-      if (request.drugName && !request.gsn) {
-        const gsn = await findGsnForDrugName(request.drugName);
-        if (gsn) {
-          console.log(`Server: Found GSN ${gsn} for drug name ${request.drugName}, retrying with GSN`);
-          return getDrugPrices({
-            ...request,
-            gsn,
-            drugName: undefined
-          });
+      // For 200 responses, try to parse the data
+      if (response.status === 200) {
+        const responseText = await response.text();
+        if (responseText) {
+          try {
+            responseData = JSON.parse(responseText);
+            
+            // Check if we got empty results (prices and pharmacies arrays are empty)
+            if (responseData && 
+                ((!responseData.prices || responseData.prices.length === 0) && 
+                 (!responseData.pharmacies || responseData.pharmacies.length === 0))) {
+              
+              console.log(`Server: Received empty results for ${request.drugName || request.gsn}, trying fallback...`);
+              
+              // If we were using a GSN, try another known working GSN
+              if (request.gsn) {
+                // Find a GSN that's different from the current one
+                const fallbackGsn = KNOWN_WORKING_GSNS.find(gsn => gsn !== request.gsn);
+                
+                if (fallbackGsn) {
+                  console.log(`Server: Trying fallback GSN ${fallbackGsn}`);
+                  
+                  // Create a new request with the fallback GSN
+                  const fallbackRequest = {
+                    ...request,
+                    gsn: fallbackGsn
+                  };
+                  
+                  // Try the fallback GSN
+                  const fallbackResponse = await getDrugPrices(fallbackRequest);
+                  
+                  // If the fallback has results, use them but mark as mock data
+                  if (fallbackResponse.prices?.length > 0 || fallbackResponse.pharmacies?.length > 0) {
+                    console.log(`Server: Fallback GSN ${fallbackGsn} returned results, using as mock data`);
+                    
+                    return {
+                      ...responseData,
+                      prices: fallbackResponse.prices || [],
+                      pharmacies: fallbackResponse.pharmacies || [],
+                      isMockData: true,
+                      originalRequest: {
+                        gsn: request.gsn
+                      }
+                    };
+                  }
+                }
+              }
+            } else if (responseData) {
+              // We got actual results, return them
+              return {
+                ...responseData,
+                isMockData: false
+              };
+            }
+          } catch (error) {
+            console.error('Error parsing response:', error);
+          }
         }
       }
       
-      // If we were already using a GSN or couldn't find one, try a known working GSN as fallback
-      if (request.gsn !== KNOWN_WORKING_GSNS[0]) {
-        console.log(`Server: Trying known working GSN ${KNOWN_WORKING_GSNS[0]} as fallback`);
-        const fallbackResponse = await getDrugPrices({
-          ...request,
-          gsn: KNOWN_WORKING_GSNS[0],
-          drugName: undefined
-        });
-        
-        // Return the fallback response but mark it as mock data
-        return {
-          ...fallbackResponse,
-          isMockData: true,
-          originalRequest: {
-            drugName: request.drugName,
-            gsn: request.gsn
-          }
-        };
-      }
-      
-      // If we've already tried the fallback GSN or we're already using it, return mock data
-      console.log(`Server: No data available, returning mock data`);
+      console.log(`Server: No data available for ${request.drugName || request.gsn}, returning mock data`);
       return getMockDrugPrices(request);
     }
     

@@ -1034,8 +1034,8 @@ export default function TestApiDetailsPage() {
         // Ensure radius is set to a reasonable value
         processedData.radius = processedData.radius || 50;
         
-        // Set customizedQuantity flag based on whether quantity is provided
-        processedData.customizedQuantity = !!processedData.quantity;
+        // Set customizedQuantity flag to true as in the Postman collection
+        processedData.customizedQuantity = true;
         
         // Ensure quantity is a number
         if (processedData.quantity) {
@@ -1048,6 +1048,9 @@ export default function TestApiDetailsPage() {
         
         // Ensure hqMappingName is set
         processedData.hqMappingName = processedData.hqMappingName || 'walkerrx';
+        
+        // Log the request for debugging
+        addToLog(`Request payload: ${JSON.stringify(processedData)}`);
         
         requestOptions.body = JSON.stringify(processedData);
       }
