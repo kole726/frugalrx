@@ -292,6 +292,13 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
   try {
     console.log(`Server: Getting drug prices for ${request.drugName || request.gsn}`);
     
+    // Check if we should use mock data
+    const useMockData = process.env.NEXT_PUBLIC_USE_MOCK_PHARMACY_PRICES === 'true';
+    if (useMockData) {
+      console.log('Server: Using mock pharmacy prices data due to environment variable setting');
+      return getMockDrugPrices(request);
+    }
+    
     // Validate API URL
     const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
     if (!apiUrl) {
