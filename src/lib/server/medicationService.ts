@@ -346,8 +346,8 @@ export async function getDrugPrices(request: DrugPriceRequest): Promise<Enhanced
         ? `${baseUrl}/drugprices/byName`
         : `${baseUrl}/pricing/v1/drugprices/byName`;
       
-      // Ensure drug name is properly formatted
-      requestBody.drugName = request.drugName.toString().toLowerCase().trim();
+      // Ensure drug name is properly formatted - use uppercase to match the GSN response format
+      requestBody.drugName = request.drugName.toString().toUpperCase().trim();
       
       console.log(`Server: Making drug name pricing request with name "${requestBody.drugName}", lat: ${request.latitude}, long: ${request.longitude}`);
     }

@@ -1025,8 +1025,8 @@ export default function TestApiDetailsPage() {
         
         // Ensure drug name is properly formatted for name-based pricing
         if (operation.id === 'opGetPharmacyDrugPricingbyName' && processedData.drugName) {
-          // Drug names should be strings, ensure lowercase for consistency
-          processedData.drugName = processedData.drugName.toString().toLowerCase().trim();
+          // Drug names should be strings, ensure uppercase to match GSN response format
+          processedData.drugName = processedData.drugName.toString().toUpperCase().trim();
         }
         
         // Common processing for all drug pricing operations
