@@ -29,6 +29,7 @@ export default function DrugPage({ params }: Props) {
   const [drugDetails, setDrugDetails] = useState<DrugDetails | null>(null)
   const [pharmacyPrices, setPharmacyPrices] = useState<PharmacyPrice[]>([])
   const [brandVariations, setBrandVariations] = useState<any[]>([])
+  const [displayedDrugName, setDisplayedDrugName] = useState<string>('')
   
   // Filter state
   const [selectedBrand, setSelectedBrand] = useState<string>('generic')
@@ -614,17 +615,20 @@ export default function DrugPage({ params }: Props) {
             if (matchingVariation) {
               console.log(`Setting selected brand to ${matchingVariation.type} based on drug name match`)
               setSelectedBrand(matchingVariation.type)
+              setDisplayedDrugName(matchingVariation.name)
             } else {
               // Default to brand if it's a brand name, generic otherwise
               const isBrand = drugName.toLowerCase() === brandName.toLowerCase()
               console.log(`Setting selected brand to ${isBrand ? 'brand' : 'generic'} based on name comparison`)
               setSelectedBrand(isBrand ? 'brand' : 'generic')
+              setDisplayedDrugName(isBrand ? `${brandName} (Brand)` : `${genericName} (Generic)`)
             }
           } else {
             // If GSN doesn't match or no GSN in URL, default to brand for brand names, generic otherwise
             const isBrand = drugName.toLowerCase() === brandName.toLowerCase()
             console.log(`Setting selected brand to ${isBrand ? 'brand' : 'generic'} (default)`)
             setSelectedBrand(isBrand ? 'brand' : 'generic')
+            setDisplayedDrugName(isBrand ? `${brandName} (Brand)` : `${genericName} (Generic)`)
           }
           
           // Extract filter options from detailed info
@@ -1011,6 +1015,9 @@ export default function DrugPage({ params }: Props) {
       if (selectedVariation && selectedVariation.gsn) {
         console.log(`Brand changed to ${selectedVariation.name}, GSN: ${selectedVariation.gsn}`);
         
+        // Update the displayed drug name to match the selected brand
+        setDisplayedDrugName(selectedVariation.name);
+        
         // Update the URL with the new GSN
         if (typeof window !== 'undefined') {
           const url = new URL(window.location.href);
@@ -1172,7 +1179,7 @@ export default function DrugPage({ params }: Props) {
             className="mb-6"
           >
             <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              {drugInfo?.brandName || params.name}
+              {displayedDrugName || drugInfo?.brandName || params.name}
             </h1>
             <p className="text-gray-600">
               Pricing is displayed for {drugInfo?.genericName || params.name}
