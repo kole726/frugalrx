@@ -18,162 +18,6 @@ interface Props {
   }
 }
 
-// Add DrugInfoDetails component
-interface DrugInfoDetailsProps {
-  drugDetails: DrugDetails | null;
-  availableForms: DrugForm[];
-  availableStrengths: DrugStrength[];
-  availableQuantities: DrugQuantity[];
-  selectedForm: string;
-  selectedStrength: string;
-  selectedQuantity: string;
-  selectedBrand: string;
-  brandVariations: { name: string; type: string; gsn?: number }[];
-  isLoading: boolean;
-  onFormChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  onStrengthChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  onQuantityChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  onBrandChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-}
-
-const DrugInfoDetails = ({
-  drugDetails,
-  availableForms,
-  availableStrengths,
-  availableQuantities,
-  selectedForm,
-  selectedStrength,
-  selectedQuantity,
-  selectedBrand,
-  brandVariations,
-  isLoading,
-  onFormChange,
-  onStrengthChange,
-  onQuantityChange,
-  onBrandChange
-}: DrugInfoDetailsProps) => {
-  // Determine if we have both brand and generic names
-  const hasBothNames = drugDetails?.brandName && 
-                      drugDetails?.genericName && 
-                      drugDetails.brandName !== drugDetails.genericName;
-
-  return (
-    <div className="mt-4 p-6 bg-white rounded-md border border-gray-200">
-      <h3 className="text-lg font-semibold mb-4">Drug Details</h3>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-        {/* Brand/Generic Name */}
-        {hasBothNames && (
-          <div className="col-span-2">
-            <div className="flex items-center">
-              <span className="text-sm font-medium text-gray-700 mr-3 w-16">Name:</span>
-              <div className="flex-grow">
-                <select 
-                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
-                  value={selectedBrand}
-                  onChange={onBrandChange}
-                  disabled={isLoading || brandVariations.length === 0}
-                >
-                  {brandVariations.map((variation, index) => (
-                    <option key={index} value={variation.type}>
-                      {variation.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Forms */}
-        <div>
-          <div className="flex items-center">
-            <span className="text-sm font-medium text-gray-700 mr-3 w-16">Form:</span>
-            <div className="flex-grow">
-              {availableForms && availableForms.length > 0 ? (
-                <select 
-                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
-                  value={selectedForm}
-                  onChange={onFormChange}
-                  disabled={isLoading || availableForms.length === 0}
-                >
-                  {availableForms.map((form, index) => (
-                    <option key={index} value={form.form}>
-                      {form.form}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="text-gray-500 italic">No Data Available</span>
-              )}
-              {availableForms.find(f => f.form === selectedForm)?.gsn && (
-                <div className="text-xs text-gray-500 mt-1">
-                  GSN: {availableForms.find(f => f.form === selectedForm)?.gsn}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Strengths */}
-        <div>
-          <div className="flex items-center">
-            <span className="text-sm font-medium text-gray-700 mr-3 w-16">Dosage:</span>
-            <div className="flex-grow">
-              {availableStrengths && availableStrengths.length > 0 ? (
-                <select 
-                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
-                  value={selectedStrength}
-                  onChange={onStrengthChange}
-                  disabled={isLoading || availableStrengths.length === 0}
-                >
-                  {availableStrengths.map((strength, index) => (
-                    <option key={index} value={strength.strength}>
-                      {strength.strength}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="text-gray-500 italic">No Data Available</span>
-              )}
-              {availableStrengths.find(s => s.strength === selectedStrength)?.gsn && (
-                <div className="text-xs text-gray-500 mt-1">
-                  GSN: {availableStrengths.find(s => s.strength === selectedStrength)?.gsn}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        {/* Quantities */}
-        <div>
-          <div className="flex items-center">
-            <span className="text-sm font-medium text-gray-700 mr-3 w-16">Quantity:</span>
-            <div className="flex-grow">
-              {availableQuantities && availableQuantities.length > 0 ? (
-                <select 
-                  className="w-full text-sm border border-gray-300 rounded-md px-3 py-2"
-                  value={selectedQuantity}
-                  onChange={onQuantityChange}
-                  disabled={isLoading || availableQuantities.length === 0}
-                >
-                  {availableQuantities.map((quantity, index) => (
-                    <option key={index} value={`${quantity.quantity} ${quantity.uom}`}>
-                      {quantity.quantity} {quantity.uom}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="text-gray-500 italic">No Data Available</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export default function DrugPage({ params }: Props) {
   console.log('DrugPage component rendering with params:', params);
   
@@ -1389,24 +1233,6 @@ export default function DrugPage({ params }: Props) {
               <div className="bg-white rounded-xl shadow-lg p-6 h-full">
                 <h3 className="text-xl font-bold text-gray-800 mb-4">Medication Details</h3>
                 
-                {/* Drug Info Details Component */}
-                <DrugInfoDetails 
-                  drugDetails={drugDetails}
-                  availableForms={availableForms}
-                  availableStrengths={availableStrengths}
-                  availableQuantities={availableQuantities}
-                  selectedForm={selectedForm}
-                  selectedStrength={selectedStrength}
-                  selectedQuantity={selectedQuantity}
-                  selectedBrand={selectedBrand}
-                  brandVariations={brandVariations}
-                  isLoading={isLoading}
-                  onFormChange={handleFormChange}
-                  onStrengthChange={handleStrengthChange}
-                  onQuantityChange={handleQuantityChange}
-                  onBrandChange={handleBrandChange}
-                />
-                
                 {/* Description */}
                 <div className="mt-6">
                   <h4 className="text-lg font-semibold text-gray-800 mb-2">Description</h4>
@@ -1434,76 +1260,96 @@ export default function DrugPage({ params }: Props) {
             </div>
           </motion.div>
 
-          {/* Filter Options */}
+          {/* Medication Form Selectors */}
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-100"
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
           >
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Search Options</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Location */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Location</label>
-                <div className="flex items-center">
-                  <input 
-                    type="text" 
-                    className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter ZIP code"
-                    value={userLocation.zipCode}
-                    onChange={(e) => setUserLocation({ ...userLocation, zipCode: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleZipCodeSubmit();
-                      }
-                    }}
-                  />
-                  <button 
-                    className="ml-2 p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-                    onClick={handleZipCodeSubmit}
-                    disabled={isLoadingPharmacies}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="flex items-center mt-2">
-                  <button 
-                    className="text-xs text-blue-600 hover:text-blue-800 focus:outline-none"
-                    onClick={getUserLocation}
-                    disabled={isLoadingPharmacies}
-                  >
-                    Use my location
-                  </button>
-                  {isLoadingPharmacies && (
-                    <div className="ml-2 inline-block animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-blue-500"></div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Search Radius */}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Search Radius</label>
-                <select 
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={searchRadius}
-                  onChange={(e) => {
-                    setSearchRadius(parseInt(e.target.value));
-                    // Refetch pharmacy prices with the new radius
-                    fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, parseInt(e.target.value));
-                  }}
-                  disabled={isLoadingPharmacies}
-                >
-                  <option value="5">5 miles</option>
-                  <option value="10">10 miles</option>
-                  <option value="15">15 miles</option>
-                  <option value="20">20 miles</option>
-                  <option value="25">25 miles</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Brand</label>
+              <select 
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={selectedBrand}
+                onChange={handleBrandChange}
+                disabled={isLoading || brandVariations.length === 0}
+              >
+                {brandVariations.map((variation, index) => (
+                  <option key={`brand-${index}`} value={variation.type}>
+                    {variation.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Form</label>
+              <select 
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={selectedForm}
+                onChange={handleFormChange}
+                disabled={isLoading || availableForms.length === 0}
+              >
+                {availableForms.length > 0 ? (
+                  availableForms.map((form, index) => (
+                    <option key={`form-${index}`} value={form.form}>
+                      {form.form}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="CAPSULE">CAPSULE</option>
+                    <option value="TABLET">TABLET</option>
+                    <option value="LIQUID">LIQUID</option>
+                  </>
+                )}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Dosage</label>
+              <select 
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={selectedStrength}
+                onChange={handleStrengthChange}
+                disabled={isLoading || availableStrengths.length === 0}
+              >
+                {availableStrengths.length > 0 ? (
+                  availableStrengths.map((strength, index) => (
+                    <option key={`strength-${index}`} value={strength.strength}>
+                      {strength.strength}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="500 mg">500 mg</option>
+                    <option value="250 mg">250 mg</option>
+                    <option value="125 mg">125 mg</option>
+                  </>
+                )}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
+              <select 
+                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={selectedQuantity}
+                onChange={handleQuantityChange}
+                disabled={isLoading || availableQuantities.length === 0}
+              >
+                {availableQuantities.length > 0 ? (
+                  availableQuantities.map((qty, index) => (
+                    <option key={`qty-${index}`} value={`${qty.quantity} ${qty.uom}`}>
+                      {qty.quantity} {qty.uom}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="21 CAPSULE">21 CAPSULE</option>
+                    <option value="30 CAPSULE">30 CAPSULE</option>
+                    <option value="60 CAPSULE">60 CAPSULE</option>
+                  </>
+                )}
+              </select>
             </div>
           </motion.div>
 
@@ -1825,6 +1671,132 @@ export default function DrugPage({ params }: Props) {
               </button>
             </div>
           )}
+
+          {/* Drug Information Section */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+            className="mt-12"
+          >
+            <button className="flex items-center justify-between w-full p-4 bg-[#006142] text-white rounded-t-lg shadow-md">
+              <span className="font-medium">{drugInfo?.genericName?.toUpperCase()} DRUG INFORMATION</span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <div className="p-6 border border-gray-200 rounded-b-lg shadow-md bg-white">
+              <div className="prose max-w-none">
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Description</h3>
+                <p className="mb-4 text-gray-700">{drugInfo?.description || 'No description available.'}</p>
+                
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Side Effects</h3>
+                <p className="mb-4 text-gray-700">{drugInfo?.sideEffects || 'No side effects information available.'}</p>
+                
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Dosage</h3>
+                <p className="mb-4 text-gray-700">{drugInfo?.dosage || 'No dosage information available.'}</p>
+                
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Storage</h3>
+                <p className="mb-4 text-gray-700">{drugInfo?.storage || 'No storage information available.'}</p>
+                
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Contraindications</h3>
+                <p className="mb-4 text-gray-700">{drugInfo?.contraindications || 'No contraindication information available.'}</p>
+              </div>
+            </div>
+
+            {/* Add buttons for alternatives and comparison */}
+            <div className="mt-4 flex flex-wrap gap-4">
+              <button
+                onClick={scrollToAlternatives}
+                className="text-[#006142] hover:text-[#22A307] font-medium underline"
+              >
+                Find Alternatives
+              </button>
+              
+              <Link 
+                href={`/medications/compare?initial=${encodeURIComponent(drugInfo?.genericName || drugInfo?.brandName || '')}`}
+                className="px-4 py-2 bg-[#006142] text-white rounded-md hover:bg-[#22A307] transition-colors text-sm flex items-center shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Compare With Others
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Add the search options section back */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="bg-white rounded-xl shadow-lg p-6 mt-8 mb-8 border border-gray-100"
+          >
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Search Options</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Location */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Location</label>
+                <div className="flex items-center">
+                  <input 
+                    type="text" 
+                    className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter ZIP code"
+                    value={userLocation.zipCode}
+                    onChange={(e) => setUserLocation({ ...userLocation, zipCode: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleZipCodeSubmit();
+                      }
+                    }}
+                  />
+                  <button 
+                    className="ml-2 p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                    onClick={handleZipCodeSubmit}
+                    disabled={isLoadingPharmacies}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex items-center mt-2">
+                  <button 
+                    className="text-xs text-blue-600 hover:text-blue-800 focus:outline-none"
+                    onClick={getUserLocation}
+                    disabled={isLoadingPharmacies}
+                  >
+                    Use my location
+                  </button>
+                  {isLoadingPharmacies && (
+                    <div className="ml-2 inline-block animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-blue-500"></div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Search Radius */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Search Radius</label>
+                <select 
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={searchRadius}
+                  onChange={(e) => {
+                    setSearchRadius(parseInt(e.target.value));
+                    // Refetch pharmacy prices with the new radius
+                    fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, parseInt(e.target.value));
+                  }}
+                  disabled={isLoadingPharmacies}
+                >
+                  <option value="5">5 miles</option>
+                  <option value="10">10 miles</option>
+                  <option value="15">15 miles</option>
+                  <option value="20">20 miles</option>
+                  <option value="25">25 miles</option>
+                </select>
+              </div>
+            </div>
+          </motion.div>
         </>
       )}
     </div>
