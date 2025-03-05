@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import { toast } from 'react-hot-toast'
 import Link from 'next/link'
 
@@ -338,6 +338,180 @@ const DrugInfoDetails = ({
   );
 };
 
+// Component for location selection
+const LocationSelector = ({ 
+  onLocationSelected 
+}: { 
+  onLocationSelected: (latitude: number, longitude: number) => void 
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showZipForm, setShowZipForm] = useState(false);
+  const [zipCode, setZipCode] = useState('');
+
+  // Get browser location
+  const getBrowserLocation = () => {
+    setIsLoading(true);
+    setError(null);
+    
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser');
+      setIsLoading(false);
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setIsLoading(false);
+        onLocationSelected(position.coords.latitude, position.coords.longitude);
+      },
+      (error) => {
+        setIsLoading(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setError('User denied the request for geolocation');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setError('Location information is unavailable');
+            break;
+          case error.TIMEOUT:
+            setError('The request to get user location timed out');
+            break;
+          default:
+            setError('An unknown error occurred');
+            break;
+        }
+      }
+    );
+  };
+
+  // Get location from ZIP code
+  const getLocationFromZip = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!zipCode || zipCode.length < 5) {
+      setError('Please enter a valid ZIP code');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Using the free Zippopotam.us API to convert ZIP to lat/long
+      const response = await fetch(`https://api.zippopotam.us/us/${zipCode}`);
+      
+      if (!response.ok) {
+        throw new Error('ZIP code not found');
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.places && data.places[0]) {
+        const latitude = parseFloat(data.places[0].latitude);
+        const longitude = parseFloat(data.places[0].longitude);
+        onLocationSelected(latitude, longitude);
+      } else {
+        throw new Error('Could not find coordinates for this ZIP code');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error fetching location data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="mb-6 p-4 bg-blue-50 rounded-md border border-blue-200">
+      <h3 className="text-lg font-semibold mb-3 text-blue-800">Location Selection</h3>
+      
+      {!showZipForm ? (
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            To get accurate pricing information, we need your location. Choose how you'd like to provide it:
+          </p>
+          
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={getBrowserLocation}
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm disabled:opacity-50 flex items-center"
+            >
+              {isLoading ? (
+                <span className="mr-2">Loading...</span>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Use My Current Location
+                </>
+              )}
+            </button>
+            
+            <button
+              onClick={() => setShowZipForm(true)}
+              disabled={isLoading}
+              className="bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-md text-sm disabled:opacity-50 flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Enter ZIP Code
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <form onSubmit={getLocationFromZip} className="flex flex-wrap gap-2 items-end">
+            <div className="flex-grow">
+              <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">
+                ZIP Code
+              </label>
+              <input
+                type="text"
+                id="zipCode"
+                value={zipCode}
+                onChange={(e) => setZipCode(e.target.value.slice(0, 5))}
+                placeholder="Enter 5-digit ZIP code"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                maxLength={5}
+                pattern="[0-9]{5}"
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm disabled:opacity-50"
+              >
+                {isLoading ? 'Loading...' : 'Submit'}
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setShowZipForm(false)}
+                disabled={isLoading}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md text-sm disabled:opacity-50"
+              >
+                Back
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+      
+      {error && (
+        <div className="mt-3 p-3 bg-red-100 text-red-800 rounded-md text-sm">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function TestApiDetailsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [results, setResults] = useState<Record<string, ApiTestResult>>({})
@@ -355,6 +529,10 @@ export default function TestApiDetailsPage() {
   const [connectionTestLoading, setConnectionTestLoading] = useState(false)
   const [connectionTestResults, setConnectionTestResults] = useState<ConnectionTestResult | null>(null)
   const [connectionTestError, setConnectionTestError] = useState<string | null>(null)
+  
+  // State for location selection
+  const [locationSelected, setLocationSelected] = useState(false)
+  const [selectedLocation, setSelectedLocation] = useState<{latitude: number, longitude: number} | null>(null)
 
   // Define all API operations
   const apiOperations: Record<string, TestOperation[]> = {
@@ -1013,6 +1191,35 @@ export default function TestApiDetailsPage() {
     return ` - ${result.duration.toFixed(0)}ms`;
   };
 
+  // Handle location selection
+  const handleLocationSelected = (latitude: number, longitude: number) => {
+    setSelectedLocation({ latitude, longitude });
+    setLocationSelected(true);
+    addToLog(`Location selected: Latitude ${latitude.toFixed(4)}, Longitude ${longitude.toFixed(4)}`);
+    
+    // Update all drug pricing operations with the new location
+    const updatedFormData = { ...formData };
+    
+    // Update each operation in the drugPricing tab
+    apiOperations.drugPricing?.forEach(operation => {
+      const currentOperationData = updatedFormData[operation.id] || {};
+      
+      updatedFormData[operation.id] = {
+        ...currentOperationData,
+        latitude,
+        longitude
+      };
+    });
+    
+    setFormData(updatedFormData);
+  };
+
+  // Reset location
+  const resetLocation = () => {
+    setSelectedLocation(null);
+    setLocationSelected(false);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex justify-between items-center mb-6">
@@ -1044,7 +1251,20 @@ export default function TestApiDetailsPage() {
             className={`px-4 py-2 font-medium text-sm ${
               activeTab === 'drugPricing' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'
             }`}
-            onClick={() => setActiveTab('drugPricing')}
+            onClick={() => {
+              setActiveTab('drugPricing');
+              // If location hasn't been selected yet, reset any previous results
+              if (!locationSelected) {
+                const drugPricingOperationIds = apiOperations.drugPricing?.map(op => op.id) || [];
+                setResults(prev => {
+                  const newResults = { ...prev };
+                  drugPricingOperationIds.forEach(id => {
+                    delete newResults[id];
+                  });
+                  return newResults;
+                });
+              }
+            }}
           >
             Drug Pricing
           </button>
@@ -1289,6 +1509,47 @@ export default function TestApiDetailsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
+          {/* Location Selector for Drug Pricing Tab */}
+          {activeTab === 'drugPricing' && (
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-gray-50 p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800">Location Selection</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Select your location to get accurate drug pricing information
+                    </p>
+                  </div>
+                  {locationSelected && (
+                    <button
+                      onClick={resetLocation}
+                      className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md text-sm"
+                    >
+                      Reset Location
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              <div className="p-4 border-t border-gray-200">
+                {locationSelected ? (
+                  <div className="bg-green-50 p-3 rounded-md">
+                    <p className="text-green-700 font-medium">Location Selected</p>
+                    <p className="text-sm text-green-600">
+                      Latitude: {selectedLocation?.latitude.toFixed(4)}, 
+                      Longitude: {selectedLocation?.longitude.toFixed(4)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      All drug pricing operations will use this location
+                    </p>
+                  </div>
+                ) : (
+                  <LocationSelector onLocationSelected={handleLocationSelected} />
+                )}
+              </div>
+            </div>
+          )}
+          
           {apiOperations[activeTab]?.map(operation => (
             <div key={operation.id} className="border border-gray-200 rounded-lg overflow-hidden">
               <div className="bg-gray-50 p-4">
@@ -1302,7 +1563,7 @@ export default function TestApiDetailsPage() {
                   </div>
                   <button
                     onClick={() => runTest(operation)}
-                    disabled={isLoading}
+                    disabled={isLoading || (activeTab === 'drugPricing' && !locationSelected)}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm disabled:opacity-50"
                   >
                     {isLoading ? 'Running...' : 'Run Test'}
