@@ -8,7 +8,6 @@ import PharmacyMap from '@/components/maps/PharmacyMap'
 import Link from 'next/link'
 import Image from 'next/image'
 import CouponModal from '@/components/CouponModal'
-import MedicationAlternatives from '@/components/medications/alternatives/MedicationAlternatives'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 
@@ -947,20 +946,10 @@ export default function DrugPage({ params }: Props) {
     setIsCouponModalOpen(true)
   }
 
-  // Add a function to scroll to the alternatives section
-  const scrollToAlternatives = () => {
-    const alternativesSection = document.getElementById('alternatives-section');
-    if (alternativesSection) {
-      alternativesSection.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   // Handle search radius change from the dropdown
   const handleSearchRadiusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    const radius = parseInt(value.split(' ')[0], 10);
-    setCurrentPage(1); // Reset to first page when radius changes
-    handleRadiusChange(radius);
+    setSearchRadius(parseInt(value, 10));
   };
 
   // Handle sort change
@@ -1490,42 +1479,6 @@ export default function DrugPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Add an id to the alternatives section */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 1.3 }}
-            id="alternatives-section" 
-            className="mt-12 mb-4 flex justify-between items-center"
-          >
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-[#006142]" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-              </svg>
-              Alternative Medications
-            </h2>
-            <Link 
-              href={`/medications/compare?initial=${encodeURIComponent(drugInfo?.genericName || drugInfo?.brandName || '')}`}
-              className="px-4 py-2 bg-[#006142] text-white rounded-md hover:bg-[#22A307] transition-colors text-sm flex items-center shadow-sm"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-              Compare With Others
-            </Link>
-          </motion.div>
-
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 1.4 }}
-          >
-            <MedicationAlternatives 
-              medicationId={drugInfo?.gsn?.toString() || ''}
-              medicationName={drugInfo?.genericName || drugInfo?.brandName || ''}
-            />
-          </motion.div>
-
           {/* Coupon Modal */}
           {isCouponModalOpen && selectedPharmacy && (
             <CouponModal
@@ -1585,13 +1538,6 @@ export default function DrugPage({ params }: Props) {
 
             {/* Add buttons for alternatives and comparison */}
             <div className="mt-4 flex flex-wrap gap-4">
-              <button
-                onClick={scrollToAlternatives}
-                className="text-[#006142] hover:text-[#22A307] font-medium underline"
-              >
-                Find Alternatives
-              </button>
-              
               <Link 
                 href={`/medications/compare?initial=${encodeURIComponent(drugInfo?.genericName || drugInfo?.brandName || '')}`}
                 className="px-4 py-2 bg-[#006142] text-white rounded-md hover:bg-[#22A307] transition-colors text-sm flex items-center shadow-sm"
@@ -1660,11 +1606,7 @@ export default function DrugPage({ params }: Props) {
                 <select 
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   value={searchRadius}
-                  onChange={(e) => {
-                    setSearchRadius(parseInt(e.target.value));
-                    // Refetch pharmacy prices with the new radius
-                    fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, parseInt(e.target.value));
-                  }}
+                  onChange={handleSearchRadiusChange}
                   disabled={isLoadingPharmacies}
                 >
                   <option value="5">5 miles</option>
