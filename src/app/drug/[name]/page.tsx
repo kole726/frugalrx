@@ -527,7 +527,7 @@ export default function DrugPage({ params }: Props) {
       }
       
       // If we have a GSN from pricing or URL, use it to get detailed drug info
-      const gsnToUse = gsnFromPricing || (gsn ? parseInt(gsn, 10) : null)
+      const gsnToUse = gsn ? parseInt(gsn, 10) : gsnFromPricing
       
       if (gsnToUse) {
         try {
@@ -555,112 +555,76 @@ export default function DrugPage({ params }: Props) {
           // Set drug details from detailed info
           setDrugDetails(detailedInfo)
           
-          // Create brand variations if we have both brand and generic names
+          // Create brand variations
+          let variations = []
+          
+          // Add the current brand/generic as options
           if (brandName && genericName && brandName !== genericName) {
-            // For Trintellix, hardcode the values for testing
-            if (drugName.toLowerCase() === 'trintellix') {
-              const variations = [
-                {
-                  name: 'TRINTELLIX (Brand)',
-                  type: 'brand',
-                  gsn: gsnToUse
-                },
-                {
-                  name: 'VORTIOXETINE HYDROBROMIDE (Generic)',
-                  type: 'generic',
-                  gsn: gsnToUse
-                }
-              ]
-              
-              // Check if there are alternate drugs in the pricing data
-              if ((pricingData as any).alternateDrugs && Array.isArray((pricingData as any).alternateDrugs)) {
-                console.log('Found alternate drugs:', (pricingData as any).alternateDrugs);
-                
-                // Add alternate drugs to variations
-                (pricingData as any).alternateDrugs.forEach((altDrug: any, index: number) => {
-                  if (altDrug.medName || altDrug.genericName) {
-                    variations.push({
-                      name: `${altDrug.medName || altDrug.genericName} (Alternative)`,
-                      type: `alternate-${index}`,
-                      gsn: altDrug.gsn || gsnToUse
-                    });
-                  }
-                });
+            variations.push(
+              {
+                name: `${brandName} (Brand)`,
+                type: 'brand',
+                gsn: gsnToUse
+              },
+              {
+                name: `${genericName} (Generic)`,
+                type: 'generic',
+                gsn: gsnToUse
               }
-              
-              console.log('Setting brand variations for Trintellix with alternates:', variations)
-              setBrandVariations(variations)
-              
-              // Set selected brand based on the drug name
-              const isBrand = drugName.toLowerCase() === 'trintellix'
-              setSelectedBrand(isBrand ? 'brand' : 'generic')
-            } else {
-              const variations = [
-                {
-                  name: `${brandName} (Brand)`,
-                  type: 'brand',
-                  gsn: gsnToUse
-                },
-                {
-                  name: `${genericName} (Generic)`,
-                  type: 'generic',
-                  gsn: gsnToUse
-                }
-              ]
-              
-              // Check if there are alternate drugs in the pricing data
-              if ((pricingData as any).alternateDrugs && Array.isArray((pricingData as any).alternateDrugs)) {
-                console.log('Found alternate drugs:', (pricingData as any).alternateDrugs);
-                
-                // Add alternate drugs to variations
-                (pricingData as any).alternateDrugs.forEach((altDrug: any, index: number) => {
-                  if (altDrug.medName || altDrug.genericName) {
-                    variations.push({
-                      name: `${altDrug.medName || altDrug.genericName} (Alternative)`,
-                      type: `alternate-${index}`,
-                      gsn: altDrug.gsn || gsnToUse
-                    });
-                  }
-                });
-              }
-              
-              console.log('Setting brand variations with alternates:', variations)
-              setBrandVariations(variations)
-              
-              // Set selected brand based on the drug name
-              const isBrand = drugName.toLowerCase() === brandName.toLowerCase()
-              setSelectedBrand(isBrand ? 'brand' : 'generic')
-            }
+            )
           } else {
             // If we only have one name, create a single variation
             const name = brandName || genericName || drugName
-            const variations = [
-              {
-                name: name,
-                type: 'brand',
-                gsn: gsnToUse
+            variations.push({
+              name: name,
+              type: 'brand',
+              gsn: gsnToUse
+            })
+          }
+          
+          // Check if there are alternate drugs in the pricing data
+          if ((pricingData as any).alternateDrugs && Array.isArray((pricingData as any).alternateDrugs)) {
+            console.log('Found alternate drugs:', (pricingData as any).alternateDrugs);
+            
+            // Add alternate drugs to variations
+            (pricingData as any).alternateDrugs.forEach((altDrug: any, index: number) => {
+              if (altDrug.medName || altDrug.genericName) {
+                variations.push({
+                  name: `${altDrug.medName || altDrug.genericName} (Alternative)`,
+                  type: `alternate-${index}`,
+                  gsn: altDrug.gsn || gsnToUse
+                });
               }
-            ]
+            });
+          }
+          
+          console.log('Setting brand variations:', variations)
+          setBrandVariations(variations)
+          
+          // Set selected brand based on the current GSN and drug name
+          // If the current GSN matches the GSN in the URL, select the appropriate brand
+          if (gsn && parseInt(gsn, 10) === gsnToUse) {
+            // Find if there's a brand variation that matches the current drug name
+            const matchingVariation = variations.find(v => 
+              v.name.toLowerCase().includes(drugName.toLowerCase()) || 
+              (drugName.toLowerCase() === brandName.toLowerCase() && v.type === 'brand') ||
+              (drugName.toLowerCase() === genericName.toLowerCase() && v.type === 'generic')
+            )
             
-            // Check if there are alternate drugs in the pricing data
-            if ((pricingData as any).alternateDrugs && Array.isArray((pricingData as any).alternateDrugs)) {
-              console.log('Found alternate drugs:', (pricingData as any).alternateDrugs);
-              
-              // Add alternate drugs to variations
-              (pricingData as any).alternateDrugs.forEach((altDrug: any, index: number) => {
-                if (altDrug.medName || altDrug.genericName) {
-                  variations.push({
-                    name: `${altDrug.medName || altDrug.genericName} (Alternative)`,
-                    type: `alternate-${index}`,
-                    gsn: altDrug.gsn || gsnToUse
-                  });
-                }
-              });
+            if (matchingVariation) {
+              console.log(`Setting selected brand to ${matchingVariation.type} based on drug name match`)
+              setSelectedBrand(matchingVariation.type)
+            } else {
+              // Default to brand if it's a brand name, generic otherwise
+              const isBrand = drugName.toLowerCase() === brandName.toLowerCase()
+              console.log(`Setting selected brand to ${isBrand ? 'brand' : 'generic'} based on name comparison`)
+              setSelectedBrand(isBrand ? 'brand' : 'generic')
             }
-            
-            console.log('Setting single brand variation with alternates:', variations)
-            setBrandVariations(variations)
-            setSelectedBrand('brand')
+          } else {
+            // If GSN doesn't match or no GSN in URL, default to brand for brand names, generic otherwise
+            const isBrand = drugName.toLowerCase() === brandName.toLowerCase()
+            console.log(`Setting selected brand to ${isBrand ? 'brand' : 'generic'} (default)`)
+            setSelectedBrand(isBrand ? 'brand' : 'generic')
           }
           
           // Extract filter options from detailed info
@@ -670,17 +634,25 @@ export default function DrugPage({ params }: Props) {
               console.log(`Found ${detailedInfo.forms.length} forms:`, detailedInfo.forms)
               setAvailableForms(detailedInfo.forms)
               
-              // Check if the current form exists in the new forms list
-              const currentFormExists = detailedInfo.forms.some((form: DrugForm) => form.form === selectedForm);
+              // Find the form that matches the current GSN
+              const matchingForm = detailedInfo.forms.find((form: DrugForm) => form.gsn === gsnToUse)
               
-              if (currentFormExists) {
-                // Keep the current form if it exists in the new list
-                console.log(`Keeping current form: ${selectedForm}`);
+              if (matchingForm) {
+                console.log(`Setting selected form to ${matchingForm.form} based on GSN match`)
+                setSelectedForm(matchingForm.form)
               } else {
-                // Set default selected form if current form doesn't exist
-                const selectedFormObj = detailedInfo.forms[0]
-                console.log(`Updating form from ${selectedForm} to ${selectedFormObj.form}`);
-                setSelectedForm(selectedFormObj.form)
+                // If no matching form, check if current form exists in the new list
+                const currentFormExists = detailedInfo.forms.some((form: DrugForm) => form.form === selectedForm)
+                
+                if (currentFormExists) {
+                  // Keep the current form if it exists in the new list
+                  console.log(`Keeping current form: ${selectedForm}`)
+                } else {
+                  // Set to the first form if current form doesn't exist
+                  const firstForm = detailedInfo.forms[0]
+                  console.log(`Setting selected form to ${firstForm.form} (first available)`)
+                  setSelectedForm(firstForm.form)
+                }
               }
             } else {
               console.log('No forms found in detailed info, using defaults')
@@ -698,17 +670,25 @@ export default function DrugPage({ params }: Props) {
               console.log(`Found ${detailedInfo.strengths.length} strengths:`, detailedInfo.strengths)
               setAvailableStrengths(detailedInfo.strengths)
               
-              // Check if the current strength exists in the new strengths list
-              const currentStrengthExists = detailedInfo.strengths.some((strength: DrugStrength) => strength.strength === selectedStrength);
+              // Find the strength that matches the current GSN
+              const matchingStrength = detailedInfo.strengths.find((strength: DrugStrength) => strength.gsn === gsnToUse)
               
-              if (currentStrengthExists) {
-                // Keep the current strength if it exists in the new list
-                console.log(`Keeping current strength: ${selectedStrength}`);
+              if (matchingStrength) {
+                console.log(`Setting selected strength to ${matchingStrength.strength} based on GSN match`)
+                setSelectedStrength(matchingStrength.strength)
               } else {
-                // Set default selected strength if current strength doesn't exist
-                const selectedStrengthObj = detailedInfo.strengths[0]
-                console.log(`Updating strength from ${selectedStrength} to ${selectedStrengthObj.strength}`);
-                setSelectedStrength(selectedStrengthObj.strength)
+                // If no matching strength, check if current strength exists in the new list
+                const currentStrengthExists = detailedInfo.strengths.some((strength: DrugStrength) => strength.strength === selectedStrength)
+                
+                if (currentStrengthExists) {
+                  // Keep the current strength if it exists in the new list
+                  console.log(`Keeping current strength: ${selectedStrength}`)
+                } else {
+                  // Set to the first strength if current strength doesn't exist
+                  const firstStrength = detailedInfo.strengths[0]
+                  console.log(`Setting selected strength to ${firstStrength.strength} (first available)`)
+                  setSelectedStrength(firstStrength.strength)
+                }
               }
             } else {
               console.log('No strengths found in detailed info, using defaults')
@@ -726,25 +706,38 @@ export default function DrugPage({ params }: Props) {
               console.log(`Found ${detailedInfo.quantities.length} quantities:`, detailedInfo.quantities)
               setAvailableQuantities(detailedInfo.quantities)
               
-              // Get the current quantity value and unit
-              const currentQuantityParts = selectedQuantity.split(' ');
-              const currentQuantityValue = parseInt(currentQuantityParts[0], 10);
-              const currentQuantityUnit = currentQuantityParts.slice(1).join(' ');
+              // Find quantities that match the current GSN
+              const matchingQuantities = detailedInfo.quantities.filter((qty: DrugQuantity) => 
+                detailedInfo.forms.some((form: DrugForm) => form.gsn === gsnToUse && form.form === qty.uom)
+              )
               
-              // Check if the current quantity exists in the new quantities list
-              const currentQuantityExists = detailedInfo.quantities.some(
-                (qty: DrugQuantity) => qty.quantity === currentQuantityValue && qty.uom === currentQuantityUnit
-              );
-              
-              if (currentQuantityExists) {
-                // Keep the current quantity if it exists in the new list
-                console.log(`Keeping current quantity: ${selectedQuantity}`);
-              } else {
-                // Set default selected quantity if current quantity doesn't exist
-                const selectedQuantityObj = detailedInfo.quantities[0]
-                const newQuantity = `${selectedQuantityObj.quantity} ${selectedQuantityObj.uom}`;
-                console.log(`Updating quantity from ${selectedQuantity} to ${newQuantity}`);
+              if (matchingQuantities.length > 0) {
+                // Use the first matching quantity
+                const firstMatchingQty = matchingQuantities[0]
+                const newQuantity = `${firstMatchingQty.quantity} ${firstMatchingQty.uom}`
+                console.log(`Setting selected quantity to ${newQuantity} based on form match`)
                 setSelectedQuantity(newQuantity)
+              } else {
+                // Get the current quantity value and unit
+                const currentQuantityParts = selectedQuantity.split(' ')
+                const currentQuantityValue = parseInt(currentQuantityParts[0], 10)
+                const currentQuantityUnit = currentQuantityParts.slice(1).join(' ')
+                
+                // Check if the current quantity exists in the new quantities list
+                const currentQuantityExists = detailedInfo.quantities.some(
+                  (qty: DrugQuantity) => qty.quantity === currentQuantityValue && qty.uom === currentQuantityUnit
+                )
+                
+                if (currentQuantityExists) {
+                  // Keep the current quantity if it exists in the new list
+                  console.log(`Keeping current quantity: ${selectedQuantity}`)
+                } else {
+                  // Set to the first quantity if current quantity doesn't exist
+                  const firstQuantity = detailedInfo.quantities[0]
+                  const newQuantity = `${firstQuantity.quantity} ${firstQuantity.uom}`
+                  console.log(`Setting selected quantity to ${newQuantity} (first available)`)
+                  setSelectedQuantity(newQuantity)
+                }
               }
             } else {
               console.log('No quantities found in detailed info, using defaults')
@@ -1004,6 +997,47 @@ export default function DrugPage({ params }: Props) {
     }
   }, [isLoading, isLoadingPharmacies, pharmacyPrices.length]);
 
+  // Handle brand change
+  const handleBrandChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newBrand = e.target.value;
+    setSelectedBrand(newBrand);
+    
+    // If we have brand variations, find the matching one and update GSN
+    if (brandVariations.length > 0) {
+      const selectedVariation = brandVariations.find(
+        variation => variation.type === newBrand
+      );
+      
+      if (selectedVariation && selectedVariation.gsn) {
+        console.log(`Brand changed to ${selectedVariation.name}, GSN: ${selectedVariation.gsn}`);
+        
+        // Update the URL with the new GSN
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set('gsn', selectedVariation.gsn.toString());
+          
+          // If this is an alternate drug, we might need to update the drug name in the URL
+          if (newBrand.startsWith('alternate-') && selectedVariation.name) {
+            // Extract the drug name from the variation name (remove the " (Alternative)" part)
+            const drugName = selectedVariation.name.replace(/ \(Alternative\)$/, '');
+            
+            // Update the URL path to reflect the new drug name
+            const pathParts = window.location.pathname.split('/');
+            pathParts[pathParts.length - 1] = encodeURIComponent(drugName);
+            url.pathname = pathParts.join('/');
+            
+            console.log(`Updating URL for alternate drug: ${drugName}, GSN: ${selectedVariation.gsn}`);
+          }
+          
+          window.history.replaceState({}, '', url.toString());
+        }
+        
+        // Refetch drug info with the new GSN
+        await fetchDrugInfo();
+      }
+    }
+  };
+
   // Handle form change
   const handleFormChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newForm = e.target.value;
@@ -1051,57 +1085,30 @@ export default function DrugPage({ params }: Props) {
   };
   
   // Handle quantity change
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleQuantityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newQuantity = e.target.value;
     console.log(`Quantity changed to ${newQuantity}`);
     setSelectedQuantity(newQuantity);
     
-    // Refetch pharmacy prices with the new quantity
-    const quantityValue = parseInt(newQuantity.split(' ')[0], 10);
+    // Extract quantity value and unit
+    const quantityParts = newQuantity.split(' ');
+    const quantityValue = parseInt(quantityParts[0], 10);
+    
     if (!isNaN(quantityValue)) {
-      fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+      // Update the URL with the new quantity
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('quantity', quantityValue.toString());
+        window.history.replaceState({}, '', url.toString());
+      }
+      
+      // Refetch drug info with the new quantity
+      await fetchDrugInfo();
+    } else {
+      console.error(`Invalid quantity value: ${newQuantity}`);
     }
   };
   
-  // Handle brand change
-  const handleBrandChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newBrand = e.target.value;
-    setSelectedBrand(newBrand);
-    
-    // If we have brand variations, find the matching one and update GSN
-    if (brandVariations.length > 0) {
-      const selectedVariation = brandVariations.find(
-        variation => variation.type === newBrand
-      );
-      
-      if (selectedVariation && selectedVariation.gsn) {
-        // Update the URL with the new GSN
-        if (typeof window !== 'undefined') {
-          const url = new URL(window.location.href);
-          url.searchParams.set('gsn', selectedVariation.gsn.toString());
-          
-          // If this is an alternate drug, we might need to update the drug name in the URL
-          if (newBrand.startsWith('alternate-') && selectedVariation.name) {
-            // Extract the drug name from the variation name (remove the " (Alternative)" part)
-            const drugName = selectedVariation.name.replace(/ \(Alternative\)$/, '');
-            
-            // Update the URL path to reflect the new drug name
-            const pathParts = window.location.pathname.split('/');
-            pathParts[pathParts.length - 1] = encodeURIComponent(drugName);
-            url.pathname = pathParts.join('/');
-            
-            console.log(`Updating URL for alternate drug: ${drugName}, GSN: ${selectedVariation.gsn}`);
-          }
-          
-          window.history.replaceState({}, '', url.toString());
-        }
-        
-        // Refetch drug info with the new GSN
-        await fetchDrugInfo();
-      }
-    }
-  };
-
   // Handle ZIP code submission
   const handleZipCodeSubmit = async () => {
     if (!userLocation.zipCode || userLocation.zipCode.length < 5) {
