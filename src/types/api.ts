@@ -57,8 +57,10 @@ export interface PharmacyPrice {
 
 export interface DrugVariation {
   name: string;
-  type: 'brand' | 'generic';
+  type: 'brand' | 'generic' | string;
   gsn?: number;
+  selected?: boolean;
+  isBrand?: boolean;
 }
 
 export interface DrugForm {
