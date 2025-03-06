@@ -49,6 +49,16 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
         cache: 'no-store'
       });
       
+      // Check if we're getting demo data
+      const isUsingDemoData = response.headers.get('X-Data-Source') === 'mock';
+      const warningMessage = response.headers.get('X-Warning');
+      
+      if (isUsingDemoData) {
+        console.warn('Using demo data:', warningMessage);
+        // Set a warning message but don't block the results
+        setError('Note: Showing demo data. Some medications may not be available.');
+      }
+      
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Error fetching suggestions: ${response.status}`, errorText);
@@ -63,46 +73,19 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
         throw new Error('Invalid response format from API');
       }
       
-      if (data.length === 0) {
-        console.log('No results found for query:', query);
-        setError('No medications found matching your search. Please try a different search term.');
-        setSuggestions([]);
-        return;
-      }
-      
-      // Process the response from the API
-      const formattedResults = data.map((item: any) => {
-        const drugNameOnlyRegex = /\(.*?\)/;
-        const label = item.label || '';
-        const value = item.value || '';
-        
-        // Extract GSN if present in the label
-        const gsnMatch = typeof label === 'string' ? label.match(/\(GSN: (\d+)\)/i) : null;
-        const gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
-        
-        // Use the value as the drug name (it already has parenthetical info removed)
-        const cleanName = value;
-        
-        return {
-          drugName: cleanName,
-          gsn
-        };
-      });
-      
-      // Format drug names with proper capitalization (first letter uppercase, rest lowercase)
-      const capitalizedResults = formattedResults.map((result: { drugName: string; gsn?: number }) => ({
-        ...result,
-        drugName: result.drugName.charAt(0).toUpperCase() + result.drugName.slice(1).toLowerCase()
+      // Format the suggestions
+      const formattedSuggestions = data.map(item => ({
+        drugName: item.label || item.value,
+        gsn: item.gsn
       }));
       
-      console.log('Formatted search results:', capitalizedResults);
-      setSuggestions(capitalizedResults);
+      setSuggestions(formattedSuggestions);
+      setIsLoading(false);
     } catch (error) {
-      console.error('Error fetching suggestions:', error)
-      setError('Failed to fetch medications. Please try again later.')
+      console.error('Error fetching suggestions:', error);
+      setError('Unable to fetch medications. Please try again later.');
       setSuggestions([]);
-    } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }, []);
 

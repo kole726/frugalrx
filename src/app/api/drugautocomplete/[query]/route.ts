@@ -184,18 +184,30 @@ export async function GET(
         console.error('Error connecting to America\'s Pharmacy API:', apiError);
         console.error('Error stack:', apiError.stack);
         
-        // In production, if we can't get real data, we should still try to return something
-        if (isProduction && process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
-          console.log('Production environment with fallback enabled - using mock data as fallback');
-        } else if (isProduction) {
-          console.error('Production API failure with no fallback - returning error');
-          return NextResponse.json(
-            { error: 'Failed to retrieve drug suggestions. Please try again later.' },
-            { 
-              status: 503,
-              headers: corsHeaders
+        // TEMPORARY: Always fall back to mock data in production with a warning
+        // This is a temporary fix until we resolve the API connectivity issues
+        if (isProduction) {
+          console.log('TEMPORARY FIX: Using mock data in production with warning message');
+          
+          // Get mock results
+          const mockResults = getMockDrugSearchResults(query);
+          
+          // Format the results to match America's Pharmacy format
+          const formattedMockResults = mockResults.map(drug => ({
+            label: drug.drugName + ' (DEMO DATA)',
+            value: drug.drugName.replace(/\s*\(.*?\)$/, '')
+          }));
+          
+          console.log(`API Drugautocomplete: Returning ${formattedMockResults.length} mock results with warning for "${query}"`);
+          
+          // Return the formatted results with a 200 status but include a warning header
+          return NextResponse.json(formattedMockResults, { 
+            headers: {
+              ...corsHeaders,
+              'X-Data-Source': 'mock',
+              'X-Warning': 'Using demo data due to API connectivity issues'
             }
-          );
+          });
         }
       }
     } else {
