@@ -62,15 +62,20 @@ export async function POST(request: Request) {
       
       console.log('Successfully obtained authentication token');
       
-      // Prepare the API request
-      const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
-      const baseUrl = apiUrl.replace(/\/+$/, '');
+      // Prepare the API URLs
+      const americasPharmacyApiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
+      const americasPharmacyBaseUrl = americasPharmacyApiUrl.replace(/\/+$/, '');
+      
+      // Get the base URL for our own API calls
+      const ourApiBaseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
       
       // First, try to get the GSN for the drug name using the dedicated endpoint
       console.log(`Attempting to find GSN for drug name: "${drugName}" using GSN endpoint`);
       
-      // Call the GSN lookup endpoint
-      const gsnEndpoint = `/api/drugs/gsn/${encodeURIComponent(drugName)}`;
+      // Call the GSN lookup endpoint with absolute URL
+      const gsnEndpoint = `${ourApiBaseUrl}/api/drugs/gsn/${encodeURIComponent(drugName)}`;
       console.log(`Calling GSN lookup endpoint: ${gsnEndpoint}`);
       
       const gsnResponse = await fetch(gsnEndpoint, {
@@ -100,13 +105,13 @@ export async function POST(request: Request) {
         console.log(`Using GSN ${drugGsn} for drug "${drugName}" to get prices`);
         
         // Check if baseUrl already includes /pricing/v1 to avoid duplication
-        const baseUrlHasPath = baseUrl.includes('/pricing/v1');
+        const baseUrlHasPath = americasPharmacyBaseUrl.includes('/pricing/v1');
         
         // Construct the endpoint path carefully to avoid duplication
         const endpoint = baseUrlHasPath ? '/drugprices/byGSN' : '/pricing/v1/drugprices/byGSN';
         
-        console.log(`Using America's Pharmacy API with GSN: ${baseUrl}${endpoint}`);
-        console.log(`Full API URL: ${baseUrl}${endpoint}`);
+        console.log(`Using America's Pharmacy API with GSN: ${americasPharmacyBaseUrl}${endpoint}`);
+        console.log(`Full API URL: ${americasPharmacyBaseUrl}${endpoint}`);
         
         // Prepare the request body for GSN request
         const gsnRequestBody: any = {
@@ -127,7 +132,7 @@ export async function POST(request: Request) {
         console.log('GSN Request body:', gsnRequestBody);
         
         // Make the API request with GSN
-        const gsnResponse = await fetch(`${baseUrl}${endpoint}`, {
+        const gsnResponse = await fetch(`${americasPharmacyBaseUrl}${endpoint}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -161,13 +166,13 @@ export async function POST(request: Request) {
       console.log(`Using drug name "${drugName}" to get prices`);
       
       // Check if baseUrl already includes /pricing/v1 to avoid duplication
-      const baseUrlHasPath = baseUrl.includes('/pricing/v1');
+      const baseUrlHasPath = americasPharmacyBaseUrl.includes('/pricing/v1');
       
       // Construct the endpoint path carefully to avoid duplication
       const endpoint = baseUrlHasPath ? '/drugprices/byName' : '/pricing/v1/drugprices/byName';
       
-      console.log(`Using America's Pharmacy API: ${baseUrl}${endpoint}`);
-      console.log(`Full API URL: ${baseUrl}${endpoint}`);
+      console.log(`Using America's Pharmacy API: ${americasPharmacyBaseUrl}${endpoint}`);
+      console.log(`Full API URL: ${americasPharmacyBaseUrl}${endpoint}`);
       
       // Prepare the request body
       const requestBody: DrugPriceRequestBody = {
@@ -188,7 +193,7 @@ export async function POST(request: Request) {
       console.log('Request body:', requestBody);
       
       // Make the API request
-      const response = await fetch(`${baseUrl}${endpoint}`, {
+      const response = await fetch(`${americasPharmacyBaseUrl}${endpoint}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
