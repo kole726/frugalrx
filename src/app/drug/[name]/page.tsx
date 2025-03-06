@@ -430,7 +430,7 @@ export default function DrugPage({ params }: Props) {
           return {
             name: pharmacy.name || 'Unknown Pharmacy',
             price: parseFloat(price.price) || 0,
-            distance: `${pharmacy.distance?.toFixed(1) || '0.0'} miles`,
+            distance: `${typeof pharmacy.distance === 'number' ? pharmacy.distance.toFixed(1) : '0.0'} miles`,
             address: pharmacy.streetAddress || '',
             city: pharmacy.city || '',
             state: pharmacy.state || '',
@@ -2051,7 +2051,11 @@ export default function DrugPage({ params }: Props) {
                                 Get Coupon
                               </button>
                               <div className="bg-emerald-50 px-3 py-1 rounded-lg">
-                                <p className="text-xl font-bold text-emerald-600">${pharmacy.price.toFixed(2)}</p>
+                                <p className="text-xl font-bold text-emerald-600">
+                                  ${typeof pharmacy.price === 'number' 
+                                    ? pharmacy.price.toFixed(2) 
+                                    : '0.00'}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -2172,7 +2176,7 @@ export default function DrugPage({ params }: Props) {
               onClose={() => setIsCouponModalOpen(false)}
               drugName={drugInfo?.brandName || drugInfo?.genericName || 'Medication'}
               pharmacy={selectedPharmacy}
-              price={selectedPharmacy.price ? selectedPharmacy.price.toFixed(2) : undefined}
+              price={typeof selectedPharmacy.price === 'number' ? selectedPharmacy.price.toFixed(2) : undefined}
             />
           )}
 
