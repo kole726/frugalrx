@@ -1189,10 +1189,10 @@ export default function DrugPage({ params }: Props) {
         variation => variation.type === newBrand
       );
       
-      if (selectedVariation && selectedVariation.gsn) {
-        console.log(`Brand changed to ${selectedVariation.name}, GSN: ${selectedVariation.gsn}`);
+      if (selectedVariation) {
+        console.log(`Brand changed to ${selectedVariation.name}, GSN: ${selectedVariation.gsn || 'not available'}`);
         
-        // Store the selected brand name to use after fetchDrugInfo completes
+        // Store the selected brand name to use after API calls complete
         const selectedBrandName = selectedVariation.name;
         console.log(`Storing selected brand name: ${selectedBrandName}`);
         
@@ -1203,16 +1203,16 @@ export default function DrugPage({ params }: Props) {
         // Update page title to match selected brand
         setDisplayedDrugName(selectedBrandName);
         
-        // Update the URL with the new GSN
-        if (typeof window !== 'undefined') {
+        // Extract the drug name without the (Brand) or (Generic) suffix
+        const drugName = selectedBrandName.replace(/ \((Brand|Generic)\)$/, '');
+        
+        // Update the URL with the new GSN if available
+        if (selectedVariation.gsn && typeof window !== 'undefined') {
           const url = new URL(window.location.href);
           url.searchParams.set('gsn', selectedVariation.gsn.toString());
           
           // If this is an alternate drug, we might need to update the drug name in the URL
           if (newBrand.startsWith('alternate-') && selectedVariation.name) {
-            // Extract the drug name from the variation name (remove the suffix part)
-            const drugName = selectedVariation.name.replace(/ \((Brand|Generic)\)$/, '');
-            
             // Update the URL path to reflect the new drug name
             const pathParts = window.location.pathname.split('/');
             pathParts[pathParts.length - 1] = encodeURIComponent(drugName);
@@ -1237,26 +1237,162 @@ export default function DrugPage({ params }: Props) {
         setSelectedStrength('');
         setSelectedQuantity('');
         
-        // Refetch drug info with the new GSN
-        // This will update all dropdowns (form, strength, quantity) based on the new GSN
-        await fetchDrugInfo();
+        try {
+          // Call getDrugPrices to get forms for this brand
+          console.log(`Fetching drug prices for brand: ${drugName}`);
+          setIsLoading(true);
+          
+          const pricingData = await getDrugPrices({
+            drugName: drugName,
+            latitude: userLocation.latitude,
+            longitude: userLocation.longitude,
+            radius: searchRadius,
+            quantity: 30, // Default quantity
+            customizedQuantity: true
+          });
+          
+          console.log('Drug pricing data for brand:', pricingData);
+          
+          // Extract GSN from pricing data if not already available
+          if (!selectedVariation.gsn) {
+            const gsnFromPricing = (pricingData as any).drug?.gsn || (pricingData as any).gsn;
+            if (gsnFromPricing) {
+              console.log(`Found GSN from pricing data: ${gsnFromPricing}`);
+              
+              // Update the URL with the new GSN
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href);
+                url.searchParams.set('gsn', gsnFromPricing.toString());
+                window.history.replaceState({}, '', url.toString());
+              }
+            }
+          }
+          
+          // Update pharmacy prices from pricing data
+          if ((pricingData as any).pharmacyPrices && (pricingData as any).pharmacyPrices.length > 0) {
+            console.log(`Found ${(pricingData as any).pharmacyPrices.length} pharmacy prices`);
+            setPharmacyPrices((pricingData as any).pharmacyPrices);
+          } else if (pricingData.pharmacies && pricingData.pharmacies.length > 0) {
+            console.log(`Found ${pricingData.pharmacies.length} pharmacies`);
+            setPharmacyPrices(pricingData.pharmacies);
+          }
+          
+          // Extract forms from pricing data
+          let forms: DrugForm[] = [];
+          
+          if (pricingData.forms && Array.isArray(pricingData.forms)) {
+            console.log(`Found ${pricingData.forms.length} forms in pricing data:`, pricingData.forms);
+            forms = pricingData.forms as DrugForm[];
+          } else if ((pricingData as any).drug?.form) {
+            console.log(`Found form in drug data: ${(pricingData as any).drug.form}`);
+            forms = [{ 
+              form: (pricingData as any).drug.form, 
+              gsn: (pricingData as any).drug?.gsn || selectedVariation.gsn,
+              selected: true 
+            }];
+          }
+          
+          // If we have forms, update the form dropdown
+          if (forms.length > 0) {
+            setAvailableForms(forms);
+            
+            // Find the form that is marked as selected in the API
+            const selectedForm = forms.find((form: DrugForm) => form.selected === true);
+            if (selectedForm) {
+              console.log(`Using API-selected form: ${selectedForm.form}`);
+              setSelectedForm(selectedForm.form);
+              
+              // Now fetch strengths for this form
+              await handleFormChangeInternal(selectedForm.form, forms);
+            } else {
+              // If no form is marked as selected, use the first form
+              console.log(`No selected form found, using first form: ${forms[0].form}`);
+              setSelectedForm(forms[0].form);
+              
+              // Now fetch strengths for this form
+              await handleFormChangeInternal(forms[0].form, forms);
+            }
+          } else {
+            // If no forms found, fetch detailed drug info to get forms
+            console.log('No forms found in pricing data, fetching detailed drug info');
+            await fetchDrugInfo();
+          }
+          
+          setIsLoading(false);
+        } catch (error) {
+          console.error('Error fetching drug prices for brand:', error);
+          setError('Error fetching drug information');
+          setIsLoading(false);
+          
+          // If there was an error, fall back to fetchDrugInfo
+          await fetchDrugInfo();
+        }
         
-        // Set the displayed drug name AFTER fetchDrugInfo completes
-        // This ensures it won't be overwritten by the fetchDrugInfo function
+        // Set the displayed drug name AFTER API calls complete
         console.log(`Setting displayed drug name to: ${selectedBrandName}`);
         setDisplayedDrugName(selectedBrandName);
         
         // Force a re-render to ensure the H1 title updates
         setForceUpdate(prev => prev + 1);
-        
-        // Log the current state after update
-        setTimeout(() => {
-          console.log(`Current displayed drug name (after timeout): ${displayedDrugName}`);
-          console.log(`Available forms for ${selectedBrandName}:`, availableForms);
-          console.log(`Available strengths for ${selectedBrandName}:`, availableStrengths);
-          console.log(`Available quantities for ${selectedBrandName}:`, availableQuantities);
-        }, 100);
       }
+    }
+  };
+  
+  // Internal helper function to handle form changes without triggering the full handleFormChange
+  const handleFormChangeInternal = async (formName: string, availableForms: DrugForm[]) => {
+    console.log(`Internal form change to: ${formName}`);
+    
+    // Find the GSN for the selected form if available
+    const selectedFormObj = availableForms.find(form => form.form === formName);
+    if (selectedFormObj && selectedFormObj.gsn) {
+      try {
+        // Get detailed drug info using GSN to get strengths for this form
+        console.log(`Fetching detailed drug info for form ${formName}, GSN: ${selectedFormObj.gsn}`);
+        const detailedInfo = await getDetailedDrugInfo(selectedFormObj.gsn);
+        
+        // Extract strengths from detailed info
+        if (detailedInfo.strengths && Array.isArray(detailedInfo.strengths) && detailedInfo.strengths.length > 0) {
+          console.log(`Found ${detailedInfo.strengths.length} strengths for form ${formName}:`, detailedInfo.strengths);
+          
+          // Filter strengths to those that match the selected form
+          const formSpecificStrengths = detailedInfo.strengths.filter((strength: DrugStrength) => {
+            // Check if this strength is associated with the selected form
+            const matchingForm = detailedInfo.forms?.find((form: DrugForm) => 
+              form.form === formName && form.gsn === strength.gsn
+            );
+            return matchingForm !== undefined;
+          });
+          
+          const relevantStrengths = formSpecificStrengths.length > 0 ? formSpecificStrengths : detailedInfo.strengths;
+          setAvailableStrengths(relevantStrengths);
+          
+          // Find the strength that is marked as selected in the API
+          const selectedStrength = relevantStrengths.find((strength: DrugStrength) => strength.selected === true);
+          if (selectedStrength) {
+            console.log(`Using API-selected strength: ${selectedStrength.strength}`);
+            setSelectedStrength(selectedStrength.strength);
+            
+            // Now fetch quantities for this strength
+            await handleStrengthChangeInternal(selectedStrength.strength, relevantStrengths);
+          } else {
+            // If no strength is marked as selected, use the first strength
+            console.log(`No selected strength found, using first strength: ${relevantStrengths[0].strength}`);
+            setSelectedStrength(relevantStrengths[0].strength);
+            
+            // Now fetch quantities for this strength
+            await handleStrengthChangeInternal(relevantStrengths[0].strength, relevantStrengths);
+          }
+        } else {
+          console.log(`No strengths found for form ${formName}, fetching detailed drug info`);
+          await fetchDrugInfo();
+        }
+      } catch (error) {
+        console.error(`Error fetching detailed drug info for form ${formName}:`, error);
+        await fetchDrugInfo();
+      }
+    } else {
+      console.log(`No GSN found for form ${formName}, fetching detailed drug info`);
+      await fetchDrugInfo();
     }
   };
 
@@ -1266,45 +1402,79 @@ export default function DrugPage({ params }: Props) {
     setSelectedForm(newForm);
     console.log(`Form changed to ${newForm}`);
     
+    // Clear dependent dropdowns
+    setSelectedStrength('');
+    setSelectedQuantity('');
+    
     // Find the GSN for the selected form if available
     const selectedFormObj = availableForms.find(form => form.form === newForm);
     if (selectedFormObj && selectedFormObj.gsn) {
       console.log(`Form changed to ${newForm}, GSN: ${selectedFormObj.gsn}`);
       
-      // Update the URL with the new GSN
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.set('gsn', selectedFormObj.gsn.toString());
-        window.history.replaceState({}, '', url.toString());
+      try {
+        // Get detailed drug info using GSN to get strengths for this form
+        console.log(`Fetching detailed drug info for form ${newForm}, GSN: ${selectedFormObj.gsn}`);
+        setIsLoading(true);
+        
+        const detailedInfo = await getDetailedDrugInfo(selectedFormObj.gsn);
+        console.log('Detailed drug info for form:', detailedInfo);
+        
+        // Mark this form as selected and others as not selected
+        const updatedForms = availableForms.map(form => ({
+          ...form,
+          selected: form.form === newForm
+        }));
+        setAvailableForms(updatedForms);
+        
+        // Extract strengths from detailed info
+        if (detailedInfo.strengths && Array.isArray(detailedInfo.strengths) && detailedInfo.strengths.length > 0) {
+          console.log(`Found ${detailedInfo.strengths.length} strengths for form ${newForm}:`, detailedInfo.strengths);
+          
+          // Filter strengths to those that match the selected form
+          const formSpecificStrengths = detailedInfo.strengths.filter((strength: DrugStrength) => {
+            // Check if this strength is associated with the selected form
+            const matchingForm = detailedInfo.forms?.find((form: DrugForm) => 
+              form.form === newForm && form.gsn === strength.gsn
+            );
+            return matchingForm !== undefined;
+          });
+          
+          const relevantStrengths = formSpecificStrengths.length > 0 ? formSpecificStrengths : detailedInfo.strengths;
+          setAvailableStrengths(relevantStrengths);
+          
+          // Find the strength that is marked as selected in the API
+          const selectedStrength = relevantStrengths.find((strength: DrugStrength) => strength.selected === true);
+          if (selectedStrength) {
+            console.log(`Using API-selected strength: ${selectedStrength.strength}`);
+            setSelectedStrength(selectedStrength.strength);
+            
+            // Now fetch quantities for this strength
+            await handleStrengthChangeInternal(selectedStrength.strength, relevantStrengths);
+          } else {
+            // If no strength is marked as selected, use the first strength
+            console.log(`No selected strength found, using first strength: ${relevantStrengths[0].strength}`);
+            setSelectedStrength(relevantStrengths[0].strength);
+            
+            // Now fetch quantities for this strength
+            await handleStrengthChangeInternal(relevantStrengths[0].strength, relevantStrengths);
+          }
+        } else {
+          console.log(`No strengths found for form ${newForm}, fetching detailed drug info`);
+          await fetchDrugInfo();
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error(`Error fetching detailed drug info for form ${newForm}:`, error);
+        setError('Error fetching drug information');
+        setIsLoading(false);
+        
+        // If there was an error, fall back to fetchDrugInfo
+        await fetchDrugInfo();
       }
-      
-      // Mark this form as selected and others as not selected
-      const updatedForms = availableForms.map(form => ({
-        ...form,
-        selected: form.form === newForm
-      }));
-      setAvailableForms(updatedForms);
-      
-      // Preserve the selected brand when refetching drug info
-      const currentSelectedBrand = brandVariations.find(v => v.type === selectedBrand);
-      if (currentSelectedBrand) {
-        setLastSelectedBrandType(currentSelectedBrand.type);
-        setLastSelectedBrandName(currentSelectedBrand.name);
-      }
-      
-      // Clear strength and quantity selections to ensure we get fresh data for the new form
-      setSelectedStrength('');
-      setSelectedQuantity('');
-      
-      // Refetch drug info with the new GSN
-      // This will update all dropdowns (form, strength, quantity) based on the new GSN
+    } else {
+      console.log(`No GSN found for form ${newForm}, fetching detailed drug info`);
       await fetchDrugInfo();
-      
-      // Log the available options after update
-      setTimeout(() => {
-        console.log(`Available strengths for form ${newForm}:`, availableStrengths);
-        console.log(`Available quantities for form ${newForm}:`, availableQuantities);
-      }, 100);
     }
   };
   
@@ -1312,98 +1482,129 @@ export default function DrugPage({ params }: Props) {
   const handleStrengthChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStrength = e.target.value;
     setSelectedStrength(newStrength);
-    console.log(`Strength changed to ${newStrength}`);
+    console.log(`Strength dropdown changed to: ${newStrength}`);
+    
+    // Clear dependent dropdowns
+    setSelectedQuantity('');
     
     // Find the GSN for the selected strength if available
     const selectedStrengthObj = availableStrengths.find(strength => strength.strength === newStrength);
     if (selectedStrengthObj && selectedStrengthObj.gsn) {
       console.log(`Strength changed to ${newStrength}, GSN: ${selectedStrengthObj.gsn}`);
       
-      // Update the URL with the new GSN
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.set('gsn', selectedStrengthObj.gsn.toString());
-        window.history.replaceState({}, '', url.toString());
+      try {
+        // Get detailed drug info using GSN to get quantities for this strength
+        console.log(`Fetching detailed drug info for strength ${newStrength}, GSN: ${selectedStrengthObj.gsn}`);
+        setIsLoading(true);
+        
+        const detailedInfo = await getDetailedDrugInfo(selectedStrengthObj.gsn);
+        console.log('Detailed drug info for strength:', detailedInfo);
+        
+        // Mark this strength as selected and others as not selected
+        const updatedStrengths = availableStrengths.map(strength => ({
+          ...strength,
+          selected: strength.strength === newStrength
+        }));
+        setAvailableStrengths(updatedStrengths);
+        
+        // Extract quantities from detailed info
+        if (detailedInfo.quantities && Array.isArray(detailedInfo.quantities) && detailedInfo.quantities.length > 0) {
+          console.log(`Found ${detailedInfo.quantities.length} quantities for strength ${newStrength}:`, detailedInfo.quantities);
+          
+          // Filter quantities to those that match the selected strength
+          const strengthSpecificQuantities = detailedInfo.quantities.filter((quantity: DrugQuantity) => {
+            // Check if this quantity is associated with the selected strength
+            const matchingStrength = detailedInfo.strengths?.find((strength: DrugStrength) => 
+              strength.strength === newStrength && strength.gsn === (quantity as any).gsn
+            );
+            return matchingStrength !== undefined;
+          });
+          
+          const relevantQuantities = strengthSpecificQuantities.length > 0 ? strengthSpecificQuantities : detailedInfo.quantities;
+          setAvailableQuantities(relevantQuantities);
+          
+          // Find the quantity that is marked as selected in the API
+          const selectedQuantity = relevantQuantities.find((quantity: DrugQuantity) => quantity.selected === true);
+          if (selectedQuantity) {
+            console.log(`Using API-selected quantity: ${selectedQuantity.quantity}`);
+            setSelectedQuantity(selectedQuantity.quantity);
+          } else {
+            // If no quantity is marked as selected, use the first quantity
+            console.log(`No selected quantity found, using first quantity: ${relevantQuantities[0].quantity}`);
+            setSelectedQuantity(relevantQuantities[0].quantity);
+          }
+        } else {
+          console.log(`No quantities found for strength ${newStrength}, fetching detailed drug info`);
+          await fetchDrugInfo();
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error(`Error fetching detailed drug info for strength ${newStrength}:`, error);
+        setError('Error fetching drug information');
+        setIsLoading(false);
+        
+        // If there was an error, fall back to fetchDrugInfo
+        await fetchDrugInfo();
       }
-      
-      // Mark this strength as selected and others as not selected
-      const updatedStrengths = availableStrengths.map(strength => ({
-        ...strength,
-        selected: strength.strength === newStrength
-      }));
-      setAvailableStrengths(updatedStrengths);
-      
-      // Preserve the selected brand when refetching drug info
-      const currentSelectedBrand = brandVariations.find(v => v.type === selectedBrand);
-      if (currentSelectedBrand) {
-        setLastSelectedBrandType(currentSelectedBrand.type);
-        setLastSelectedBrandName(currentSelectedBrand.name);
-      }
-      
-      // Clear quantity selection to ensure we get fresh data for the new strength
-      setSelectedQuantity('');
-      
-      // Refetch drug info with the new GSN
-      // This will update all dropdowns (form, strength, quantity) based on the new GSN
+    } else {
+      console.log(`No GSN found for strength ${newStrength}, fetching detailed drug info`);
       await fetchDrugInfo();
-      
-      // Log the available options after update
-      setTimeout(() => {
-        console.log(`Available quantities for strength ${newStrength}:`, availableQuantities);
-      }, 100);
     }
   };
   
   // Handle quantity change
   const handleQuantityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newQuantity = e.target.value;
-    console.log(`Quantity changed to ${newQuantity}`);
     setSelectedQuantity(newQuantity);
+    console.log(`Quantity dropdown changed to: ${newQuantity}`);
     
-    // Extract quantity value and unit
-    const quantityParts = newQuantity.split(' ');
-    const quantityValue = parseInt(quantityParts[0], 10);
-    
-    if (!isNaN(quantityValue)) {
-      // Update the URL with the new quantity
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.set('quantity', quantityValue.toString());
-        window.history.replaceState({}, '', url.toString());
-      }
+    // Find the GSN for the selected quantity if available
+    const selectedQuantityObj = availableQuantities.find(quantity => 
+      quantity.quantity.toString() === newQuantity.toString()
+    );
+    if (selectedQuantityObj) {
+      console.log(`Quantity changed to ${newQuantity}`);
       
       // Mark this quantity as selected and others as not selected
-      const updatedQuantities = availableQuantities.map(qty => ({
-        ...qty,
-        selected: `${qty.quantity} ${qty.uom}` === newQuantity
+      const updatedQuantities = availableQuantities.map(quantity => ({
+        ...quantity,
+        selected: quantity.quantity.toString() === newQuantity.toString()
       }));
       setAvailableQuantities(updatedQuantities);
       
-      // Preserve the selected brand when refetching drug info
-      const currentSelectedBrand = brandVariations.find(v => v.type === selectedBrand);
-      if (currentSelectedBrand) {
-        setLastSelectedBrandType(currentSelectedBrand.type);
-        setLastSelectedBrandName(currentSelectedBrand.name);
+      // Update the URL with the new quantity
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('quantity', newQuantity);
+        window.history.replaceState({}, '', url.toString());
       }
       
-      // Preserve the selected form and strength
-      const currentForm = selectedForm;
-      const currentStrength = selectedStrength;
-      
-      // Refetch drug info with the new quantity
-      await fetchDrugInfo();
-      
-      // Log the current selections after update
-      setTimeout(() => {
-        console.log(`Current selections after quantity change:`, {
-          brand: lastSelectedBrandName,
-          form: selectedForm,
-          strength: selectedStrength,
-          quantity: selectedQuantity
-        });
-      }, 100);
-    } else {
-      console.error(`Invalid quantity value: ${newQuantity}`);
+      // If we have a GSN for this quantity, update the URL
+      if ((selectedQuantityObj as any).gsn) {
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set('gsn', (selectedQuantityObj as any).gsn.toString());
+          window.history.replaceState({}, '', url.toString());
+        }
+        
+        // Preserve the selected brand when refetching drug info
+        const currentSelectedBrand = brandVariations.find(v => v.type === selectedBrand);
+        if (currentSelectedBrand) {
+          setLastSelectedBrandType(currentSelectedBrand.type);
+          setLastSelectedBrandName(currentSelectedBrand.name);
+        }
+        
+        // Refetch pharmacy prices with the new quantity
+        if (userLocation.latitude && userLocation.longitude) {
+          await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+        }
+      } else {
+        // If we don't have a GSN, just refetch pharmacy prices with the new quantity
+        if (userLocation.latitude && userLocation.longitude) {
+          await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+        }
+      }
     }
   };
   
@@ -1456,6 +1657,58 @@ export default function DrugPage({ params }: Props) {
 
   // Log before rendering
   console.log(`Rendering with displayed drug name: ${displayedDrugName}, forceUpdate: ${forceUpdate}`);
+
+  // Internal helper function to handle strength changes without triggering the full handleStrengthChange
+  const handleStrengthChangeInternal = async (strengthName: string, availableStrengths: DrugStrength[]) => {
+    console.log(`Internal strength change to: ${strengthName}`);
+    
+    // Find the GSN for the selected strength if available
+    const selectedStrengthObj = availableStrengths.find(strength => strength.strength === strengthName);
+    if (selectedStrengthObj && selectedStrengthObj.gsn) {
+      try {
+        // Get detailed drug info using GSN to get quantities for this strength
+        console.log(`Fetching detailed drug info for strength ${strengthName}, GSN: ${selectedStrengthObj.gsn}`);
+        const detailedInfo = await getDetailedDrugInfo(selectedStrengthObj.gsn);
+        
+        // Extract quantities from detailed info
+        if (detailedInfo.quantities && Array.isArray(detailedInfo.quantities) && detailedInfo.quantities.length > 0) {
+          console.log(`Found ${detailedInfo.quantities.length} quantities for strength ${strengthName}:`, detailedInfo.quantities);
+          
+          // Filter quantities to those that match the selected strength
+          const strengthSpecificQuantities = detailedInfo.quantities.filter((quantity: DrugQuantity) => {
+            // Check if this quantity is associated with the selected strength
+            const matchingStrength = detailedInfo.strengths?.find((strength: DrugStrength) => 
+              strength.strength === strengthName && strength.gsn === (quantity as any).gsn
+            );
+            return matchingStrength !== undefined;
+          });
+          
+          const relevantQuantities = strengthSpecificQuantities.length > 0 ? strengthSpecificQuantities : detailedInfo.quantities;
+          setAvailableQuantities(relevantQuantities);
+          
+          // Find the quantity that is marked as selected in the API
+          const selectedQuantity = relevantQuantities.find((quantity: DrugQuantity) => quantity.selected === true);
+          if (selectedQuantity) {
+            console.log(`Using API-selected quantity: ${selectedQuantity.quantity}`);
+            setSelectedQuantity(selectedQuantity.quantity);
+          } else {
+            // If no quantity is marked as selected, use the first quantity
+            console.log(`No selected quantity found, using first quantity: ${relevantQuantities[0].quantity}`);
+            setSelectedQuantity(relevantQuantities[0].quantity);
+          }
+        } else {
+          console.log(`No quantities found for strength ${strengthName}, fetching detailed drug info`);
+          await fetchDrugInfo();
+        }
+      } catch (error) {
+        console.error(`Error fetching detailed drug info for strength ${strengthName}:`, error);
+        await fetchDrugInfo();
+      }
+    } else {
+      console.log(`No GSN found for strength ${strengthName}, fetching detailed drug info`);
+      await fetchDrugInfo();
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
