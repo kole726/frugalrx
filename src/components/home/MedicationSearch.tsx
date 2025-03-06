@@ -50,11 +50,25 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
       });
       
       if (!response.ok) {
-        throw new Error(`Error fetching suggestions: ${response.status}`);
+        const errorText = await response.text();
+        console.error(`Error fetching suggestions: ${response.status}`, errorText);
+        throw new Error(`Error fetching suggestions: ${response.status} - ${errorText}`);
       }
       
       const data = await response.json();
       console.log('Autocomplete results:', data);
+      
+      if (!Array.isArray(data)) {
+        console.error('Invalid response format:', data);
+        throw new Error('Invalid response format from API');
+      }
+      
+      if (data.length === 0) {
+        console.log('No results found for query:', query);
+        setError('No medications found matching your search. Please try a different search term.');
+        setSuggestions([]);
+        return;
+      }
       
       // Process the response from the API
       const formattedResults = data.map((item: any) => {
@@ -85,7 +99,8 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
       setSuggestions(capitalizedResults);
     } catch (error) {
       console.error('Error fetching suggestions:', error)
-      setError('Failed to fetch medications. Please try again.')
+      setError('Failed to fetch medications. Please try again later.')
+      setSuggestions([]);
     } finally {
       setIsLoading(false)
     }

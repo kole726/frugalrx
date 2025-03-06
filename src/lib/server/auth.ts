@@ -82,6 +82,14 @@ export async function getAuthToken(): Promise<string> {
   // Increment request counter
   tokenRequestCount++;
   
+  console.log('[AUTH] Starting getAuthToken, request count:', tokenRequestCount);
+  console.log('[AUTH] Environment check:');
+  console.log('- USE_MOCK_DATA:', USE_MOCK_DATA);
+  console.log('- NEXT_PUBLIC_USE_REAL_API:', process.env.NEXT_PUBLIC_USE_REAL_API);
+  console.log('- API_CONFIG.authUrl:', API_CONFIG.authUrl ? 'Set' : 'Not set');
+  console.log('- API_CONFIG.clientId:', API_CONFIG.clientId ? 'Set' : 'Not set');
+  console.log('- API_CONFIG.clientSecret:', API_CONFIG.clientSecret ? (API_CONFIG.clientSecret.substring(0, 5) + '...') : 'Not set');
+  
   // If we should use mock data AND real API is not enabled, return a mock token
   if (USE_MOCK_DATA && process.env.NEXT_PUBLIC_USE_REAL_API !== 'true') {
     // Log that we're using a mock token
@@ -110,6 +118,7 @@ export async function getAuthToken(): Promise<string> {
         expiryTime: tokenExpiryTime,
         timeUntilExpiry: `${((tokenExpiryTime - now) / 1000).toFixed(1)}s`
       });
+      console.log('[AUTH] Using cached token, expires in:', ((tokenExpiryTime - now) / 1000).toFixed(1) + 's');
       return cachedToken.access_token;
     }
     
@@ -140,68 +149,83 @@ export async function getAuthToken(): Promise<string> {
     formData.append('client_secret', clientSecret);
     formData.append('scope', 'ccds.read');
     
-    // Make the token request
-    const response = await fetch(authUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
-      },
-      body: formData.toString(),
-      cache: 'no-store' // Ensure we don't use cached responses
-    });
+    console.log('[AUTH] Form data prepared:', formData.toString().replace(clientSecret, '[REDACTED]'));
     
-    if (!response.ok) {
-      // Try to get more detailed error information
-      let errorDetails = '';
-      try {
-        const errorText = await response.text();
-        errorDetails = errorText;
-      } catch (e) {
-        errorDetails = `Status: ${response.status}`;
+    // Make the token request
+    try {
+      console.log('[AUTH] Sending token request...');
+      const response = await fetch(authUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json'
+        },
+        body: formData.toString(),
+        cache: 'no-store' // Ensure we don't use cached responses
+      });
+      
+      console.log('[AUTH] Token request response status:', response.status);
+      
+      if (!response.ok) {
+        // Try to get more detailed error information
+        let errorDetails = '';
+        try {
+          const errorText = await response.text();
+          errorDetails = errorText;
+          console.error('[AUTH] Error response text:', errorText);
+        } catch (e) {
+          errorDetails = `Status: ${response.status}`;
+          console.error('[AUTH] Could not read error response text');
+        }
+        
+        const error = new Error(`Authentication failed: ${response.status} - ${errorDetails}`);
+        logTokenEvent('Authentication request failed', false, { status: response.status }, error);
+        throw error;
       }
       
-      const error = new Error(`Authentication failed: ${response.status} - ${errorDetails}`);
-      logTokenEvent('Authentication request failed', false, { status: response.status }, error);
-      throw error;
+      const data = await response.json();
+      console.log('[AUTH] Token response received, has access_token:', !!data.access_token);
+      
+      // Validate the token response
+      if (!data.access_token) {
+        const error = new Error('Invalid token response: missing access_token');
+        logTokenEvent('Invalid token response', false, { response: data }, error);
+        throw error;
+      }
+      
+      // Use the token exactly as provided by the auth service
+      // DO NOT modify the token in any way
+      
+      // Cache the token
+      cachedToken = {
+        token_type: data.token_type || 'Bearer',
+        expires_in: data.expires_in || 3600,
+        access_token: data.access_token
+      };
+      
+      // Set expiry based on expires_in (seconds) from response, or default to 1 hour
+      // Apply a 5-minute safety margin to avoid using tokens that are about to expire
+      const safetyMarginMs = 5 * 60 * 1000; // 5 minutes in milliseconds
+      tokenExpiryTime = Date.now() + ((data.expires_in || 3600) * 1000) - safetyMarginMs;
+      
+      // Log successful token retrieval
+      logTokenEvent('Retrieved new token', true, { 
+        expiryTime: tokenExpiryTime,
+        tokenLength: data.access_token.length,
+        expiresIn: data.expires_in
+      });
+      
+      console.log('[AUTH] Successfully retrieved token, length:', data.access_token.length);
+      return data.access_token;
+    } catch (fetchError) {
+      console.error('[AUTH] Fetch error during token request:', fetchError);
+      throw fetchError;
     }
-    
-    const data = await response.json();
-    
-    // Validate the token response
-    if (!data.access_token) {
-      const error = new Error('Invalid token response: missing access_token');
-      logTokenEvent('Invalid token response', false, { response: data }, error);
-      throw error;
-    }
-    
-    // Use the token exactly as provided by the auth service
-    // DO NOT modify the token in any way
-    
-    // Cache the token
-    cachedToken = {
-      token_type: data.token_type || 'Bearer',
-      expires_in: data.expires_in || 3600,
-      access_token: data.access_token
-    };
-    
-    // Set expiry based on expires_in (seconds) from response, or default to 1 hour
-    // Apply a 5-minute safety margin to avoid using tokens that are about to expire
-    const safetyMarginMs = 5 * 60 * 1000; // 5 minutes in milliseconds
-    tokenExpiryTime = Date.now() + ((data.expires_in || 3600) * 1000) - safetyMarginMs;
-    
-    // Log successful token retrieval
-    logTokenEvent('Retrieved new token', true, { 
-      expiryTime: tokenExpiryTime,
-      tokenLength: data.access_token.length,
-      expiresIn: data.expires_in
-    });
-    
-    return data.access_token;
   } catch (error) {
     // Log the error and rethrow
     lastTokenError = error as Error;
     logTokenEvent('Token retrieval failed', false, {}, error as Error);
+    console.error('[AUTH] Token retrieval failed:', error);
     throw error;
   }
 }

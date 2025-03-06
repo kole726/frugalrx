@@ -11,11 +11,16 @@ const isDevelopment = process.env.NODE_ENV === 'development';
 export const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_REAL_API !== 'true';
 
 // Log the actual value for debugging
-if (isDevelopment) {
-  console.log('[CONFIG] USE_MOCK_DATA:', USE_MOCK_DATA);
-  console.log('[CONFIG] NEXT_PUBLIC_USE_REAL_API:', process.env.NEXT_PUBLIC_USE_REAL_API);
-  console.log('[CONFIG] NEXT_PUBLIC_USE_MOCK_DATA:', process.env.NEXT_PUBLIC_USE_MOCK_DATA);
-}
+console.log('[CONFIG] Environment variables:');
+console.log('- NODE_ENV:', process.env.NODE_ENV);
+console.log('- USE_MOCK_DATA:', USE_MOCK_DATA);
+console.log('- NEXT_PUBLIC_USE_REAL_API:', process.env.NEXT_PUBLIC_USE_REAL_API);
+console.log('- NEXT_PUBLIC_FALLBACK_TO_MOCK:', process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK);
+console.log('- AMERICAS_PHARMACY_API_URL:', process.env.AMERICAS_PHARMACY_API_URL ? 'Set' : 'Not set');
+console.log('- AMERICAS_PHARMACY_HQ_MAPPING:', process.env.AMERICAS_PHARMACY_HQ_MAPPING ? 'Set' : 'Not set');
+console.log('- AMERICAS_PHARMACY_AUTH_URL:', process.env.AMERICAS_PHARMACY_AUTH_URL ? 'Set' : 'Not set');
+console.log('- AMERICAS_PHARMACY_CLIENT_ID:', process.env.AMERICAS_PHARMACY_CLIENT_ID ? 'Set' : 'Not set');
+console.log('- AMERICAS_PHARMACY_CLIENT_SECRET:', process.env.AMERICAS_PHARMACY_CLIENT_SECRET ? 'Set (length: ' + process.env.AMERICAS_PHARMACY_CLIENT_SECRET.length + ')' : 'Not set');
 
 // API configuration
 export const API_CONFIG = {

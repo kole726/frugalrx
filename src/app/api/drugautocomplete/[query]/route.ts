@@ -26,6 +26,11 @@ export async function GET(
     const query = params.query;
     
     console.log(`API Drugautocomplete: Received query "${query}"`);
+    console.log('Environment variables check:');
+    console.log('- AMERICAS_PHARMACY_API_URL:', process.env.AMERICAS_PHARMACY_API_URL ? 'Set' : 'Not set');
+    console.log('- AMERICAS_PHARMACY_HQ_MAPPING:', process.env.AMERICAS_PHARMACY_HQ_MAPPING ? 'Set' : 'Not set');
+    console.log('- NEXT_PUBLIC_USE_REAL_API:', process.env.NEXT_PUBLIC_USE_REAL_API);
+    console.log('- NEXT_PUBLIC_FALLBACK_TO_MOCK:', process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK);
     
     if (!query) {
       console.error('API Drugautocomplete: Missing search query');
@@ -53,13 +58,15 @@ export async function GET(
     // Try to get real data from America's Pharmacy API
     try {
       // Get authentication token
+      console.log('Attempting to get auth token...');
       const token = await getAuthToken();
       
       if (!token) {
+        console.error('Failed to obtain authentication token');
         throw new Error('Failed to obtain authentication token');
       }
       
-      console.log('Successfully obtained authentication token');
+      console.log('Successfully obtained authentication token:', token.substring(0, 10) + '...');
       
       // Use the documented API endpoint from the Postman collection
       const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
@@ -72,7 +79,16 @@ export async function GET(
       
       console.log(`Using America's Pharmacy API: ${baseUrl}${endpoint}`);
       
+      // Prepare the request body
+      const requestBody = {
+        hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+        prefixText: query
+      };
+      
+      console.log('Request body:', JSON.stringify(requestBody));
+      
       // Make the API request using POST method as specified in the Postman collection
+      console.log('Making API request...');
       const response = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
         headers: {
@@ -80,12 +96,11 @@ export async function GET(
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
-          prefixText: query
-        }),
+        body: JSON.stringify(requestBody),
         cache: 'no-store'
       });
+      
+      console.log('API response status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -132,6 +147,8 @@ export async function GET(
           cache: 'no-store'
         });
         
+        console.log('GET API response status:', getResponse.status);
+        
         if (getResponse.ok) {
           const getData = await getResponse.json();
           console.log(`GET API returned ${Array.isArray(getData) ? getData.length : 0} results`);
@@ -155,6 +172,7 @@ export async function GET(
       }
     } catch (apiError: any) {
       console.error('Error connecting to America\'s Pharmacy API:', apiError);
+      console.error('Error stack:', apiError.stack);
     }
     
     // If all API attempts fail, fall back to mock data
@@ -173,6 +191,7 @@ export async function GET(
     return NextResponse.json(formattedMockResults, { headers: corsHeaders });
   } catch (error: any) {
     console.error('Error in drug autocomplete API:', error);
+    console.error('Error stack:', error.stack);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { 
