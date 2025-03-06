@@ -7,8 +7,11 @@
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 // Determine if we should use mock data
-// This should respect the environment variables
-export const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_REAL_API !== 'true';
+// This should respect the environment variables and always use real API in production
+export const USE_MOCK_DATA = 
+  process.env.NODE_ENV === 'production' 
+    ? false // Always use real API in production
+    : process.env.NEXT_PUBLIC_USE_REAL_API !== 'true'; // In development, respect the environment variable
 
 // Log the actual value for debugging
 console.log('[CONFIG] Environment variables:');
@@ -20,7 +23,7 @@ console.log('- AMERICAS_PHARMACY_API_URL:', process.env.AMERICAS_PHARMACY_API_UR
 console.log('- AMERICAS_PHARMACY_HQ_MAPPING:', process.env.AMERICAS_PHARMACY_HQ_MAPPING ? 'Set' : 'Not set');
 console.log('- AMERICAS_PHARMACY_AUTH_URL:', process.env.AMERICAS_PHARMACY_AUTH_URL ? 'Set' : 'Not set');
 console.log('- AMERICAS_PHARMACY_CLIENT_ID:', process.env.AMERICAS_PHARMACY_CLIENT_ID ? 'Set' : 'Not set');
-console.log('- AMERICAS_PHARMACY_CLIENT_SECRET:', process.env.AMERICAS_PHARMACY_CLIENT_SECRET ? 'Set (length: ' + process.env.AMERICAS_PHARMACY_CLIENT_SECRET.length + ')' : 'Not set');
+console.log('- AMERICAS_PHARMACY_CLIENT_SECRET:', process.env.AMERICAS_PHARMACY_CLIENT_SECRET ? 'Set (length: ' + (process.env.AMERICAS_PHARMACY_CLIENT_SECRET?.length || 0) + ')' : 'Not set');
 
 // API configuration
 export const API_CONFIG = {

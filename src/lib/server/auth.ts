@@ -84,14 +84,15 @@ export async function getAuthToken(): Promise<string> {
   
   console.log('[AUTH] Starting getAuthToken, request count:', tokenRequestCount);
   console.log('[AUTH] Environment check:');
+  console.log('- NODE_ENV:', process.env.NODE_ENV);
   console.log('- USE_MOCK_DATA:', USE_MOCK_DATA);
   console.log('- NEXT_PUBLIC_USE_REAL_API:', process.env.NEXT_PUBLIC_USE_REAL_API);
   console.log('- API_CONFIG.authUrl:', API_CONFIG.authUrl ? 'Set' : 'Not set');
   console.log('- API_CONFIG.clientId:', API_CONFIG.clientId ? 'Set' : 'Not set');
   console.log('- API_CONFIG.clientSecret:', API_CONFIG.clientSecret ? (API_CONFIG.clientSecret.substring(0, 5) + '...') : 'Not set');
   
-  // If we should use mock data AND real API is not enabled, return a mock token
-  if (USE_MOCK_DATA && process.env.NEXT_PUBLIC_USE_REAL_API !== 'true') {
+  // If we should use mock data AND we're not in production AND real API is not enabled, return a mock token
+  if (USE_MOCK_DATA && process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_USE_REAL_API !== 'true') {
     // Log that we're using a mock token
     console.log('[AUTH] Using mock token for development environment');
     

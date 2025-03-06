@@ -27,6 +27,7 @@ export async function GET(
     
     console.log(`API Drugautocomplete: Received query "${query}"`);
     console.log('Environment variables check:');
+    console.log('- NODE_ENV:', process.env.NODE_ENV);
     console.log('- AMERICAS_PHARMACY_API_URL:', process.env.AMERICAS_PHARMACY_API_URL ? 'Set' : 'Not set');
     console.log('- AMERICAS_PHARMACY_HQ_MAPPING:', process.env.AMERICAS_PHARMACY_HQ_MAPPING ? 'Set' : 'Not set');
     console.log('- NEXT_PUBLIC_USE_REAL_API:', process.env.NEXT_PUBLIC_USE_REAL_API);
@@ -55,128 +56,154 @@ export async function GET(
       );
     }
     
-    // Try to get real data from America's Pharmacy API
-    try {
-      // Get authentication token
-      console.log('Attempting to get auth token...');
-      const token = await getAuthToken();
-      
-      if (!token) {
-        console.error('Failed to obtain authentication token');
-        throw new Error('Failed to obtain authentication token');
-      }
-      
-      console.log('Successfully obtained authentication token:', token.substring(0, 10) + '...');
-      
-      // Use the documented API endpoint from the Postman collection
-      const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
-      
-      // Ensure the URL is properly formatted
-      const baseUrl = apiUrl.replace(/\/+$/, '');
-      
-      // Use the drug-names endpoint from the Postman collection
-      const endpoint = '/pricing/v1/drugs/names';
-      
-      console.log(`Using America's Pharmacy API: ${baseUrl}${endpoint}`);
-      
-      // Prepare the request body
-      const requestBody = {
-        hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
-        prefixText: query
-      };
-      
-      console.log('Request body:', JSON.stringify(requestBody));
-      
-      // Make the API request using POST method as specified in the Postman collection
-      console.log('Making API request...');
-      const response = await fetch(`${baseUrl}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-        cache: 'no-store'
-      });
-      
-      console.log('API response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`API error: ${response.status}`, errorText);
-        throw new Error(`API Error ${response.status}: ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log(`API returned ${Array.isArray(data) ? data.length : 0} results`);
-      
-      if (Array.isArray(data) && data.length > 0) {
-        // Format the results to match America's Pharmacy's autocomplete format
-        const formattedResults = data.map(drugName => {
-          return {
-            label: typeof drugName === 'string' ? drugName : drugName.toString(),
-            value: typeof drugName === 'string' ? drugName.replace(/\s*\(.*?\)$/, '') : drugName.toString().replace(/\s*\(.*?\)$/, '')
-          };
-        });
+    // In production, always try to get real data first
+    const isProduction = process.env.NODE_ENV === 'production';
+    const shouldUseRealApi = isProduction || process.env.NEXT_PUBLIC_USE_REAL_API === 'true';
+    
+    console.log('API mode check:');
+    console.log('- Is production environment:', isProduction);
+    console.log('- Should use real API:', shouldUseRealApi);
+    
+    // Try to get real data from America's Pharmacy API if in production or explicitly enabled
+    if (shouldUseRealApi) {
+      try {
+        // Get authentication token
+        console.log('Attempting to get auth token...');
+        const token = await getAuthToken();
         
-        console.log(`API Drugautocomplete: Returning ${formattedResults.length} results`);
-        return NextResponse.json(formattedResults, { headers: corsHeaders });
-      } else {
-        // If no results from the POST method, try the GET method (opFindDrugByName)
-        console.log('No results from POST method, trying GET method (opFindDrugByName)');
+        if (!token) {
+          console.error('Failed to obtain authentication token');
+          throw new Error('Failed to obtain authentication token');
+        }
         
-        // Use the opFindDrugByName endpoint from the API documentation
-        const getEndpoint = `/pricing/v1/drugs/${encodeURIComponent(query)}`;
+        console.log('Successfully obtained authentication token:', token.substring(0, 10) + '...');
         
-        console.log(`Using America's Pharmacy API GET: ${baseUrl}${getEndpoint}`);
+        // Use the documented API endpoint from the Postman collection
+        const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
         
-        // Create URL with query parameters
-        const url = new URL(`${baseUrl}${getEndpoint}`);
-        url.searchParams.append('count', '20'); // Optional: limit results to 20
-        url.searchParams.append('hqAlias', process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx');
+        // Ensure the URL is properly formatted
+        const baseUrl = apiUrl.replace(/\/+$/, '');
         
-        console.log(`Full request URL: ${url.toString()}`);
+        // Use the drug-names endpoint from the Postman collection
+        const endpoint = '/pricing/v1/drugs/names';
         
-        const getResponse = await fetch(url.toString(), {
-          method: 'GET',
+        console.log(`Using America's Pharmacy API: ${baseUrl}${endpoint}`);
+        
+        // Prepare the request body
+        const requestBody = {
+          hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+          prefixText: query
+        };
+        
+        console.log('Request body:', JSON.stringify(requestBody));
+        
+        // Make the API request using POST method as specified in the Postman collection
+        console.log('Making API request...');
+        const response = await fetch(`${baseUrl}${endpoint}`, {
+          method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
             'Accept': 'application/json',
           },
+          body: JSON.stringify(requestBody),
           cache: 'no-store'
         });
         
-        console.log('GET API response status:', getResponse.status);
+        console.log('API response status:', response.status);
         
-        if (getResponse.ok) {
-          const getData = await getResponse.json();
-          console.log(`GET API returned ${Array.isArray(getData) ? getData.length : 0} results`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`API error: ${response.status}`, errorText);
+          throw new Error(`API Error ${response.status}: ${errorText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`API returned ${Array.isArray(data) ? data.length : 0} results`);
+        
+        if (Array.isArray(data) && data.length > 0) {
+          // Format the results to match America's Pharmacy's autocomplete format
+          const formattedResults = data.map(drugName => {
+            return {
+              label: typeof drugName === 'string' ? drugName : drugName.toString(),
+              value: typeof drugName === 'string' ? drugName.replace(/\s*\(.*?\)$/, '') : drugName.toString().replace(/\s*\(.*?\)$/, '')
+            };
+          });
           
-          if (Array.isArray(getData) && getData.length > 0) {
-            // Format the results to match America's Pharmacy's autocomplete format
-            const formattedGetResults = getData.map(drugName => {
-              return {
-                label: typeof drugName === 'string' ? drugName : drugName.toString(),
-                value: typeof drugName === 'string' ? drugName.replace(/\s*\(.*?\)$/, '') : drugName.toString().replace(/\s*\(.*?\)$/, '')
-              };
-            });
-            
-            console.log(`API Drugautocomplete: Returning ${formattedGetResults.length} results from GET`);
-            return NextResponse.json(formattedGetResults, { headers: corsHeaders });
-          }
+          console.log(`API Drugautocomplete: Returning ${formattedResults.length} results`);
+          return NextResponse.json(formattedResults, { headers: corsHeaders });
         } else {
-          const getErrorText = await getResponse.text();
-          console.error(`GET API error: ${getResponse.status}`, getErrorText);
+          // If no results from the POST method, try the GET method (opFindDrugByName)
+          console.log('No results from POST method, trying GET method (opFindDrugByName)');
+          
+          // Use the opFindDrugByName endpoint from the API documentation
+          const getEndpoint = `/pricing/v1/drugs/${encodeURIComponent(query)}`;
+          
+          console.log(`Using America's Pharmacy API GET: ${baseUrl}${getEndpoint}`);
+          
+          // Create URL with query parameters
+          const url = new URL(`${baseUrl}${getEndpoint}`);
+          url.searchParams.append('count', '20'); // Optional: limit results to 20
+          url.searchParams.append('hqAlias', process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx');
+          
+          console.log(`Full request URL: ${url.toString()}`);
+          
+          const getResponse = await fetch(url.toString(), {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            },
+            cache: 'no-store'
+          });
+          
+          console.log('GET API response status:', getResponse.status);
+          
+          if (getResponse.ok) {
+            const getData = await getResponse.json();
+            console.log(`GET API returned ${Array.isArray(getData) ? getData.length : 0} results`);
+            
+            if (Array.isArray(getData) && getData.length > 0) {
+              // Format the results to match America's Pharmacy's autocomplete format
+              const formattedGetResults = getData.map(drugName => {
+                return {
+                  label: typeof drugName === 'string' ? drugName : drugName.toString(),
+                  value: typeof drugName === 'string' ? drugName.replace(/\s*\(.*?\)$/, '') : drugName.toString().replace(/\s*\(.*?\)$/, '')
+                };
+              });
+              
+              console.log(`API Drugautocomplete: Returning ${formattedGetResults.length} results from GET`);
+              return NextResponse.json(formattedGetResults, { headers: corsHeaders });
+            }
+          } else {
+            const getErrorText = await getResponse.text();
+            console.error(`GET API error: ${getResponse.status}`, getErrorText);
+          }
+        }
+      } catch (apiError: any) {
+        console.error('Error connecting to America\'s Pharmacy API:', apiError);
+        console.error('Error stack:', apiError.stack);
+        
+        // In production, if we can't get real data, we should still try to return something
+        if (isProduction && process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
+          console.log('Production environment with fallback enabled - using mock data as fallback');
+        } else if (isProduction) {
+          console.error('Production API failure with no fallback - returning error');
+          return NextResponse.json(
+            { error: 'Failed to retrieve drug suggestions. Please try again later.' },
+            { 
+              status: 503,
+              headers: corsHeaders
+            }
+          );
         }
       }
-    } catch (apiError: any) {
-      console.error('Error connecting to America\'s Pharmacy API:', apiError);
-      console.error('Error stack:', apiError.stack);
+    } else {
+      console.log('Using mock data based on environment configuration');
     }
     
-    // If all API attempts fail, fall back to mock data
-    console.log(`API Drugautocomplete: API attempts failed, falling back to mock data for "${query}"`);
+    // If all API attempts fail or we're configured to use mock data
+    console.log(`API Drugautocomplete: Using mock data for "${query}"`);
     const mockResults = getMockDrugSearchResults(query);
     
     // Format the results to match America's Pharmacy format
