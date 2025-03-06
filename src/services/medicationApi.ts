@@ -41,73 +41,12 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     let apiAttempts = 0;
     let apiSuccess = false;
     
-    // First try direct API call if we're on the server
-    if (typeof window === 'undefined') {
-      try {
-        apiAttempts++;
-        console.log(`Server: Attempt ${apiAttempts} - Direct API call for drug search`);
-        
-        // Get authentication token (server-side only)
-        const { getAuthToken } = await import('@/lib/server/auth');
-        const token = await getAuthToken();
-        
-        const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
-        const endpoint = '/pricing/v1/drugs/names';
-        
-        console.log(`Server: Using direct API endpoint: ${apiUrl}${endpoint}`);
-        
-        const response = await fetch(`${apiUrl}${endpoint}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
-            hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
-            prefixText: normalizedQuery
-          }),
-          cache: 'no-store'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`Server: API returned ${Array.isArray(data) ? data.length : 0} results`);
-          
-          if (Array.isArray(data) && data.length > 0) {
-            // Format the results
-            const formattedResults = data.map(drugName => {
-              // Check if the drug name contains GSN information
-              const gsnMatch = typeof drugName === 'string' && drugName.match(/\(GSN: (\d+)\)/i);
-              const gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
-              
-              return {
-                drugName: typeof drugName === 'string' 
-                  ? drugName.replace(/\s*\(GSN: \d+\)/i, '') // Remove GSN from display name
-                  : drugName,
-                gsn
-              };
-            });
-            
-            console.log(`Server: Formatted ${formattedResults.length} results`);
-            return formattedResults;
-          }
-        } else {
-          const errorText = await response.text();
-          console.error(`Server: API error (${response.status}):`, errorText);
-        }
-      } catch (directApiError) {
-        console.error('Server: Error with direct API call:', directApiError);
-        console.log('Server: Falling back to API route');
-      }
-    }
-    
-    // First try the direct autocomplete endpoint
+    // First try the direct drugautocomplete endpoint
     try {
       apiAttempts++;
       // Use the client-side API proxy to avoid CORS issues
-      const autocompleteEndpoint = `${API_BASE_URL}/api/drugs/autocomplete/${encodeURIComponent(normalizedQuery)}`;
-      console.log(`[Attempt ${apiAttempts}] Using autocomplete endpoint: ${autocompleteEndpoint}`);
+      const autocompleteEndpoint = `${API_BASE_URL}/drugautocomplete/${encodeURIComponent(normalizedQuery)}`;
+      console.log(`[Attempt ${apiAttempts}] Using drugautocomplete endpoint: ${autocompleteEndpoint}`);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
@@ -130,15 +69,9 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
         if (Array.isArray(data) && data.length > 0) {
           // Convert from America's Pharmacy format to our format
           const results = data.map(item => {
-            // Extract GSN from label if present
-            const gsnMatch = item.label && typeof item.label === 'string' 
-              ? item.label.match(/\(GSN: (\d+)\)/)
-              : null;
-            const gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
-            
             return {
               drugName: item.value || (typeof item === 'string' ? item : ''),
-              gsn
+              gsn: item.gsn
             };
           });
           

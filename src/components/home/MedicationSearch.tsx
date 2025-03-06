@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline"
 import { useDebounce } from '@/hooks/useDebounce'
-import { searchMedications } from '@/services/medicationApi'
 
 interface Props {
   value: string
@@ -41,17 +40,37 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
     try {
       console.log('Searching for:', query);
       
-      // Call the searchMedications function from the API service
-      const results = await searchMedications(query);
+      // Use the new drugautocomplete endpoint that matches America's Pharmacy
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
+      const response = await fetch(`${API_BASE_URL}/drugautocomplete/${encodeURIComponent(query)}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        cache: 'no-store'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Error fetching suggestions: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Autocomplete results:', data);
+      
+      // Format the results to match our expected format
+      const formattedResults = data.map((item: any) => ({
+        drugName: item.value || (typeof item === 'string' ? item : ''),
+        gsn: item.gsn
+      }));
       
       // Format drug names with proper capitalization (first letter uppercase, rest lowercase)
-      const formattedResults = results.map(result => ({
+      const capitalizedResults = formattedResults.map((result: { drugName: string; gsn?: number }) => ({
         ...result,
         drugName: result.drugName.charAt(0).toUpperCase() + result.drugName.slice(1).toLowerCase()
       }));
       
-      console.log('Search results:', formattedResults);
-      setSuggestions(formattedResults);
+      console.log('Formatted search results:', capitalizedResults);
+      setSuggestions(capitalizedResults);
     } catch (error) {
       console.error('Error fetching suggestions:', error)
       setError('Failed to fetch medications. Please try again.')
