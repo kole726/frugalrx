@@ -846,4 +846,140 @@ const MOCK_PHARMACY_PRICES: PharmacyPrice[] = [
   { name: "Walmart Pharmacy", price: 9.99, distance: "2.5 miles" },
   { name: "Rite Aid", price: 13.75, distance: "3.1 miles" },
   { name: "Target Pharmacy", price: 11.25, distance: "4.0 miles" }
-]; 
+];
+
+/**
+ * Get the GSN for a drug name
+ * @param drugName The name of the drug
+ * @returns The GSN if found, otherwise undefined
+ */
+export async function getGsnForDrugName(drugName: string): Promise<number | undefined> {
+  try {
+    console.log(`Client: Getting GSN for drug name: "${drugName}"`);
+    
+    if (!drugName) {
+      console.error('Drug name is required');
+      return undefined;
+    }
+    
+    // Normalize the drug name
+    const normalizedDrugName = drugName.trim();
+    
+    // Use the API endpoint to get the GSN
+    const endpoint = `${API_BASE_URL}/api/drugs/gsn/${encodeURIComponent(normalizedDrugName)}`;
+    console.log(`Using API endpoint: ${endpoint}`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    const response = await fetch(endpoint, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      signal: controller.signal,
+      cache: 'no-store' // Ensure we don't use cached responses
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`Client: Received GSN data:`, data);
+      
+      if (data && data.gsn) {
+        console.log(`Client: Found GSN ${data.gsn} for drug "${drugName}"`);
+        return data.gsn;
+      } else {
+        console.log(`Client: No GSN found for drug "${drugName}"`);
+        return undefined;
+      }
+    } else {
+      const errorText = await response.text();
+      console.error(`Client: API error (${response.status}):`, errorText);
+      
+      // Try to find a GSN from the local mapping
+      const localGsn = findGsnByDrugName(normalizedDrugName);
+      if (localGsn) {
+        console.log(`Client: Found GSN ${localGsn} for drug "${drugName}" in local mapping`);
+        return localGsn;
+      }
+      
+      // If all else fails, check mock data
+      const mockGsn = getMockGsnForDrugName(normalizedDrugName);
+      if (mockGsn) {
+        console.log(`Client: Using mock GSN ${mockGsn} for drug "${drugName}"`);
+        return mockGsn;
+      }
+      
+      return undefined;
+    }
+  } catch (error) {
+    console.error('Client: Error getting GSN for drug:', error);
+    
+    // Try to find a GSN from the local mapping
+    const localGsn = findGsnByDrugName(drugName.trim());
+    if (localGsn) {
+      console.log(`Client: Found GSN ${localGsn} for drug "${drugName}" in local mapping`);
+      return localGsn;
+    }
+    
+    // If all else fails, check mock data
+    const mockGsn = getMockGsnForDrugName(drugName.trim());
+    if (mockGsn) {
+      console.log(`Client: Using mock GSN ${mockGsn} for drug "${drugName}"`);
+      return mockGsn;
+    }
+    
+    return undefined;
+  }
+}
+
+/**
+ * Get a mock GSN for a drug name
+ * @param drugName The name of the drug
+ * @returns A mock GSN if available, otherwise undefined
+ */
+function getMockGsnForDrugName(drugName: string): number | undefined {
+  const normalizedDrugName = drugName.toLowerCase();
+  
+  // Mock data for common medications
+  const MOCK_DRUGS = [
+    { drugName: 'amoxicillin', gsn: 1234 },
+    { drugName: 'lisinopril', gsn: 2345 },
+    { drugName: 'atorvastatin', gsn: 3456 },
+    { drugName: 'metformin', gsn: 4567 },
+    { drugName: 'levothyroxine', gsn: 5678 },
+    { drugName: 'amlodipine', gsn: 6789 },
+    { drugName: 'metoprolol', gsn: 7890 },
+    { drugName: 'albuterol', gsn: 8901 },
+    { drugName: 'omeprazole', gsn: 9012 },
+    { drugName: 'losartan', gsn: 1023 },
+    { drugName: 'gabapentin', gsn: 2134 },
+    { drugName: 'hydrochlorothiazide', gsn: 3245 },
+    { drugName: 'sertraline', gsn: 4356 },
+    { drugName: 'simvastatin', gsn: 5467 },
+    { drugName: 'vyvanse', gsn: 6578 },
+    { drugName: 'tylenol', gsn: 1790 },
+    { drugName: 'tylox', gsn: 8790 },
+    { drugName: 'tylenol with codeine', gsn: 9801 },
+    { drugName: 'tylenol pm', gsn: 1012 },
+    { drugName: 'tylenol cold', gsn: 2123 },
+    { drugName: 'lipitor', gsn: 62733 },
+    { drugName: 'trintellix', gsn: 39968 },
+    { drugName: 'adderall', gsn: 1695 },
+    { drugName: 'xanax', gsn: 6102 },
+    { drugName: 'zoloft', gsn: 8612 },
+    { drugName: 'prozac', gsn: 6996 },
+    { drugName: 'lexapro', gsn: 58827 },
+    { drugName: 'cymbalta', gsn: 72872 },
+    { drugName: 'wellbutrin', gsn: 6989 }
+  ];
+  
+  // Find the drug in the mock data
+  const drug = MOCK_DRUGS.find(drug => 
+    drug.drugName.includes(normalizedDrugName) || normalizedDrugName.includes(drug.drugName)
+  );
+  
+  return drug?.gsn;
+} 
