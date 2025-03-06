@@ -30,9 +30,10 @@ export default function DrugPage({ params }: Props) {
   const [pharmacyPrices, setPharmacyPrices] = useState<PharmacyPrice[]>([])
   const [brandVariations, setBrandVariations] = useState<any[]>([])
   const [displayedDrugName, setDisplayedDrugName] = useState<string>('')
-  const [forceUpdate, setForceUpdate] = useState(0)
+  const [forceUpdate, setForceUpdate] = useState<number>(0)
   const [lastSelectedBrandType, setLastSelectedBrandType] = useState<string>('')
   const [lastSelectedBrandName, setLastSelectedBrandName] = useState<string>('')
+  const [gsn, setGsn] = useState<string>('')
   
   // Filter state
   const [selectedBrand, setSelectedBrand] = useState<string>('generic')
@@ -497,8 +498,24 @@ export default function DrugPage({ params }: Props) {
       setIsLoading(true)
       setError(null)
       
+      // Get the GSN from the URL if available
+      let gsnFromUrl = '';
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        gsnFromUrl = url.searchParams.get('gsn') || '';
+        if (gsnFromUrl) {
+          console.log(`Found GSN in URL: ${gsnFromUrl}`);
+          // Update the gsn state to match the URL
+          setGsn(gsnFromUrl);
+        }
+      }
+      
+      // Use the GSN from state or URL
+      const currentGsn = gsn || gsnFromUrl;
+      console.log(`Current GSN for fetchDrugInfo: ${currentGsn || 'not available'}`);
+      
       const drugName = decodeURIComponent(params.name)
-      console.log(`Fetching drug info for: ${drugName}, GSN: ${gsn || 'not provided'}`)
+      console.log(`Fetching drug info for: ${drugName}, GSN: ${currentGsn || 'not provided'}`)
       
       // First, get drug pricing by name to get the GSN and pricing information
       console.log(`Getting drug pricing for: ${drugName} at location: ${userLocation.latitude}, ${userLocation.longitude}`)
@@ -509,7 +526,8 @@ export default function DrugPage({ params }: Props) {
         longitude: userLocation.longitude,
         radius: searchRadius,
         quantity: parseInt(selectedQuantity.split(' ')[0], 10) || 30,
-        customizedQuantity: true
+        customizedQuantity: true,
+        gsn: currentGsn ? parseInt(currentGsn, 10) : undefined // Pass GSN to API if available
       })
       
       console.log('Drug pricing data:', pricingData)
@@ -530,10 +548,25 @@ export default function DrugPage({ params }: Props) {
         setPharmacyPrices([])
       }
       
-      // If we have a GSN from pricing or URL, use it to get detailed drug info
-      const gsnToUse = gsn ? parseInt(gsn, 10) : gsnFromPricing
+      // If we have a GSN from pricing, URL, or state, use it to get detailed drug info
+      // Prioritize the GSN from state/URL over the one from pricing
+      const gsnToUse = currentGsn ? parseInt(currentGsn, 10) : gsnFromPricing
       
       if (gsnToUse) {
+        // Update the GSN state if it's different from the current GSN
+        if (gsnToUse.toString() !== currentGsn) {
+          console.log(`Updating GSN state from ${currentGsn} to ${gsnToUse}`);
+          setGsn(gsnToUse.toString());
+          
+          // Update the URL with the new GSN if it's not already there
+          if (typeof window !== 'undefined' && gsnToUse.toString() !== gsnFromUrl) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('gsn', gsnToUse.toString());
+            window.history.replaceState({}, '', url.toString());
+            console.log(`Updated URL with GSN: ${gsnToUse}`);
+          }
+        }
+        
         try {
           // Get detailed drug info using GSN
           console.log(`Attempting to fetch detailed drug info for GSN: ${gsnToUse}`)
@@ -1265,6 +1298,10 @@ export default function DrugPage({ params }: Props) {
           }
           
           window.history.replaceState({}, '', url.toString());
+          
+          // Update the gsn state variable to match the URL
+          setGsn(selectedVariation.gsn.toString());
+          console.log(`Updated GSN state to: ${selectedVariation.gsn}`);
         }
         
         // Mark this brand as selected and others as not selected
@@ -1280,109 +1317,15 @@ export default function DrugPage({ params }: Props) {
         setSelectedStrength('');
         setSelectedQuantity('');
         
-        try {
-          // Call getDrugPrices to get forms for this brand
-          console.log(`Fetching drug prices for brand: ${drugName}`);
-          setIsLoading(true);
-          
-          const pricingData = await getDrugPrices({
-            drugName: drugName,
-            latitude: userLocation.latitude,
-            longitude: userLocation.longitude,
-            radius: searchRadius,
-            quantity: 30, // Default quantity
-            customizedQuantity: true
-          });
-          
-          console.log('Drug pricing data for brand:', pricingData);
-          
-          // Extract GSN from pricing data if not already available
-          if (!selectedVariation.gsn) {
-            const gsnFromPricing = (pricingData as any).drug?.gsn || (pricingData as any).gsn;
-            if (gsnFromPricing) {
-              console.log(`Found GSN from pricing data: ${gsnFromPricing}`);
-              
-              // Update the URL with the new GSN
-              if (typeof window !== 'undefined') {
-                const url = new URL(window.location.href);
-                url.searchParams.set('gsn', gsnFromPricing.toString());
-                window.history.replaceState({}, '', url.toString());
-              }
-            }
-          }
-          
-          // Update pharmacy prices from pricing data
-          if ((pricingData as any).pharmacyPrices && (pricingData as any).pharmacyPrices.length > 0) {
-            console.log(`Found ${(pricingData as any).pharmacyPrices.length} pharmacy prices`);
-            setPharmacyPrices((pricingData as any).pharmacyPrices);
-          } else if (pricingData.pharmacies && pricingData.pharmacies.length > 0) {
-            console.log(`Found ${pricingData.pharmacies.length} pharmacies`);
-            setPharmacyPrices(pricingData.pharmacies);
-          }
-          
-          // Extract forms from pricing data
-          let forms: DrugForm[] = [];
-          
-          if (pricingData.forms && Array.isArray(pricingData.forms)) {
-            console.log(`Found ${pricingData.forms.length} forms in pricing data:`, pricingData.forms);
-            
-            // Filter forms to only include those with selected: true
-            const selectedForms = (pricingData.forms as DrugForm[]).filter(form => form.selected === true);
-            
-            if (selectedForms.length > 0) {
-              console.log(`Found ${selectedForms.length} selected forms:`, selectedForms);
-              forms = selectedForms;
-            } else {
-              // If no forms are marked as selected, use all forms
-              console.log(`No selected forms found, using all ${pricingData.forms.length} forms`);
-              forms = pricingData.forms as DrugForm[];
-            }
-          } else if ((pricingData as any).drug?.form) {
-            console.log(`Found form in drug data: ${(pricingData as any).drug.form}`);
-            forms = [{ 
-              form: (pricingData as any).drug.form, 
-              gsn: (pricingData as any).drug?.gsn || selectedVariation.gsn,
-              selected: true 
-            }];
-          }
-          
-          // If we have forms, update the form dropdown
-          if (forms.length > 0) {
-            setAvailableForms(forms);
-            
-            // Find the form that is marked as selected in the API
-            const selectedForm = forms.find((form: DrugForm) => form.selected === true);
-            if (selectedForm) {
-              console.log(`Using API-selected form: ${selectedForm.form}`);
-              setSelectedForm(selectedForm.form);
-              
-              // Now fetch strengths for this form
-              await handleFormChangeInternal(selectedForm.form, forms);
-            } else {
-              // If no form is marked as selected, use the first form
-              console.log(`No selected form found, using first form: ${forms[0].form}`);
-              setSelectedForm(forms[0].form);
-              
-              // Now fetch strengths for this form
-              await handleFormChangeInternal(forms[0].form, forms);
-            }
-          } else {
-            // If no forms found, fetch detailed drug info to get forms
-            console.log('No forms found in pricing data, fetching detailed drug info');
-            await fetchDrugInfo();
-          }
-          
-          setIsLoading(false);
-        } catch (error) {
-          console.error('Error fetching drug prices for brand:', error);
-          setError('Error fetching drug information');
-          setIsLoading(false);
-          
-          // If there was an error, fall back to fetchDrugInfo
-          await fetchDrugInfo();
-        }
+        // Wait a moment for the state updates to complete
+        await new Promise(resolve => setTimeout(resolve, 50));
         
-        // Set the displayed drug name AFTER API calls complete
+        // Refetch drug info with the new GSN
+        // This will update all dropdowns (form, strength, quantity) based on the new GSN
+        await fetchDrugInfo();
+        
+        // Set the displayed drug name AFTER fetchDrugInfo completes
+        // This ensures it won't be overwritten by the fetchDrugInfo function
         console.log(`Setting displayed drug name to: ${selectedBrandName}`);
         setDisplayedDrugName(selectedBrandName);
         
