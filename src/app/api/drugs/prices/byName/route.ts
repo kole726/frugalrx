@@ -65,9 +65,15 @@ export async function POST(request: Request) {
       // Prepare the API request
       const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
       const baseUrl = apiUrl.replace(/\/+$/, '');
-      const endpoint = '/pricing/v1/drugprices/byName';
+      
+      // Check if baseUrl already includes /pricing/v1 to avoid duplication
+      const baseUrlHasPath = baseUrl.includes('/pricing/v1');
+      
+      // Construct the endpoint path carefully to avoid duplication
+      const endpoint = baseUrlHasPath ? '/drugprices/byName' : '/pricing/v1/drugprices/byName';
       
       console.log(`Using America's Pharmacy API: ${baseUrl}${endpoint}`);
+      console.log(`Full API URL: ${baseUrl}${endpoint}`);
       
       // Prepare the request body
       const requestBody: DrugPriceRequestBody = {
