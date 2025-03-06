@@ -427,13 +427,17 @@ export default function DrugPage({ params }: Props) {
           const formattedForms = apiResponse.forms.map((form: any) => ({
             form: form.form,
             gsn: form.gsn,
-            selected: form.selected || false
+            selected: form.selected || false,
+            rank: form.rank || 999 // Use a high default rank if not provided
           }));
           
-          setAvailableForms(formattedForms);
+          // Sort forms by rank (lower rank first)
+          const sortedForms = formattedForms.sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+          
+          setAvailableForms(sortedForms);
           
           // Set default selected form (either the one marked as selected or the first one)
-          const defaultForm = formattedForms.find((form: any) => form.selected) || formattedForms[0];
+          const defaultForm = sortedForms.find((form: any) => form.selected) || sortedForms[0];
           if (defaultForm && defaultForm.form !== selectedForm) {
             console.log('Setting default form from API:', defaultForm.form);
             setSelectedForm(defaultForm.form);
@@ -449,13 +453,17 @@ export default function DrugPage({ params }: Props) {
           const formattedStrengths = apiResponse.strengths.map((strength: any) => ({
             strength: strength.strength,
             gsn: strength.gsn,
-            selected: strength.selected || false
+            selected: strength.selected || false,
+            rank: strength.rank || 999 // Use a high default rank if not provided
           }));
           
-          setAvailableStrengths(formattedStrengths);
+          // Sort strengths by rank (lower rank first)
+          const sortedStrengths = formattedStrengths.sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+          
+          setAvailableStrengths(sortedStrengths);
           
           // Set default selected strength (either the one marked as selected or the first one)
-          const defaultStrength = formattedStrengths.find((strength: any) => strength.selected) || formattedStrengths[0];
+          const defaultStrength = sortedStrengths.find((strength: any) => strength.selected) || sortedStrengths[0];
           if (defaultStrength && defaultStrength.strength !== selectedStrength) {
             console.log('Setting default strength from API:', defaultStrength.strength);
             setSelectedStrength(defaultStrength.strength);
@@ -471,13 +479,17 @@ export default function DrugPage({ params }: Props) {
           const formattedQuantities = apiResponse.quantities.map((qty: any) => ({
             quantity: qty.quantity,
             uom: qty.uom,
-            selected: qty.selected || false
+            selected: qty.selected || false,
+            rank: qty.rank || 999 // Use a high default rank if not provided
           }));
           
-          setAvailableQuantities(formattedQuantities);
+          // Sort quantities by rank (lower rank first)
+          const sortedQuantities = formattedQuantities.sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+          
+          setAvailableQuantities(sortedQuantities);
           
           // Set default selected quantity (either the one marked as selected or the first one)
-          const defaultQuantity = formattedQuantities.find((qty: any) => qty.selected) || formattedQuantities[0];
+          const defaultQuantity = sortedQuantities.find((qty: any) => qty.selected) || sortedQuantities[0];
           if (defaultQuantity) {
             const quantityString = `${defaultQuantity.quantity} ${defaultQuantity.uom}`;
             if (quantityString !== selectedQuantity) {
@@ -497,13 +509,17 @@ export default function DrugPage({ params }: Props) {
             name: drug.medName,
             type: drug.bgFlag === 'G' ? 'generic' : 'brand',
             gsn: drug.gsn || (apiResponse.drug && apiResponse.drug.gsn) || undefined,
-            selected: drug.selected || false
+            selected: drug.selected || false,
+            rank: drug.rank || 999 // Use a high default rank if not provided
           }));
           
-          setBrandVariations(formattedBrands);
+          // Sort brands by rank (lower rank first)
+          const sortedBrands = formattedBrands.sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+          
+          setBrandVariations(sortedBrands);
           
           // Set default selected brand (either the one marked as selected or the first one)
-          const defaultBrand = formattedBrands.find((brand: any) => brand.selected) || formattedBrands[0];
+          const defaultBrand = sortedBrands.find((brand: any) => brand.selected) || sortedBrands[0];
           if (defaultBrand && defaultBrand.type !== selectedBrand) {
             console.log('Setting default brand from API:', defaultBrand.type);
             setSelectedBrand(defaultBrand.type);
@@ -1262,22 +1278,45 @@ export default function DrugPage({ params }: Props) {
     const newBrand = e.target.value;
     setSelectedBrand(newBrand);
     
-    // If we have brand variations, find the matching one and update GSN
+    // If we have brand variations, find the matching one
     if (brandVariations.length > 0) {
       const selectedVariation = brandVariations.find(
         variation => variation.type === newBrand || variation.name.toLowerCase() === newBrand.toLowerCase()
       );
       
-      if (selectedVariation && selectedVariation.gsn) {
-        // Update the URL with the new GSN
-        if (typeof window !== 'undefined') {
-          const url = new URL(window.location.href);
-          url.searchParams.set('gsn', selectedVariation.gsn.toString());
-          window.history.replaceState({}, '', url.toString());
+      if (selectedVariation) {
+        console.log(`Selected brand variation: ${selectedVariation.name}`);
+        
+        // Get the drug name from the selected variation
+        const drugName = selectedVariation.name;
+        
+        // If the drug name is different from the current one, navigate to the new drug page
+        if (drugName && drugName.toLowerCase() !== decodeURIComponent(params.name).toLowerCase()) {
+          console.log(`Navigating to new drug page for: ${drugName}`);
+          
+          // Encode the drug name for the URL
+          const encodedDrugName = encodeURIComponent(drugName);
+          
+          // Create the new URL
+          const newUrl = `/drug/${encodedDrugName}`;
+          
+          // Navigate to the new URL
+          window.location.href = newUrl;
+          return; // Stop execution since we're navigating away
         }
         
-        // Refetch drug info with the new GSN
-        await fetchDrugInfo();
+        // If we're staying on the same drug but just changing the brand/type,
+        // update the GSN in the URL if available
+        if (selectedVariation.gsn) {
+          if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            url.searchParams.set('gsn', selectedVariation.gsn.toString());
+            window.history.replaceState({}, '', url.toString());
+          }
+        }
+        
+        // Refetch pharmacy prices with the current location and search radius
+        await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
       }
     }
   };
