@@ -36,6 +36,16 @@ const nextConfig = {
     // !! WARN !!
     ignoreBuildErrors: true,
   },
+  reactStrictMode: true,
+  async rewrites() {
+    return [
+      // Rewrite for the drugautocomplete endpoint to match America's Pharmacy exactly
+      {
+        source: '/drugautocomplete/:query',
+        destination: '/api/drugautocomplete/:query',
+      },
+    ];
+  },
 }
 
 module.exports = nextConfig 

@@ -40,9 +40,8 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
     try {
       console.log('Searching for:', query);
       
-      // Use the drugautocomplete endpoint that matches America's Pharmacy
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
-      const response = await fetch(`${API_BASE_URL}/drugautocomplete/${encodeURIComponent(query)}`, {
+      // Use the direct drugautocomplete endpoint that exactly matches America's Pharmacy
+      const response = await fetch(`/drugautocomplete/${encodeURIComponent(query)}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',

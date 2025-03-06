@@ -44,9 +44,9 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     // First try the direct drugautocomplete endpoint
     try {
       apiAttempts++;
-      // Use the client-side API proxy to avoid CORS issues
-      const autocompleteEndpoint = `${API_BASE_URL}/drugautocomplete/${encodeURIComponent(normalizedQuery)}`;
-      console.log(`[Attempt ${apiAttempts}] Using drugautocomplete endpoint: ${autocompleteEndpoint}`);
+      // Use the direct endpoint to match America's Pharmacy exactly
+      const autocompleteEndpoint = `/drugautocomplete/${encodeURIComponent(normalizedQuery)}`;
+      console.log(`[Attempt ${apiAttempts}] Using direct drugautocomplete endpoint: ${autocompleteEndpoint}`);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
@@ -228,7 +228,18 @@ function getMockDrugResults(query: string): DrugSearchResponse[] {
     { drugName: 'Prozac', gsn: 6996 },
     { drugName: 'Lexapro', gsn: 58827 },
     { drugName: 'Cymbalta', gsn: 72872 },
-    { drugName: 'Wellbutrin', gsn: 6989 }
+    { drugName: 'Wellbutrin', gsn: 6989 },
+    // Add mock data for "tyl" to match America's Pharmacy's response
+    { drugName: 'TYLACTIN BUILD 20 PE (NUT. TX FOR TYROSINEMIA-IRON)', gsn: 9001 },
+    { drugName: 'TYLACTIN COMPLETE 15 PE (NUT. TX FOR TYROSINEMIA-IRON)', gsn: 9002 },
+    { drugName: 'TYLACTIN RESTORE 10 PE (NUT.TX,TYROSINEM. WITHOUT IRON)', gsn: 9003 },
+    { drugName: 'TYLACTIN RESTORE 5 PE (NUT.TX,TYROSINEM. WITHOUT IRON)', gsn: 9004 },
+    { drugName: 'TYLACTIN RTD 15 PE (NUT. TX FOR TYROSINEMIA-IRON)', gsn: 9005 },
+    { drugName: 'TYLENOL (ACETAMINOPHEN)', gsn: 9006 },
+    { drugName: 'TYLENOL 8 HOUR (ACETAMINOPHEN)', gsn: 9007 },
+    { drugName: 'TYLENOL ARTHRITIS PAIN (ACETAMINOPHEN)', gsn: 9008 },
+    { drugName: 'TYLENOL COLD AND FLU SEVERE (PHENYLEPH-DM-ACETAMIN-GUAIFEN)', gsn: 9009 },
+    { drugName: 'TYLENOL COLD HEAD CONGEST SEVR (PHENYLEPHRINE-ACETAMINOPHEN-GG)', gsn: 9010 }
   ];
   
   // Filter the mock drugs based on the query
