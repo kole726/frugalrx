@@ -44,9 +44,9 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     // First try the direct drugautocomplete endpoint
     try {
       apiAttempts++;
-      // Use the direct endpoint to match America's Pharmacy exactly
-      const autocompleteEndpoint = `/drugautocomplete/${encodeURIComponent(normalizedQuery)}`;
-      console.log(`[Attempt ${apiAttempts}] Using direct drugautocomplete endpoint: ${autocompleteEndpoint}`);
+      // Use the API endpoint that matches America's Pharmacy's documented endpoints
+      const autocompleteEndpoint = `${API_BASE_URL}/api/drugautocomplete/${encodeURIComponent(normalizedQuery)}`;
+      console.log(`[Attempt ${apiAttempts}] Using API drugautocomplete endpoint: ${autocompleteEndpoint}`);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout

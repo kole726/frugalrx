@@ -40,8 +40,8 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
     try {
       console.log('Searching for:', query);
       
-      // Use the direct drugautocomplete endpoint that exactly matches America's Pharmacy
-      const response = await fetch(`/drugautocomplete/${encodeURIComponent(query)}`, {
+      // Use the API endpoint that matches America's Pharmacy's documented endpoints
+      const response = await fetch(`/api/drugautocomplete/${encodeURIComponent(query)}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -56,7 +56,7 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
       const data = await response.json();
       console.log('Autocomplete results:', data);
       
-      // Extract GSN from label if present (following America's Pharmacy pattern)
+      // Process the response from the API
       const formattedResults = data.map((item: any) => {
         const drugNameOnlyRegex = /\(.*?\)/;
         const label = item.label || '';
@@ -66,10 +66,8 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
         const gsnMatch = typeof label === 'string' ? label.match(/\(GSN: (\d+)\)/i) : null;
         const gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
         
-        // Remove GSN info from display name if present
-        const cleanName = typeof value === 'string' 
-          ? value.replace(drugNameOnlyRegex, '').trim() 
-          : value;
+        // Use the value as the drug name (it already has parenthetical info removed)
+        const cleanName = value;
         
         return {
           drugName: cleanName,
