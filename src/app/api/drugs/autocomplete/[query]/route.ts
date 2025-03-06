@@ -40,47 +40,23 @@ export async function GET(
     
     // Try to get real data from America's Pharmacy API
     try {
-      // First try the direct approach like America's Pharmacy website uses
-      console.log(`Trying direct America's Pharmacy autocomplete endpoint for "${query}"`);
-      
-      // This is the endpoint used by the America's Pharmacy website as seen in the HAR file
-      const directResponse = await fetch(`https://www.americaspharmacy.com/drugautocomplete/${encodeURIComponent(query)}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        cache: 'no-store'
-      });
-      
-      if (directResponse.ok) {
-        const data = await directResponse.json();
-        console.log(`Direct autocomplete returned ${Array.isArray(data) ? data.length : 0} results`);
-        
-        if (Array.isArray(data) && data.length > 0) {
-          // Return the data directly as it's already in the format we want
-          return NextResponse.json(data, { headers: corsHeaders });
-        }
-      } else {
-        console.log(`Direct autocomplete failed with status ${directResponse.status}`);
-      }
-      
-      // If direct approach fails, try the API with authentication
-      console.log(`Trying authenticated API for "${query}"`);
-      
       // Get authentication token
       const token = await getAuthToken();
       
-      // Try the API endpoint from the documentation
-      const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
-      if (!apiUrl) {
-        throw new Error('Missing AMERICAS_PHARMACY_API_URL environment variable');
+      if (!token) {
+        throw new Error('Failed to obtain authentication token');
       }
       
-      // Ensure the URL is properly formatted - remove any trailing slashes and path segments
-      const baseUrl = apiUrl.replace(/\/pricing\/v1\/?$/, '');
-      const endpoint = `/pricing/v1/drugs/names`;
+      console.log('Successfully obtained authentication token');
       
-      console.log(`Using API URL: ${baseUrl}${endpoint}`);
+      // Try the API endpoint from the documentation
+      const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
+      
+      // Ensure the URL is properly formatted
+      const baseUrl = apiUrl.replace(/\/+$/, '');
+      const endpoint = '/pricing/v1/drugs/names';
+      
+      console.log(`Using America's Pharmacy API: ${baseUrl}${endpoint}`);
       
       const response = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
@@ -101,17 +77,52 @@ export async function GET(
         console.log(`API returned ${Array.isArray(apiData) ? apiData.length : 0} results`);
         
         if (Array.isArray(apiData) && apiData.length > 0) {
-          // Format the results to match America's Pharmacy website format
-          const formattedResults = apiData.map(drugName => ({
-            label: `${drugName}`,
-            value: drugName
-          }));
+          // Format the results to match the expected format
+          const formattedResults = apiData.map(drugName => {
+            // Check if the drug name contains GSN information
+            const gsnMatch = typeof drugName === 'string' && drugName.match(/\(GSN: (\d+)\)/i);
+            const gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
+            
+            // Format the label and value
+            const value = typeof drugName === 'string' ? drugName : drugName.value || drugName.drugName;
+            const label = typeof drugName === 'string' 
+              ? drugName 
+              : drugName.label || `${drugName.value || drugName.drugName}${gsn ? ` (GSN: ${gsn})` : ''}`;
+            
+            return {
+              label,
+              value
+            };
+          });
           
           return NextResponse.json(formattedResults, { headers: corsHeaders });
         }
       } else {
         const errorText = await response.text();
         console.error(`API error: ${response.status}`, errorText);
+        
+        // Try the direct approach as a fallback
+        console.log(`API call failed, trying direct America's Pharmacy autocomplete endpoint for "${query}"`);
+        
+        const directResponse = await fetch(`https://www.americaspharmacy.com/drugautocomplete/${encodeURIComponent(query)}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+          cache: 'no-store'
+        });
+        
+        if (directResponse.ok) {
+          const data = await directResponse.json();
+          console.log(`Direct autocomplete returned ${Array.isArray(data) ? data.length : 0} results`);
+          
+          if (Array.isArray(data) && data.length > 0) {
+            // Return the data directly as it's already in the format we want
+            return NextResponse.json(data, { headers: corsHeaders });
+          }
+        } else {
+          console.log(`Direct autocomplete failed with status ${directResponse.status}`);
+        }
       }
     } catch (apiError) {
       console.error('Error connecting to America\'s Pharmacy API:', apiError);

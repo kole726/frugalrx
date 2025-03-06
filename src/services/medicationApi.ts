@@ -32,12 +32,19 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     const normalizedQuery = query.toLowerCase();
     console.log(`Client: Searching for medications with query: "${normalizedQuery}"`);
     
-    // First try the new autocomplete endpoint that mimics America's Pharmacy
+    // First try the America's Pharmacy API format
     try {
+      // Use the client-side API proxy to avoid CORS issues
       const autocompleteEndpoint = `${API_BASE_URL}/drugs/autocomplete/${encodeURIComponent(normalizedQuery)}`;
       console.log(`Using autocomplete endpoint: ${autocompleteEndpoint}`);
       
-      const response = await fetch(autocompleteEndpoint);
+      const response = await fetch(autocompleteEndpoint, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        cache: 'no-store' // Ensure we don't use cached responses
+      });
       
       if (response.ok) {
         const data = await response.json();
@@ -77,7 +84,13 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     const apiEndpoint = `${API_BASE_URL}/drugs/search?q=${encodeURIComponent(normalizedQuery)}`;
     
     console.log(`Using API endpoint: ${apiEndpoint}`);
-    const response = await fetch(apiEndpoint);
+    const response = await fetch(apiEndpoint, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      cache: 'no-store' // Ensure we don't use cached responses
+    });
     
     if (!response.ok) {
       let errorMessage = `Failed to fetch medications: ${response.status}`;
@@ -119,80 +132,47 @@ export async function getDrugPrices(criteria: DrugPriceRequest): Promise<DrugPri
     // Create a copy of the criteria to avoid modifying the original
     const requestCriteria = { ...criteria };
     
-    // If we have a drug name, use the direct byName endpoint
-    if (requestCriteria.drugName) {
-      console.log(`Client: Using direct byName endpoint for drug "${requestCriteria.drugName}"`);
-      return getDrugPricesByName(
-        requestCriteria.drugName,
-        requestCriteria.latitude,
-        requestCriteria.longitude,
-        requestCriteria.radius,
-        requestCriteria.quantity
-      );
+    // Determine which endpoint to use based on the provided criteria
+    let endpoint = '';
+    
+    if (requestCriteria.gsn) {
+      console.log(`Client: Using GSN ${requestCriteria.gsn} for drug price lookup`);
+      endpoint = `${API_BASE_URL}/drugs/prices/byGSN`;
+    } else if (requestCriteria.drugName) {
+      console.log(`Client: Using drug name "${requestCriteria.drugName}" for drug price lookup`);
+      endpoint = `${API_BASE_URL}/drugs/prices/byName`;
+    } else if (requestCriteria.ndcCode) {
+      console.log(`Client: Using NDC code ${requestCriteria.ndcCode} for drug price lookup`);
+      endpoint = `${API_BASE_URL}/drugs/prices/byNdcCode`;
+    } else {
+      throw new Error('Either drugName, gsn, or ndcCode must be provided');
     }
     
-    // Make the initial API request for GSN or NDC
-    let response = await fetch(`${API_BASE_URL}/drugs/prices`, {
+    console.log(`Client: Using endpoint ${endpoint}`);
+    
+    // Make the API request
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify(requestCriteria),
+      cache: 'no-store' // Ensure we don't use cached responses
     });
-
-    // If we get a 204 No Content response and we're using a GSN, try the known working GSN
-    if (response.status === 204 && requestCriteria.gsn && requestCriteria.gsn !== 62733) {
-      console.log(`Client: No data for GSN ${requestCriteria.gsn}, trying known working GSN 62733 (Lipitor)`);
-      
-      // Create a new request with the known working GSN
-      const fallbackRequest = {
-        ...requestCriteria,
-        gsn: 62733, // Known working GSN (Lipitor)
-        drugName: undefined // Clear drug name to ensure GSN is used
-      };
-      
-      // Make the fallback request
-      response = await fetch(`${API_BASE_URL}/drugs/prices`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(fallbackRequest),
-      });
-      
-      // If we get data, mark it as using a fallback GSN
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          ...data,
-          usingFallbackGsn: true,
-          originalGsn: requestCriteria.gsn
-        };
-      }
-    }
-
-    // Handle error responses
+    
     if (!response.ok) {
-      const errorStatus = response.status;
-      let errorMessage = `Failed to fetch drug prices: ${errorStatus}`;
-      
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch (e) {
-        // If we can't parse the error as JSON, use the status code
-        console.error('Could not parse error response as JSON:', e);
-      }
-      
-      console.error(`Client: API error when fetching drug prices:`, errorMessage);
-      throw new Error(errorMessage);
+      const errorText = await response.text();
+      console.error(`Client: Drug prices API error: ${response.status}`, errorText);
+      throw new Error(`Failed to get drug prices: ${response.status} - ${errorText || 'Unknown error'}`);
     }
-
-    // Parse and return the successful response
+    
     const data = await response.json();
+    console.log(`Client: Received drug prices:`, data);
+    
     return data;
   } catch (error) {
-    console.error('Client: Error fetching drug prices:', error);
+    console.error('Client: Error getting drug prices:', error);
     throw error;
   }
 }
@@ -616,14 +596,9 @@ export async function getDrugPricesByName(
   try {
     console.log(`Client: Getting drug prices by name for "${drugName}"`);
     
-    // Replace hyphens with spaces for API calls
-    // This is important because our URLs use hyphens for SEO, but the API expects spaces
-    const formattedDrugName = drugName.replace(/-/g, ' ');
-    console.log(`Client: Formatted drug name for API call: "${formattedDrugName}"`);
-    
     // Create the request body according to the API documentation
     const requestBody = {
-      drugName: formattedDrugName.toUpperCase().trim(),
+      drugName: drugName.toUpperCase().trim(),
       latitude,
       longitude,
       radius: radius || 50,

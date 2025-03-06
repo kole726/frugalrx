@@ -72,25 +72,33 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
   }, [])
 
   const handleSuggestionClick = (suggestion: DrugSuggestion) => {
-    // Display the drug name with proper capitalization in the search box
-    setSearchTerm(suggestion.drugName)
-    // Pass the properly formatted name to the parent component, but ensure GSN is preserved
-    onChange(suggestion.drugName, suggestion.gsn)
-    setShowSuggestions(false)
+    console.log('Selected suggestion:', suggestion);
+    
+    // Update the search term with the selected drug name
+    setSearchTerm(suggestion.drugName);
+    
+    // Close the suggestions dropdown
+    setShowSuggestions(false);
+    
+    // Call the onChange callback with the selected drug name and GSN if available
+    onChange(suggestion.drugName, suggestion.gsn);
     
     // If onSearch is not provided, handle navigation directly
     if (!onSearch && typeof window !== 'undefined') {
-      // Always convert drug name to lowercase for URLs
-      const normalizedDrugName = suggestion.drugName.toLowerCase()
+      // Always convert drug name to lowercase and format for URLs
+      const formattedDrugName = suggestion.drugName
+        .toLowerCase()
+        .replace(/\s+/g, '-') // Replace spaces with hyphens
+        .replace(/[^a-z0-9-]/g, ''); // Remove special characters
       
       // Construct URL with GSN if available (important for API calls)
       const url = suggestion.gsn 
-        ? `/drug/${encodeURIComponent(normalizedDrugName)}?gsn=${suggestion.gsn}`
-        : `/drug/${encodeURIComponent(normalizedDrugName)}`;
+        ? `/drug/${encodeURIComponent(formattedDrugName)}?gsn=${suggestion.gsn}`
+        : `/drug/${encodeURIComponent(formattedDrugName)}`;
       
       window.location.href = url;
     }
-  }
+  };
 
   return (
     <div ref={wrapperRef} className="relative">
