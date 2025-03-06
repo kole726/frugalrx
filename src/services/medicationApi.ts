@@ -41,6 +41,67 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     let apiAttempts = 0;
     let apiSuccess = false;
     
+    // First try direct API call if we're on the server
+    if (typeof window === 'undefined') {
+      try {
+        apiAttempts++;
+        console.log(`Server: Attempt ${apiAttempts} - Direct API call for drug search`);
+        
+        // Get authentication token (server-side only)
+        const { getAuthToken } = await import('@/lib/server/auth');
+        const token = await getAuthToken();
+        
+        const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
+        const endpoint = '/pricing/v1/drugs/names';
+        
+        console.log(`Server: Using direct API endpoint: ${apiUrl}${endpoint}`);
+        
+        const response = await fetch(`${apiUrl}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+            prefixText: normalizedQuery
+          }),
+          cache: 'no-store'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`Server: API returned ${Array.isArray(data) ? data.length : 0} results`);
+          
+          if (Array.isArray(data) && data.length > 0) {
+            // Format the results
+            const formattedResults = data.map(drugName => {
+              // Check if the drug name contains GSN information
+              const gsnMatch = typeof drugName === 'string' && drugName.match(/\(GSN: (\d+)\)/i);
+              const gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
+              
+              return {
+                drugName: typeof drugName === 'string' 
+                  ? drugName.replace(/\s*\(GSN: \d+\)/i, '') // Remove GSN from display name
+                  : drugName,
+                gsn
+              };
+            });
+            
+            console.log(`Server: Formatted ${formattedResults.length} results`);
+            return formattedResults;
+          }
+        } else {
+          const errorText = await response.text();
+          console.error(`Server: API error (${response.status}):`, errorText);
+        }
+      } catch (directApiError) {
+        console.error('Server: Error with direct API call:', directApiError);
+        console.log('Server: Falling back to API route');
+      }
+    }
+    
     // First try the direct autocomplete endpoint
     try {
       apiAttempts++;
@@ -165,74 +226,27 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
       }
     }
     
-    // Try the dynamic route search endpoint as a last resort
-    try {
-      apiAttempts++;
-      const dynamicSearchEndpoint = `${API_BASE_URL}/api/drugs/search/${encodeURIComponent(normalizedQuery)}`;
-      
-      console.log(`[Attempt ${apiAttempts}] Using dynamic search endpoint: ${dynamicSearchEndpoint}`);
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-      
-      const response = await fetch(dynamicSearchEndpoint, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        signal: controller.signal,
-        cache: 'no-store' // Ensure we don't use cached responses
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`Client: Received dynamic search results:`, data);
-        
-        // Format the results if they're not already in the expected format
-        if (Array.isArray(data) && data.length > 0) {
-          const formattedResults = data.map(item => {
-            if (typeof item === 'string') {
-              return { drugName: item };
-            } else if (typeof item === 'object') {
-              return {
-                drugName: item.drugName || item.name || item.value || '',
-                gsn: item.gsn || undefined
-              };
-            }
-            return { drugName: String(item) };
-          });
-          
-          console.log(`Client: Formatted ${formattedResults.length} dynamic search results`);
-          apiSuccess = true;
-          return formattedResults;
-        }
-        
-        // If data has a results property, use that
-        if (data.results && Array.isArray(data.results) && data.results.length > 0) {
-          apiSuccess = true;
-          return data.results;
-        }
-      } else {
-        const errorText = await response.text();
-        console.error(`Client: Dynamic search endpoint error (${response.status}):`, errorText);
-      }
-    } catch (dynamicSearchError: any) {
-      if (dynamicSearchError.name === 'AbortError') {
-        console.error('Dynamic search endpoint timed out after 3 seconds');
-      } else {
-        console.error('Error with dynamic search endpoint:', dynamicSearchError);
-      }
-    }
+    // If all API calls fail, return mock data only if NEXT_PUBLIC_FALLBACK_TO_MOCK is true
+    console.log(`All ${apiAttempts} API attempts failed for "${normalizedQuery}"`);
     
-    // If all API calls fail, return mock data
-    console.log(`All ${apiAttempts} API attempts failed, returning mock data for "${normalizedQuery}"`);
-    return getMockDrugResults(normalizedQuery);
+    if (process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
+      console.log('Falling back to mock data as configured');
+      return getMockDrugResults(normalizedQuery);
+    } else {
+      console.log('Not using mock data as fallback is disabled');
+      return [];
+    }
   } catch (error) {
     console.error('Client: Error searching medications:', error);
-    // Return mock data as a last resort
-    return getMockDrugResults(query.toLowerCase().trim());
+    
+    // Return mock data as a last resort only if configured to do so
+    if (process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
+      console.log('Falling back to mock data due to error');
+      return getMockDrugResults(query.toLowerCase().trim());
+    } else {
+      console.log('Not using mock data as fallback is disabled');
+      return [];
+    }
   }
 }
 
@@ -391,7 +405,7 @@ async function getFallbackDrugPrices(criteria: DrugPriceRequest): Promise<DrugPr
     return data;
   }
   
-  throw new Error('No valid criteria for fallback approach');
+ throw new Error('No valid criteria for fallback approach');
 }
 
 /**
@@ -813,24 +827,74 @@ export async function getDrugPricesByName(
   try {
     console.log(`Client: Getting drug prices by name for "${drugName}"`);
     
-    // Create the request body according to the API documentation
+    // Format the drug name - replace hyphens with spaces for API compatibility
+    const formattedDrugName = drugName.replace(/-/g, ' ').trim();
+    console.log(`Client: Formatted drug name: "${formattedDrugName}"`);
+    
+    // Create the request body according to the API documentation and Postman collection
     const requestBody = {
-      drugName: drugName.toUpperCase().trim(),
+      hqMappingName: "walkerrx", // Required by America's Pharmacy API
+      drugName: formattedDrugName,
       latitude,
       longitude,
       radius: radius || 50,
-      quantity: quantity || 30,
-      customizedQuantity: quantity ? true : false,
-      useUsualAndCustomary: true
+      ...(quantity ? {
+        customizedQuantity: true,
+        quantity
+      } : {})
     };
     
-    // Make a request to our internal API endpoint
-    const response = await fetch(`${API_BASE_URL}/drugs/prices`, {
+    console.log('Client: Request body for drug prices:', requestBody);
+    
+    // First try the direct API endpoint (for server-side calls)
+    if (typeof window === 'undefined') {
+      try {
+        // Get authentication token (server-side only)
+        const { getAuthToken } = await import('@/lib/server/auth');
+        const token = await getAuthToken();
+        
+        const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
+        const endpoint = '/pricing/v1/drugprices/byName';
+        
+        console.log(`Server: Using direct API endpoint: ${apiUrl}${endpoint}`);
+        
+        const response = await fetch(`${apiUrl}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          cache: 'no-store'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Server: Successfully retrieved drug prices from API');
+          return data;
+        } else {
+          const errorText = await response.text();
+          console.error(`Server: API error (${response.status}):`, errorText);
+          throw new Error(`API Error ${response.status}: ${errorText}`);
+        }
+      } catch (directApiError) {
+        console.error('Server: Error with direct API call:', directApiError);
+        console.log('Server: Falling back to API route');
+      }
+    }
+    
+    // For client-side or if direct API call failed, use our Next.js API route
+    console.log(`Client: Using API route: ${API_BASE_URL}/api/drugs/prices/byName`);
+    
+    const response = await fetch(`${API_BASE_URL}/api/drugs/prices/byName`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify(requestBody),
+      cache: 'no-store'
     });
 
     if (!response.ok) {

@@ -67,7 +67,7 @@ export async function GET(
       
       console.log('Successfully obtained authentication token');
       
-      // Try the API endpoint from the documentation
+      // Use the endpoint from the Postman collection
       const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
       
       // Ensure the URL is properly formatted
@@ -117,7 +117,8 @@ export async function GET(
               
               return {
                 label,
-                value
+                value,
+                gsn
               };
             });
             
@@ -127,6 +128,7 @@ export async function GET(
         } else {
           const errorText = await response.text();
           console.error(`API error: ${response.status}`, errorText);
+          throw new Error(`API error: ${response.status} - ${errorText}`);
         }
       } catch (fetchError: any) {
         if (fetchError.name === 'AbortError') {
@@ -135,66 +137,37 @@ export async function GET(
           console.error('Error fetching from America\'s Pharmacy API:', fetchError);
         }
         clearTimeout(timeoutId);
-      }
-      
-      // Try the direct approach as a fallback
-      apiAttempts++;
-      console.log(`Autocomplete API: Attempt ${apiAttempts} - Trying direct America's Pharmacy autocomplete endpoint for "${query}"`);
-      
-      // Set a timeout for the direct fetch request
-      const directController = new AbortController();
-      const directTimeoutId = setTimeout(() => directController.abort(), 5000); // 5 second timeout
-      
-      try {
-        const directResponse = await fetch(`https://www.americaspharmacy.com/drugautocomplete/${encodeURIComponent(query)}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
-          signal: directController.signal,
-          cache: 'no-store'
-        });
-        
-        clearTimeout(directTimeoutId);
-        
-        if (directResponse.ok) {
-          const data = await directResponse.json();
-          console.log(`Direct autocomplete returned ${Array.isArray(data) ? data.length : 0} results`);
-          
-          if (Array.isArray(data) && data.length > 0) {
-            // Return the data directly as it's already in the format we want
-            console.log(`Autocomplete API: Returning ${data.length} results from direct America's Pharmacy endpoint`);
-            return NextResponse.json(data, { headers: corsHeaders });
-          }
-        } else {
-          console.log(`Direct autocomplete failed with status ${directResponse.status}`);
-        }
-      } catch (directFetchError: any) {
-        if (directFetchError.name === 'AbortError') {
-          console.error('Direct America\'s Pharmacy request timed out after 5 seconds');
-        } else {
-          console.error('Error with direct America\'s Pharmacy request:', directFetchError);
-        }
-        clearTimeout(directTimeoutId);
+        throw fetchError; // Re-throw to be caught by the outer try-catch
       }
     } catch (apiError: any) {
       console.error('Error connecting to America\'s Pharmacy API:', apiError);
+      
+      // Only fall back to mock data if configured to do so
+      if (process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK === 'true') {
+        console.log(`Autocomplete API: API attempt failed, falling back to mock data for "${query}"`);
+        const mockResults = getMockDrugSearchResults(query);
+        
+        // Format the results to match America's Pharmacy format
+        const formattedResults = mockResults.map(drug => ({
+          label: `${drug.drugName}${drug.gsn ? ` (GSN: ${drug.gsn})` : ''}`,
+          value: drug.drugName,
+          gsn: drug.gsn
+        }));
+        
+        console.log(`Autocomplete API: Returning ${formattedResults.length} mock results for "${query}"`);
+        
+        // Return the formatted results
+        return NextResponse.json(formattedResults, { headers: corsHeaders });
+      } else {
+        // Return empty results if not configured to use mock data
+        console.log('Not using mock data as fallback is disabled');
+        return NextResponse.json([], { headers: corsHeaders });
+      }
     }
     
-    // If all API attempts fail, fall back to mock data
-    console.log(`Autocomplete API: All ${apiAttempts} API attempts failed, falling back to mock data for "${query}"`);
-    const mockResults = getMockDrugSearchResults(query);
-    
-    // Format the results to match America's Pharmacy format
-    const formattedResults = mockResults.map(drug => ({
-      label: `${drug.drugName}${drug.gsn ? ` (GSN: ${drug.gsn})` : ''}`,
-      value: drug.drugName
-    }));
-    
-    console.log(`Autocomplete API: Returning ${formattedResults.length} mock results for "${query}"`);
-    
-    // Return the formatted results
-    return NextResponse.json(formattedResults, { headers: corsHeaders });
+    // If we get here, the API didn't return any results
+    console.log(`Autocomplete API: No results found for "${query}"`);
+    return NextResponse.json([], { headers: corsHeaders });
   } catch (error: any) {
     console.error('Error in drug autocomplete API:', error);
     return NextResponse.json(
