@@ -265,13 +265,13 @@ export async function getDrugPrices(criteria: DrugPriceRequest): Promise<DrugPri
     
     if (requestCriteria.gsn) {
       console.log(`Client: Using GSN ${requestCriteria.gsn} for drug price lookup`);
-      endpoint = `${API_BASE_URL}/api/drugs/prices/byGSN`;
+      endpoint = `/api/drugs/prices/byGSN`;
     } else if (requestCriteria.drugName) {
       console.log(`Client: Using drug name "${requestCriteria.drugName}" for drug price lookup`);
-      endpoint = `${API_BASE_URL}/api/drugs/prices/byName`;
+      endpoint = `/api/drugs/prices/byName`;
     } else if (requestCriteria.ndcCode) {
       console.log(`Client: Using NDC code ${requestCriteria.ndcCode} for drug price lookup`);
-      endpoint = `${API_BASE_URL}/api/drugs/prices/byNdcCode`;
+      endpoint = `/api/drugs/prices/ndc`;
     } else {
       throw new Error('Either drugName, gsn, or ndcCode must be provided');
     }
@@ -345,7 +345,7 @@ async function getFallbackDrugPrices(criteria: DrugPriceRequest): Promise<DrugPr
     console.log(`Fallback: Using direct byGSN endpoint for GSN ${criteria.gsn}`);
     
     // Make the API request to the legacy endpoint
-    const response = await fetch(`${API_BASE_URL}/drugs/prices`, {
+    const response = await fetch(`/api/drugs/prices`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -392,7 +392,7 @@ export async function getDrugPricesByNdc(
       quantity
     };
 
-    const response = await fetch(`${API_BASE_URL}/drugs/prices/ndc`, {
+    const response = await fetch(`/api/drugs/prices/ndc`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -804,52 +804,12 @@ export async function getDrugPricesByName(
     
     console.log('Client: Request body for drug prices:', requestBody);
     
-    // First try the direct API endpoint (for server-side calls)
-    if (typeof window === 'undefined') {
-      try {
-        // Get authentication token (server-side only)
-        const { getAuthToken } = await import('@/lib/server/auth');
-        const token = await getAuthToken();
-        
-        const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
-        const endpoint = '/pricing/v1/drugprices/byName';
-        
-        console.log(`Server: Using direct API endpoint: ${apiUrl}${endpoint}`);
-        
-        const response = await fetch(`${apiUrl}${endpoint}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-          cache: 'no-store'
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Server: Successfully retrieved drug prices from API');
-          return data;
-        } else {
-          const errorText = await response.text();
-          console.error(`Server: API error (${response.status}):`, errorText);
-          throw new Error(`API Error ${response.status}: ${errorText}`);
-        }
-      } catch (directApiError) {
-        console.error('Server: Error with direct API call:', directApiError);
-        console.log('Server: Falling back to API route');
-      }
-    }
-    
-    // For client-side or if direct API call failed, use our Next.js API route
-    console.log(`Client: Using API route: ${API_BASE_URL}/api/drugs/prices/byName`);
-    
-    const response = await fetch(`${API_BASE_URL}/api/drugs/prices/byName`, {
+    // If we're in the browser, use our Next.js API route
+    console.log('Client: Using Next.js API route for drug prices by name');
+    const response = await fetch(`/api/drugs/prices/byName`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
       },
       body: JSON.stringify(requestBody),
       cache: 'no-store'
