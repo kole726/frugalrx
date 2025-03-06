@@ -38,35 +38,137 @@ async function findGsnForDrugName(drugName: string): Promise<number | undefined>
     // Get authentication token
     const token = await getAuthToken();
     
-    // Use the correct endpoint from the API documentation
-    const endpoint = `/druginfo/${encodeURIComponent(drugName)}`;
+    // STEP 1: Use opFindDrugByName to get the GSN
+    // Construct the endpoint path carefully to avoid duplication
+    const findDrugEndpoint = baseUrl.includes('/pricing/v1') 
+      ? `/drugs/${encodeURIComponent(drugName)}`
+      : `/pricing/v1/drugs/${encodeURIComponent(drugName)}`;
     
-    // Check if baseUrl already includes the pricing/v1 path
-    const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
+    console.log(`Server: Step 1 - Using opFindDrugByName endpoint: ${baseUrl}${findDrugEndpoint}`);
     
-    console.log(`Server: Trying GET request to ${baseUrl}${fullEndpoint}`);
+    // Create URL with query parameters
+    const url = new URL(`${baseUrl}${findDrugEndpoint}`);
+    url.searchParams.append('count', '10'); // Limit results
+    url.searchParams.append('hqAlias', process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx');
     
-    // Make API request
-    const response = await fetch(`${baseUrl}${fullEndpoint}`, {
+    console.log(`Full request URL: ${url.toString()}`);
+    
+    // Make API request to find drug by name
+    const findDrugResponse = await fetch(url.toString(), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       cache: 'no-store'
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Server: API error (${response.status}):`, errorText);
-      console.error(`Request details: GSN search for "${drugName}", endpoint=${baseUrl}${fullEndpoint}`);
-      throw new Error(`API Error ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-    console.log(`Server: Successfully retrieved GSN for drug "${drugName}":`, data.gsn);
     
-    return data.gsn;
+    if (!findDrugResponse.ok) {
+      const errorText = await findDrugResponse.text();
+      console.error(`Server: opFindDrugByName API error (${findDrugResponse.status}):`, errorText);
+      console.error(`Request details: opFindDrugByName for "${drugName}", endpoint=${url.toString()}`);
+      throw new Error(`opFindDrugByName API Error ${findDrugResponse.status}: ${errorText}`);
+    }
+    
+    const drugResults = await findDrugResponse.json();
+    
+    if (!Array.isArray(drugResults) || drugResults.length === 0) {
+      console.log(`Server: No drug results found for "${drugName}"`);
+      return undefined;
+    }
+    
+    // Find the closest match to the drug name
+    const normalizedDrugName = drugName.toLowerCase();
+    const matchedDrug = drugResults.find(drug => 
+      typeof drug === 'string' && drug.toLowerCase().includes(normalizedDrugName)
+    ) || drugResults[0];
+    
+    if (!matchedDrug) {
+      console.log(`Server: No matching drug found for "${drugName}"`);
+      return undefined;
+    }
+    
+    console.log(`Server: Found matching drug: "${matchedDrug}"`);
+    
+    // STEP 2: Try to extract GSN from the drug name if it's in the format "DRUG NAME (GSN: 12345)"
+    const gsnMatch = typeof matchedDrug === 'string' ? matchedDrug.match(/\(GSN: (\d+)\)/i) : null;
+    if (gsnMatch && gsnMatch[1]) {
+      const gsn = parseInt(gsnMatch[1], 10);
+      console.log(`Server: Extracted GSN ${gsn} from drug name "${matchedDrug}"`);
+      return gsn;
+    }
+    
+    // STEP 3: If GSN not in the name, use opGetDrugInfo to get detailed info
+    // We need to make another API call to get the GSN using the drug info endpoint
+    // First, try with the exact drug name from the search results
+    const drugInfoEndpoint = baseUrl.includes('/pricing/v1') 
+      ? `/druginfo/${encodeURIComponent(matchedDrug)}`
+      : `/pricing/v1/druginfo/${encodeURIComponent(matchedDrug)}`;
+    
+    console.log(`Server: Step 3 - Using opGetDrugInfo endpoint with drug name: ${baseUrl}${drugInfoEndpoint}`);
+    
+    try {
+      const drugInfoResponse = await fetch(`${baseUrl}${drugInfoEndpoint}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store'
+      });
+      
+      if (drugInfoResponse.ok) {
+        const drugInfo = await drugInfoResponse.json();
+        if (drugInfo && drugInfo.gsn) {
+          console.log(`Server: Successfully retrieved GSN ${drugInfo.gsn} for drug "${matchedDrug}"`);
+          return drugInfo.gsn;
+        }
+      } else {
+        console.log(`Server: Drug info endpoint failed with status ${drugInfoResponse.status}, will try alternative approach`);
+      }
+    } catch (error) {
+      console.error('Error getting drug info by name:', error);
+    }
+    
+    // STEP 4: If we still don't have a GSN, try the drug prices endpoint which might return a GSN
+    try {
+      const pricesEndpoint = baseUrl.includes('/pricing/v1') 
+        ? `/drugprices/byName`
+        : `/pricing/v1/drugprices/byName`;
+      
+      console.log(`Server: Step 4 - Trying prices endpoint to get GSN: ${baseUrl}${pricesEndpoint}`);
+      
+      const pricesResponse = await fetch(`${baseUrl}${pricesEndpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
+          drugName: matchedDrug,
+          latitude: 30.4015,
+          longitude: -97.7527,
+          radius: 10,
+          maximumPharmacies: 1
+        }),
+        cache: 'no-store'
+      });
+      
+      if (pricesResponse.ok) {
+        const pricesData = await pricesResponse.json();
+        if (pricesData && pricesData.gsn) {
+          console.log(`Server: Retrieved GSN ${pricesData.gsn} from prices endpoint for drug "${matchedDrug}"`);
+          return pricesData.gsn;
+        }
+      }
+    } catch (error) {
+      console.error('Error getting drug prices to extract GSN:', error);
+    }
+    
+    console.log(`Server: Could not find GSN for drug "${drugName}" after trying multiple approaches`);
+    return undefined;
   } catch (error) {
     console.error('Error finding GSN for drug:', error);
     return undefined;
@@ -183,7 +285,9 @@ function getMockGsnForDrugName(drugName: string): number | undefined {
   ];
   
   // Find the drug in the mock data
-  const drug = MOCK_DRUGS.find(drug => drug.drugName.includes(normalizedDrugName) || normalizedDrugName.includes(drug.drugName));
+  const drug = MOCK_DRUGS.find(drug => 
+    drug.drugName.includes(normalizedDrugName) || normalizedDrugName.includes(drug.drugName)
+  );
   
   return drug?.gsn;
 } 

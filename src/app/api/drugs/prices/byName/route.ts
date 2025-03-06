@@ -28,63 +28,6 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-/**
- * Find the GSN for a drug name by searching the API
- * @param drugName The name of the drug
- * @returns The GSN if found, otherwise undefined
- */
-async function findGsnForDrugName(drugName: string): Promise<number | undefined> {
-  try {
-    console.log(`Server: Searching for GSN for drug: "${drugName}"`);
-    
-    // Validate API URL
-    const apiUrl = process.env.AMERICAS_PHARMACY_API_URL;
-    if (!apiUrl) {
-      console.error('Missing AMERICAS_PHARMACY_API_URL environment variable');
-      throw new Error('API URL not configured');
-    }
-    
-    // Ensure the URL is properly formatted by removing trailing slashes
-    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
-    
-    // Get authentication token
-    const token = await getAuthToken();
-    
-    // Use the correct endpoint from the API documentation
-    const endpoint = `/druginfo/${encodeURIComponent(drugName)}`;
-    
-    // Check if baseUrl already includes the pricing/v1 path
-    const fullEndpoint = baseUrl.includes('/pricing/v1') ? endpoint : `/pricing/v1${endpoint}`;
-    
-    console.log(`Server: Trying GET request to ${baseUrl}${fullEndpoint}`);
-    
-    // Make API request
-    const response = await fetch(`${baseUrl}${fullEndpoint}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store'
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Server: API error (${response.status}):`, errorText);
-      console.error(`Request details: GSN search for "${drugName}", endpoint=${baseUrl}${fullEndpoint}`);
-      return undefined; // Return undefined instead of throwing an error
-    }
-
-    const data = await response.json();
-    console.log(`Server: Successfully retrieved GSN for drug "${drugName}":`, data.gsn);
-    
-    return data.gsn;
-  } catch (error) {
-    console.error('Error finding GSN for drug:', error);
-    return undefined;
-  }
-}
-
 export async function POST(request: Request) {
   try {
     // Parse the request body
@@ -123,13 +66,38 @@ export async function POST(request: Request) {
       const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
       const baseUrl = apiUrl.replace(/\/+$/, '');
       
-      // First, try to get the GSN for the drug name
-      console.log(`Attempting to find GSN for drug name: "${drugName}"`);
-      const gsn = await findGsnForDrugName(drugName);
+      // First, try to get the GSN for the drug name using the dedicated endpoint
+      console.log(`Attempting to find GSN for drug name: "${drugName}" using GSN endpoint`);
+      
+      // Call the GSN lookup endpoint
+      const gsnEndpoint = `/api/drugs/gsn/${encodeURIComponent(drugName)}`;
+      console.log(`Calling GSN lookup endpoint: ${gsnEndpoint}`);
+      
+      const gsnResponse = await fetch(gsnEndpoint, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        cache: 'no-store'
+      });
+      
+      let drugGsn: number | undefined;
+      
+      if (gsnResponse.ok) {
+        const gsnData = await gsnResponse.json();
+        if (gsnData && gsnData.gsn) {
+          drugGsn = gsnData.gsn;
+          console.log(`Found GSN ${drugGsn} for drug "${drugName}"`);
+        } else {
+          console.log(`No GSN found for drug "${drugName}" from GSN endpoint`);
+        }
+      } else {
+        console.log(`GSN lookup failed with status ${gsnResponse.status}`);
+      }
       
       // If we found a GSN, use it to get prices
-      if (gsn) {
-        console.log(`Found GSN ${gsn} for drug "${drugName}", using it to get prices`);
+      if (drugGsn) {
+        console.log(`Using GSN ${drugGsn} for drug "${drugName}" to get prices`);
         
         // Check if baseUrl already includes /pricing/v1 to avoid duplication
         const baseUrlHasPath = baseUrl.includes('/pricing/v1');
@@ -143,7 +111,7 @@ export async function POST(request: Request) {
         // Prepare the request body for GSN request
         const gsnRequestBody: any = {
           hqMappingName: process.env.AMERICAS_PHARMACY_HQ_MAPPING || 'walkerrx',
-          gsn: gsn,
+          gsn: drugGsn,
           latitude: parseFloat(latitude.toString()),
           longitude: parseFloat(longitude.toString()),
           radius: body.radius || 50,
@@ -172,13 +140,13 @@ export async function POST(request: Request) {
         
         if (gsnResponse.ok) {
           const gsnData = await gsnResponse.json();
-          console.log(`API returned data for drug "${drugName}" using GSN ${gsn}`);
+          console.log(`API returned data for drug "${drugName}" using GSN ${drugGsn}`);
           
           // Add the drug name and GSN to the response
           const enhancedData = {
             ...gsnData,
             drugName: drugName,
-            gsn: gsn
+            gsn: drugGsn
           };
           
           // Return the data
