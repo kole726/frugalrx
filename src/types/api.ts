@@ -57,28 +57,29 @@ export interface PharmacyPrice {
 
 export interface DrugVariation {
   name: string;
-  type: 'brand' | 'generic' | string;
+  type: 'brand' | 'generic';
   gsn?: number;
-  selected?: boolean;
-  isBrand?: boolean;
 }
 
 export interface DrugForm {
   form: string;
   gsn?: number;
   selected?: boolean;
+  rank?: number;
 }
 
 export interface DrugStrength {
   strength: string;
   gsn?: number;
   selected?: boolean;
+  rank?: number;
 }
 
 export interface DrugQuantity {
   quantity: number;
   uom: string;
   selected?: boolean;
+  rank?: number;
 }
 
 export interface DrugPriceResponse {
@@ -97,6 +98,8 @@ export interface DrugDetails {
   dosage: string;
   storage: string;
   contraindications: string;
+  gsn?: number;          // Added for drug identification
+  ndcCode?: string;      // Added for drug identification
   admin?: string;        // Administration information
   disclaimer?: string;   // Disclaimer information
   interaction?: string;  // Drug interactions
@@ -104,11 +107,6 @@ export interface DrugDetails {
   monitor?: string;      // Monitoring requirements
   side?: string;         // Alternative field for side effects
   store?: string;        // Alternative field for storage
-  gsn?: number;          // Generic Sequence Number
-  ndcCode?: string;      // National Drug Code
-  forms?: DrugForm[];    // Available forms
-  strengths?: DrugStrength[]; // Available strengths
-  quantities?: DrugQuantity[]; // Available quantities
 }
 
 export interface APIError {

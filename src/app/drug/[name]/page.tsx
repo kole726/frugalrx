@@ -424,7 +424,7 @@ export default function DrugPage({ params }: Props) {
           console.log('Setting available forms from API response:', apiResponse.forms);
           
           // Map the forms to the expected format
-          const formattedForms = apiResponse.forms.map((form: any) => ({
+          const formattedForms = apiResponse.forms.map((form: DrugForm) => ({
             form: form.form,
             gsn: form.gsn,
             selected: form.selected || false,
@@ -432,12 +432,12 @@ export default function DrugPage({ params }: Props) {
           }));
           
           // Sort forms by rank (lower rank first)
-          const sortedForms = formattedForms.sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+          const sortedForms = formattedForms.sort((a: DrugForm & { selected?: boolean, rank?: number }, b: DrugForm & { selected?: boolean, rank?: number }) => (a.rank || 999) - (b.rank || 999));
           
           setAvailableForms(sortedForms);
           
           // Set default selected form (either the one marked as selected or the first one)
-          const defaultForm = sortedForms.find((form: any) => form.selected) || sortedForms[0];
+          const defaultForm = sortedForms.find((form: DrugForm & { selected?: boolean }) => form.selected) || sortedForms[0];
           if (defaultForm && defaultForm.form !== selectedForm) {
             console.log('Setting default form from API:', defaultForm.form);
             setSelectedForm(defaultForm.form);
@@ -450,7 +450,7 @@ export default function DrugPage({ params }: Props) {
           console.log('Setting available strengths from API response:', apiResponse.strengths);
           
           // Map the strengths to the expected format
-          const formattedStrengths = apiResponse.strengths.map((strength: any) => ({
+          const formattedStrengths = apiResponse.strengths.map((strength: DrugStrength) => ({
             strength: strength.strength,
             gsn: strength.gsn,
             selected: strength.selected || false,
@@ -458,12 +458,12 @@ export default function DrugPage({ params }: Props) {
           }));
           
           // Sort strengths by rank (lower rank first)
-          const sortedStrengths = formattedStrengths.sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+          const sortedStrengths = formattedStrengths.sort((a: DrugStrength & { selected?: boolean, rank?: number }, b: DrugStrength & { selected?: boolean, rank?: number }) => (a.rank || 999) - (b.rank || 999));
           
           setAvailableStrengths(sortedStrengths);
           
           // Set default selected strength (either the one marked as selected or the first one)
-          const defaultStrength = sortedStrengths.find((strength: any) => strength.selected) || sortedStrengths[0];
+          const defaultStrength = sortedStrengths.find((strength: DrugStrength & { selected?: boolean }) => strength.selected) || sortedStrengths[0];
           if (defaultStrength && defaultStrength.strength !== selectedStrength) {
             console.log('Setting default strength from API:', defaultStrength.strength);
             setSelectedStrength(defaultStrength.strength);
@@ -476,7 +476,7 @@ export default function DrugPage({ params }: Props) {
           console.log('Setting available quantities from API response:', apiResponse.quantities);
           
           // Map the quantities to the expected format
-          const formattedQuantities = apiResponse.quantities.map((qty: any) => ({
+          const formattedQuantities = apiResponse.quantities.map((qty: DrugQuantity) => ({
             quantity: qty.quantity,
             uom: qty.uom,
             selected: qty.selected || false,
@@ -484,12 +484,12 @@ export default function DrugPage({ params }: Props) {
           }));
           
           // Sort quantities by rank (lower rank first)
-          const sortedQuantities = formattedQuantities.sort((a: any, b: any) => (a.rank || 999) - (b.rank || 999));
+          const sortedQuantities = formattedQuantities.sort((a: DrugQuantity & { selected?: boolean, rank?: number }, b: DrugQuantity & { selected?: boolean, rank?: number }) => (a.rank || 999) - (b.rank || 999));
           
           setAvailableQuantities(sortedQuantities);
           
           // Set default selected quantity (either the one marked as selected or the first one)
-          const defaultQuantity = sortedQuantities.find((qty: any) => qty.selected) || sortedQuantities[0];
+          const defaultQuantity = sortedQuantities.find((qty: DrugQuantity & { selected?: boolean }) => qty.selected) || sortedQuantities[0];
           if (defaultQuantity) {
             const quantityString = `${defaultQuantity.quantity} ${defaultQuantity.uom}`;
             if (quantityString !== selectedQuantity) {
@@ -614,12 +614,12 @@ export default function DrugPage({ params }: Props) {
           // Extract available forms, strengths, and quantities from the detailed info
           if (detailedInfo.forms && Array.isArray(detailedInfo.forms)) {
             console.log('Setting available forms:', detailedInfo.forms)
-            setAvailableForms(detailedInfo.forms.filter(form => form.selected === true).length > 0 
-              ? detailedInfo.forms.filter(form => form.selected === true)
+            setAvailableForms(detailedInfo.forms.filter((form: DrugForm) => form.selected === true).length > 0 
+              ? detailedInfo.forms.filter((form: DrugForm) => form.selected === true)
               : detailedInfo.forms)
             
             // Set default selected form
-            const defaultForm = detailedInfo.forms.find(form => form.selected === true) || detailedInfo.forms[0]
+            const defaultForm = detailedInfo.forms.find((form: DrugForm) => form.selected === true) || detailedInfo.forms[0]
             if (defaultForm) {
               console.log('Setting default form:', defaultForm.form)
               setSelectedForm(defaultForm.form)
@@ -628,12 +628,12 @@ export default function DrugPage({ params }: Props) {
           
           if (detailedInfo.strengths && Array.isArray(detailedInfo.strengths)) {
             console.log('Setting available strengths:', detailedInfo.strengths)
-            setAvailableStrengths(detailedInfo.strengths.filter(strength => strength.selected === true).length > 0
-              ? detailedInfo.strengths.filter(strength => strength.selected === true)
+            setAvailableStrengths(detailedInfo.strengths.filter((strength: DrugStrength) => strength.selected === true).length > 0
+              ? detailedInfo.strengths.filter((strength: DrugStrength) => strength.selected === true)
               : detailedInfo.strengths)
             
             // Set default selected strength
-            const defaultStrength = detailedInfo.strengths.find(strength => strength.selected === true) || detailedInfo.strengths[0]
+            const defaultStrength = detailedInfo.strengths.find((strength: DrugStrength) => strength.selected === true) || detailedInfo.strengths[0]
             if (defaultStrength) {
               console.log('Setting default strength:', defaultStrength.strength)
               setSelectedStrength(defaultStrength.strength)
@@ -642,17 +642,17 @@ export default function DrugPage({ params }: Props) {
           
           if (detailedInfo.quantities && Array.isArray(detailedInfo.quantities)) {
             console.log('Setting available quantities:', detailedInfo.quantities)
-            setAvailableQuantities(detailedInfo.quantities.filter(qty => qty.selected === true).length > 0
-              ? detailedInfo.quantities.filter(qty => qty.selected === true)
+            setAvailableQuantities(detailedInfo.quantities.filter((qty: DrugQuantity) => qty.selected === true).length > 0
+              ? detailedInfo.quantities.filter((qty: DrugQuantity) => qty.selected === true)
               : detailedInfo.quantities)
             
             // Set default selected quantity
-            const defaultQuantity = detailedInfo.quantities.find(qty => qty.selected === true) || detailedInfo.quantities[0]
+            const defaultQuantity = detailedInfo.quantities.find((qty: DrugQuantity) => qty.selected === true) || detailedInfo.quantities[0]
             if (defaultQuantity) {
               console.log('Setting default quantity:', `${defaultQuantity.quantity} ${defaultQuantity.uom}`)
               setSelectedQuantity(`${defaultQuantity.quantity} ${defaultQuantity.uom}`)
             }
-            }
+          }
             
             // Set brand options
             if (detailedInfo.brandName && detailedInfo.genericName && detailedInfo.brandName !== detailedInfo.genericName) {
@@ -803,12 +803,12 @@ export default function DrugPage({ params }: Props) {
               // Extract available forms, strengths, and quantities from the detailed info
               if (detailedInfo.forms && Array.isArray(detailedInfo.forms)) {
                 console.log('Setting available forms:', detailedInfo.forms)
-                setAvailableForms(detailedInfo.forms.filter(form => form.selected === true).length > 0 
-                  ? detailedInfo.forms.filter(form => form.selected === true)
+                setAvailableForms(detailedInfo.forms.filter((form: DrugForm) => form.selected === true).length > 0 
+                  ? detailedInfo.forms.filter((form: DrugForm) => form.selected === true)
                   : detailedInfo.forms)
                 
                 // Set default selected form
-                const defaultForm = detailedInfo.forms.find(form => form.selected === true) || detailedInfo.forms[0]
+                const defaultForm = detailedInfo.forms.find((form: DrugForm) => form.selected === true) || detailedInfo.forms[0]
                 if (defaultForm) {
                   console.log('Setting default form:', defaultForm.form)
                   setSelectedForm(defaultForm.form)
@@ -817,12 +817,12 @@ export default function DrugPage({ params }: Props) {
               
               if (detailedInfo.strengths && Array.isArray(detailedInfo.strengths)) {
                 console.log('Setting available strengths:', detailedInfo.strengths)
-                setAvailableStrengths(detailedInfo.strengths.filter(strength => strength.selected === true).length > 0
-                  ? detailedInfo.strengths.filter(strength => strength.selected === true)
+                setAvailableStrengths(detailedInfo.strengths.filter((strength: DrugStrength) => strength.selected === true).length > 0
+                  ? detailedInfo.strengths.filter((strength: DrugStrength) => strength.selected === true)
                   : detailedInfo.strengths)
                 
                 // Set default selected strength
-                const defaultStrength = detailedInfo.strengths.find(strength => strength.selected === true) || detailedInfo.strengths[0]
+                const defaultStrength = detailedInfo.strengths.find((strength: DrugStrength) => strength.selected === true) || detailedInfo.strengths[0]
                 if (defaultStrength) {
                   console.log('Setting default strength:', defaultStrength.strength)
                   setSelectedStrength(defaultStrength.strength)
@@ -831,12 +831,12 @@ export default function DrugPage({ params }: Props) {
               
               if (detailedInfo.quantities && Array.isArray(detailedInfo.quantities)) {
                 console.log('Setting available quantities:', detailedInfo.quantities)
-                setAvailableQuantities(detailedInfo.quantities.filter(qty => qty.selected === true).length > 0
-                  ? detailedInfo.quantities.filter(qty => qty.selected === true)
+                setAvailableQuantities(detailedInfo.quantities.filter((qty: DrugQuantity) => qty.selected === true).length > 0
+                  ? detailedInfo.quantities.filter((qty: DrugQuantity) => qty.selected === true)
                   : detailedInfo.quantities)
                 
                 // Set default selected quantity
-                const defaultQuantity = detailedInfo.quantities.find(qty => qty.selected === true) || detailedInfo.quantities[0]
+                const defaultQuantity = detailedInfo.quantities.find((qty: DrugQuantity) => qty.selected === true) || detailedInfo.quantities[0]
                 if (defaultQuantity) {
                   console.log('Setting default quantity:', `${defaultQuantity.quantity} ${defaultQuantity.uom}`)
                   setSelectedQuantity(`${defaultQuantity.quantity} ${defaultQuantity.uom}`)
@@ -1290,35 +1290,24 @@ export default function DrugPage({ params }: Props) {
         // Get the drug name from the selected variation
         const drugName = selectedVariation.name;
         
-        // If the drug name is different from the current one, navigate to the new drug page
-        if (drugName && drugName.toLowerCase() !== decodeURIComponent(params.name).toLowerCase()) {
-          console.log(`Navigating to new drug page for: ${drugName}`);
-          
-          // Encode the drug name for the URL
-          const encodedDrugName = encodeURIComponent(drugName);
-          
-          // Create the new URL
-          const newUrl = `/drug/${encodedDrugName}`;
-          
-          // Navigate to the new URL
-          window.location.href = newUrl;
-          return; // Stop execution since we're navigating away
-        }
+        // Always navigate to the new drug page to ensure we get fresh data
+        console.log(`Navigating to new drug page for: ${drugName}`);
         
-        // If we're staying on the same drug but just changing the brand/type,
-        // update the GSN in the URL if available
-        if (selectedVariation.gsn) {
-          if (typeof window !== 'undefined') {
-            const url = new URL(window.location.href);
-            url.searchParams.set('gsn', selectedVariation.gsn.toString());
-            window.history.replaceState({}, '', url.toString());
-          }
-        }
+        // Encode the drug name for the URL
+        const encodedDrugName = encodeURIComponent(drugName);
         
-        // Refetch pharmacy prices with the current location and search radius
-        await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+        // Create the new URL
+        const newUrl = `/drug/${encodedDrugName}`;
+        
+        // Navigate to the new URL
+        window.location.href = newUrl;
+        return; // Stop execution since we're navigating away
       }
     }
+    
+    // If we don't have brand variations or couldn't find a match,
+    // just refetch pharmacy prices with the current location and search radius
+    await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
   };
 
   // Handle ZIP code submission
