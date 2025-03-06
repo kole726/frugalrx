@@ -1523,38 +1523,60 @@ export default function DrugPage({ params }: Props) {
             </button>
             <div className="p-6 border border-gray-200 rounded-b-lg shadow-md bg-white">
               <div className="prose max-w-none">
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Brand Name</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.brandName || drugInfo?.brandName || 'No brand name available.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Brand Name:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.brandName || drugInfo?.brandName || 'No brand name available.'}</span>
+                </div>
                 
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Generic Name</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.genericName || drugInfo?.genericName || 'No generic name available.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Generic Name:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.genericName || drugInfo?.genericName || 'No generic name available.'}</span>
+                </div>
                 
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Description</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.description || drugInfo?.description || 'No description available.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Description:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.description || drugInfo?.description || 'No description available.'}</span>
+                </div>
                 
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Important Safety Information</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.monitor || 'No safety information available.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Important Safety Information:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.monitor || 'No safety information available.'}</span>
+                </div>
                 
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Directions for Use</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.admin || 'No directions for use available.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Directions for Use:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.admin || 'No directions for use available.'}</span>
+                </div>
                 
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Contraindications & Precautions</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.contra || drugInfo?.contraindications || 'No contraindication information available.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Contraindications & Precautions:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.contra || drugInfo?.contraindications || 'No contraindication information available.'}</span>
+                </div>
                 
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Side Effects</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.side || drugInfo?.sideEffects || 'No side effects information available.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Side Effects:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.side || drugInfo?.sideEffects || 'No side effects information available.'}</span>
+                </div>
                 
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Drug Interactions</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.interaction || 'No drug interaction information available.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Drug Interactions:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.interaction || 'No drug interaction information available.'}</span>
+                </div>
                 
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Missed Dose</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.missed || 'No missed dose information available.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Missed Dose:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.missed || 'No missed dose information available.'}</span>
+                </div>
                 
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">Storage Instructions</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.store || drugInfo?.storage || 'No storage information available.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Storage Instructions:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.store || drugInfo?.storage || 'No storage information available.'}</span>
+                </div>
                 
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">General Disclaimer</h3>
-                <p className="mb-4 text-gray-700">{detailedInfo?.disclaimer || 'This information is for educational purposes only. Always consult your healthcare provider for medical advice.'}</p>
+                <div className="mb-4 flex flex-wrap">
+                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">General Disclaimer:</span>
+                  <span className="text-gray-700 flex-1">{detailedInfo?.disclaimer || 'This information is for educational purposes only. Always consult your healthcare provider for medical advice.'}</span>
+                </div>
               </div>
             </div>
           </motion.div>
