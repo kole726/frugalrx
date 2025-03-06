@@ -117,9 +117,54 @@ export async function POST(request: Request) {
       const data = await response.json();
       console.log(`API returned data for drug "${drugName}"`);
       
+      // Add detailed logging to verify the structure of the response
+      console.log('Response data structure check:');
+      console.log('- Has drug info:', !!data.drug);
+      if (data.drug) {
+        console.log('  - Drug name:', data.drug.medName);
+        console.log('  - GSN:', data.drug.gsn);
+        console.log('  - NDC Code:', data.drug.ndcCode);
+      }
+      
+      console.log('- Has pharmacyPrices:', !!data.pharmacyPrices && Array.isArray(data.pharmacyPrices));
+      if (data.pharmacyPrices && Array.isArray(data.pharmacyPrices)) {
+        console.log('  - Number of pharmacies:', data.pharmacyPrices.length);
+        if (data.pharmacyPrices.length > 0) {
+          const firstPharmacy = data.pharmacyPrices[0];
+          console.log('  - First pharmacy name:', firstPharmacy.pharmacy?.name);
+          console.log('  - First pharmacy price:', firstPharmacy.price?.price);
+        }
+      }
+      
+      console.log('- Has forms:', !!data.forms && Array.isArray(data.forms));
+      if (data.forms && Array.isArray(data.forms)) {
+        console.log('  - Number of forms:', data.forms.length);
+        console.log('  - Available forms:', data.forms.map((form: any) => form.form).join(', '));
+      }
+      
+      console.log('- Has strengths:', !!data.strengths && Array.isArray(data.strengths));
+      if (data.strengths && Array.isArray(data.strengths)) {
+        console.log('  - Number of strengths:', data.strengths.length);
+        console.log('  - Available strengths:', data.strengths.map((strength: any) => strength.strength).join(', '));
+      }
+      
+      console.log('- Has quantities:', !!data.quantities && Array.isArray(data.quantities));
+      if (data.quantities && Array.isArray(data.quantities)) {
+        console.log('  - Number of quantities:', data.quantities.length);
+        console.log('  - Available quantities:', data.quantities.map((qty: any) => `${qty.quantity} ${qty.uom}`).join(', '));
+      }
+      
+      console.log('- Has alternateDrugs:', !!data.alternateDrugs && Array.isArray(data.alternateDrugs));
+      if (data.alternateDrugs && Array.isArray(data.alternateDrugs)) {
+        console.log('  - Number of alternate drugs:', data.alternateDrugs.length);
+        if (data.alternateDrugs.length > 0) {
+          console.log('  - First few alternates:', data.alternateDrugs.slice(0, 3).map((drug: any) => drug.medName).join(', '));
+        }
+      }
+      
       // Extract GSN from the response if available
-      if (data && data.gsn) {
-        console.log(`Found GSN ${data.gsn} for drug "${drugName}" in the API response`);
+      if (data && data.drug && data.drug.gsn) {
+        console.log(`Found GSN ${data.drug.gsn} for drug "${drugName}" in the API response`);
       } else {
         console.log(`No GSN found for drug "${drugName}" in the API response`);
       }
