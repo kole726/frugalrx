@@ -517,18 +517,33 @@ export default function DrugPage({ params }: Props) {
       const drugName = decodeURIComponent(params.name)
       console.log(`Fetching drug info for: ${drugName}, GSN: ${gsnToCheck || 'not provided'}`)
       
-      // First, get drug pricing by name to get the GSN and pricing information
-      console.log(`Getting drug pricing for: ${drugName} at location: ${userLocation.latitude}, ${userLocation.longitude}`)
+      // Determine whether to use GSN or drug name for the API call
+      // Prioritize GSN when available as it's more reliable
+      let pricingData;
       
-      const pricingData = await getDrugPrices({
-        drugName: drugName,
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude,
-        radius: searchRadius,
-        quantity: parseInt(selectedQuantity.split(' ')[0], 10) || 30,
-        customizedQuantity: true,
-        gsn: gsnToCheck ? parseInt(gsnToCheck, 10) : undefined // Pass GSN to API if available
-      })
+      if (gsnToCheck) {
+        // If we have a GSN, use it for the API call
+        console.log(`Using GSN ${gsnToCheck} for API call instead of drug name`);
+        pricingData = await getDrugPrices({
+          gsn: parseInt(gsnToCheck, 10),
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          radius: searchRadius,
+          quantity: parseInt(selectedQuantity.split(' ')[0], 10) || 30,
+          customizedQuantity: true
+        });
+      } else {
+        // If no GSN available, use the drug name
+        console.log(`No GSN available, using drug name for API call: ${drugName}`);
+        pricingData = await getDrugPrices({
+          drugName: drugName,
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+          radius: searchRadius,
+          quantity: parseInt(selectedQuantity.split(' ')[0], 10) || 30,
+          customizedQuantity: true
+        });
+      }
       
       console.log('Drug pricing data:', pricingData)
       
@@ -1342,7 +1357,6 @@ export default function DrugPage({ params }: Props) {
         if (typeof window !== 'undefined') {
           // Create a clean URL with just the drug name in the path
           const baseUrl = window.location.origin;
-          
           // Format drug name:
           // 1. Remove (Brand) or (Generic) suffix
           // 2. Convert to lowercase
@@ -1356,7 +1370,12 @@ export default function DrugPage({ params }: Props) {
             .replace(/'/g, '-') // Replace apostrophes with hyphens
             .replace(/\s+/g, '-'); // Replace spaces with hyphens
             
-          const newUrl = `${baseUrl}/drug/${encodeURIComponent(formattedDrugName)}/`;
+          // Create the new URL with the formatted drug name
+          // If we have a GSN, include it as a query parameter for API calls
+          let newUrl = `${baseUrl}/drug/${encodeURIComponent(formattedDrugName)}/`;
+          if (selectedVariation.gsn) {
+            newUrl += `?gsn=${selectedVariation.gsn}`;
+          }
           
           console.log(`Updating URL to: ${newUrl}`);
           

@@ -616,9 +616,14 @@ export async function getDrugPricesByName(
   try {
     console.log(`Client: Getting drug prices by name for "${drugName}"`);
     
+    // Replace hyphens with spaces for API calls
+    // This is important because our URLs use hyphens for SEO, but the API expects spaces
+    const formattedDrugName = drugName.replace(/-/g, ' ');
+    console.log(`Client: Formatted drug name for API call: "${formattedDrugName}"`);
+    
     // Create the request body according to the API documentation
     const requestBody = {
-      drugName: drugName.toUpperCase().trim(),
+      drugName: formattedDrugName.toUpperCase().trim(),
       latitude,
       longitude,
       radius: radius || 50,
