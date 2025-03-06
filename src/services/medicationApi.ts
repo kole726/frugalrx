@@ -263,12 +263,18 @@ export async function getDrugPrices(criteria: DrugPriceRequest): Promise<DrugPri
     // Determine which endpoint to use based on the provided criteria
     let endpoint = '';
     
-    if (requestCriteria.gsn) {
-      console.log(`Client: Using GSN ${requestCriteria.gsn} for drug price lookup`);
-      endpoint = `/api/drugs/prices/byGSN`;
-    } else if (requestCriteria.drugName) {
-      console.log(`Client: Using drug name "${requestCriteria.drugName}" for drug price lookup`);
+    // Prioritize using drug name over GSN as it's more reliable
+    if (requestCriteria.drugName) {
+      console.log(`Client: Using drug name "${requestCriteria.drugName}" for drug price lookup (preferred method)`);
       endpoint = `/api/drugs/prices/byName`;
+      
+      // If we also have a GSN, log it but still use the drug name endpoint
+      if (requestCriteria.gsn) {
+        console.log(`Client: Note: GSN ${requestCriteria.gsn} is available but using drug name for more reliable results`);
+      }
+    } else if (requestCriteria.gsn) {
+      console.log(`Client: Using GSN ${requestCriteria.gsn} for drug price lookup (fallback method)`);
+      endpoint = `/api/drugs/prices/byGSN`;
     } else if (requestCriteria.ndcCode) {
       console.log(`Client: Using NDC code ${requestCriteria.ndcCode} for drug price lookup`);
       endpoint = `/api/drugs/prices/ndc`;
@@ -304,6 +310,43 @@ export async function getDrugPrices(criteria: DrugPriceRequest): Promise<DrugPri
     
     const data = await response.json();
     console.log(`Client: Received drug prices:`, data);
+    
+    // Check if we got an error response with empty pharmacies
+    if (data.error && (!data.pharmacies || data.pharmacies.length === 0)) {
+      console.log(`Client: API returned error: ${data.error}`);
+      
+      // If we have both drug name and GSN but used drug name, try GSN as fallback
+      if (requestCriteria.drugName && requestCriteria.gsn && endpoint === '/api/drugs/prices/byName') {
+        console.log(`Client: Trying GSN ${requestCriteria.gsn} as fallback`);
+        
+        // Create a new request with only the GSN
+        const gsnRequest = {
+          ...requestCriteria,
+          drugName: undefined // Remove drug name to force using GSN
+        };
+        
+        // Try the GSN endpoint
+        const gsnResponse = await fetch('/api/drugs/prices/byGSN', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(gsnRequest),
+          cache: 'no-store'
+        });
+        
+        if (gsnResponse.ok) {
+          const gsnData = await gsnResponse.json();
+          console.log(`Client: Received drug prices from GSN fallback:`, gsnData);
+          
+          // If we got results, return them
+          if (gsnData && (!gsnData.error || (gsnData.pharmacies && gsnData.pharmacies.length > 0))) {
+            return gsnData;
+          }
+        }
+      }
+    }
     
     return data;
   } catch (error) {

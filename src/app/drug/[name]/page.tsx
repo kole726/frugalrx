@@ -311,24 +311,13 @@ export default function DrugPage({ params }: Props) {
       // Decode the drug name from the URL
       const drugName = decodeURIComponent(params.name);
       
-      // First, try to get the GSN for the drug name if we don't already have it
-      let drugGsn = gsn ? parseInt(gsn, 10) : undefined;
+      // Always use the drug name for price lookups as it's more reliable
+      console.log(`Using drug name "${drugName}" for price lookup (more reliable than GSN)`);
       
-      if (!drugGsn) {
-        console.log(`No GSN provided in URL, attempting to find GSN for drug name: "${drugName}"`);
-        drugGsn = await getGsnForDrugName(drugName);
-        
-        if (drugGsn) {
-          console.log(`Found GSN ${drugGsn} for drug "${drugName}"`);
-        } else {
-          console.log(`No GSN found for drug "${drugName}", will use drug name for price lookup`);
-        }
-      }
-      
-      // Prepare the request
+      // Prepare the request - explicitly omit GSN to force using the byName endpoint
       const request = {
         drugName: drugName,
-        gsn: drugGsn, // Include GSN if we found one
+        // Omitting GSN to ensure we use the byName endpoint
         latitude,
         longitude,
         radius,
@@ -338,7 +327,7 @@ export default function DrugPage({ params }: Props) {
       
       console.log('Drug price request:', request);
       
-      // Get drug prices
+      // Get drug prices using the drug name
       const priceData = await getDrugPrices(request);
       console.log('Drug price response:', priceData);
       
