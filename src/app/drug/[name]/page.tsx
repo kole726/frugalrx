@@ -334,6 +334,9 @@ export default function DrugPage({ params }: Props) {
       // Use type assertion to handle the extended API response format
       const apiResponse = priceData as any;
       
+      // Flag to track if we've successfully processed any data
+      let dataProcessed = false;
+      
       if (apiResponse) {
         // Process pharmacy prices if available
         if (apiResponse.pharmacies && Array.isArray(apiResponse.pharmacies) && apiResponse.pharmacies.length > 0) {
@@ -348,13 +351,42 @@ export default function DrugPage({ params }: Props) {
           
           setPharmacyPrices(sortedPharmacies);
           setCurrentPage(1); // Reset to first page when new results come in
+          dataProcessed = true;
+        } else if (apiResponse.pharmacyPrices && Array.isArray(apiResponse.pharmacyPrices) && apiResponse.pharmacyPrices.length > 0) {
+          // Alternative format - some responses use pharmacyPrices instead of pharmacies
+          console.log(`Found ${apiResponse.pharmacyPrices.length} pharmacies with prices (pharmacyPrices format)`);
+          
+          // Map to the expected format
+          const mappedPharmacies = apiResponse.pharmacyPrices.map((item: any) => {
+            return {
+              name: item.pharmacy?.name || 'Unknown Pharmacy',
+              price: parseFloat(item.price?.price) || 0,
+              distance: `${item.pharmacy?.distance?.toFixed(1) || '0.0'} miles`,
+              address: item.pharmacy?.streetAddress || '',
+              city: item.pharmacy?.city || '',
+              state: item.pharmacy?.state || '',
+              zipCode: item.pharmacy?.zipCode || '',
+              phone: item.pharmacy?.phone || '',
+              latitude: item.pharmacy?.latitude,
+              longitude: item.pharmacy?.longitude,
+              open24H: item.pharmacy?.open24H || false
+            };
+          });
+          
+          // Sort pharmacies by price (lowest first)
+          const sortedPharmacies = mappedPharmacies.sort((a: any, b: any) => a.price - b.price);
+          
+          setPharmacyPrices(sortedPharmacies);
+          setCurrentPage(1);
+          dataProcessed = true;
         } else {
           console.log('No pharmacies found with prices');
           setPharmacyPrices([]);
-          setError('No pharmacy prices found for this medication in your area. Try increasing the search radius or try a different medication.');
+          // Only set error if we don't process any other data
+          // We'll set this at the end if needed
         }
         
-        // Update drug info with GSN if available
+        // Process drug info if available
         if (apiResponse.drug && apiResponse.drug.gsn) {
           console.log(`Found GSN ${apiResponse.drug.gsn} for drug "${drugName}" in the API response`);
           
@@ -384,6 +416,7 @@ export default function DrugPage({ params }: Props) {
           
           // Store the detailed info for reference
           setDetailedInfo(apiResponse);
+          dataProcessed = true;
         }
         
         // Process forms if available
@@ -405,6 +438,7 @@ export default function DrugPage({ params }: Props) {
             console.log('Setting default form from API:', defaultForm.form);
             setSelectedForm(defaultForm.form);
           }
+          dataProcessed = true;
         }
         
         // Process strengths if available
@@ -426,6 +460,7 @@ export default function DrugPage({ params }: Props) {
             console.log('Setting default strength from API:', defaultStrength.strength);
             setSelectedStrength(defaultStrength.strength);
           }
+          dataProcessed = true;
         }
         
         // Process quantities if available
@@ -450,6 +485,7 @@ export default function DrugPage({ params }: Props) {
               setSelectedQuantity(quantityString);
             }
           }
+          dataProcessed = true;
         }
         
         // Process alternate drugs (brands) if available
@@ -472,12 +508,53 @@ export default function DrugPage({ params }: Props) {
             console.log('Setting default brand from API:', defaultBrand.type);
             setSelectedBrand(defaultBrand.type);
           }
+          dataProcessed = true;
+        }
+        
+        // If we processed some data but didn't find pharmacy prices, set a specific error
+        if (dataProcessed && pharmacyPrices.length === 0) {
+          console.log('Found drug information but no pharmacy prices');
+          setError('No pharmacy prices found for this medication in your area. Try increasing the search radius or try a different medication.');
+        }
+        // If we didn't process any data at all, set a more general error
+        else if (!dataProcessed) {
+          console.log('No usable data found in API response');
+          setError('Could not load drug information. Please try again later or search for a different medication.');
+        }
+        // If we have data and pharmacy prices, clear any errors
+        else {
+          setError(null);
         }
       }
     } catch (error) {
       console.error('Error fetching pharmacy prices:', error);
       setError('Error fetching pharmacy prices. Please try again later.');
       setPharmacyPrices([]);
+      
+      // Try to fetch basic drug info as a fallback
+      try {
+        const drugName = decodeURIComponent(params.name);
+        console.log(`Attempting to fetch basic drug info for: ${drugName} as fallback`);
+        const basicInfo = await getDrugInfo(drugName);
+        
+        if (basicInfo) {
+          console.log('Successfully fetched basic drug info as fallback');
+          setDrugInfo({
+            brandName: basicInfo.brandName || drugName,
+            genericName: basicInfo.genericName || drugName,
+            gsn: basicInfo.gsn || 0,
+            ndcCode: basicInfo.ndcCode || '',
+            description: basicInfo.description || '',
+            sideEffects: basicInfo.sideEffects || '',
+            dosage: basicInfo.dosage || '',
+            storage: basicInfo.storage || '',
+            contraindications: basicInfo.contraindications || ''
+          });
+          setDrugDetails(basicInfo);
+        }
+      } catch (fallbackError) {
+        console.error('Error fetching basic drug info as fallback:', fallbackError);
+      }
     } finally {
       setIsLoadingPharmacies(false);
     }
@@ -559,27 +636,27 @@ export default function DrugPage({ params }: Props) {
               console.log('Setting default quantity:', `${defaultQuantity.quantity} ${defaultQuantity.uom}`)
               setSelectedQuantity(`${defaultQuantity.quantity} ${defaultQuantity.uom}`)
             }
-          }
-          
-          // Set brand options
-          if (detailedInfo.brandName && detailedInfo.genericName && detailedInfo.brandName !== detailedInfo.genericName) {
-            // If both brand and generic names are available and different, set up brand variations
-            const variations = [
-              { name: detailedInfo.brandName, type: 'brand', gsn: gsnNumber },
-              { name: detailedInfo.genericName, type: 'generic', gsn: gsnNumber }
-            ]
-            setBrandVariations(variations)
+            }
             
-            // Set default selected brand based on the current GSN or preference
-            setSelectedBrand(detailedInfo.genericName ? 'generic' : 'brand')
-          } else if (detailedInfo.brandName || detailedInfo.genericName) {
-            // If only one name is available, use it
-            const name = detailedInfo.brandName || detailedInfo.genericName
-            const variations = [
-              { name, type: 'generic', gsn: gsnNumber }
-            ]
-            setBrandVariations(variations)
-            setSelectedBrand('generic')
+            // Set brand options
+            if (detailedInfo.brandName && detailedInfo.genericName && detailedInfo.brandName !== detailedInfo.genericName) {
+              // If both brand and generic names are available and different, set up brand variations
+              const variations = [
+                { name: detailedInfo.brandName, type: 'brand', gsn: gsnNumber },
+                { name: detailedInfo.genericName, type: 'generic', gsn: gsnNumber }
+              ]
+              setBrandVariations(variations)
+              
+              // Set default selected brand based on the current GSN or preference
+              setSelectedBrand(detailedInfo.genericName ? 'generic' : 'brand')
+            } else if (detailedInfo.brandName || detailedInfo.genericName) {
+              // If only one name is available, use it
+              const name = detailedInfo.brandName || detailedInfo.genericName
+              const variations = [
+                { name, type: 'generic', gsn: gsnNumber }
+              ]
+              setBrandVariations(variations)
+              setSelectedBrand('generic')
           }
           
           // Combine the information
@@ -813,30 +890,30 @@ export default function DrugPage({ params }: Props) {
               })
               
               setDrugDetails(basicInfo)
-              
-              // Set default forms, strengths, and quantities
-              const defaultForms = [
+          
+          // Set default forms, strengths, and quantities
+          const defaultForms = [
                 { form: 'TABLET', gsn: 0 },
                 { form: 'CAPSULE', gsn: 0 }
-              ]
-              setAvailableForms(defaultForms)
-              setSelectedForm(defaultForms[0].form)
-              
-              const defaultStrengths = [
+          ]
+          setAvailableForms(defaultForms)
+          setSelectedForm(defaultForms[0].form)
+          
+          const defaultStrengths = [
                 { strength: '500 mg', gsn: 0 },
                 { strength: '250 mg', gsn: 0 }
-              ]
-              setAvailableStrengths(defaultStrengths)
-              setSelectedStrength(defaultStrengths[0].strength)
-              
-              const defaultQuantities = [
-                { quantity: 30, uom: 'TABLET' },
-                { quantity: 60, uom: 'TABLET' },
-                { quantity: 90, uom: 'TABLET' }
-              ]
-              setAvailableQuantities(defaultQuantities)
-              setSelectedQuantity(`${defaultQuantities[0].quantity} ${defaultQuantities[0].uom}`)
-              
+          ]
+          setAvailableStrengths(defaultStrengths)
+          setSelectedStrength(defaultStrengths[0].strength)
+          
+          const defaultQuantities = [
+            { quantity: 30, uom: 'TABLET' },
+            { quantity: 60, uom: 'TABLET' },
+            { quantity: 90, uom: 'TABLET' }
+          ]
+          setAvailableQuantities(defaultQuantities)
+          setSelectedQuantity(`${defaultQuantities[0].quantity} ${defaultQuantities[0].uom}`)
+          
               // Fetch pharmacy prices with the current location and drug name
               await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius)
             }
@@ -849,7 +926,7 @@ export default function DrugPage({ params }: Props) {
               brandName: drugName,
               genericName: drugName,
               gsn: 0,
-              ndcCode: '',
+            ndcCode: '',
               description: `Information for ${drugName} is currently unavailable.`,
               sideEffects: '',
               dosage: '',
@@ -1249,10 +1326,11 @@ export default function DrugPage({ params }: Props) {
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {isLoading ? (
         <LoadingState />
-      ) : error ? (
+      ) : !drugInfo ? (
+        // Only show the full error page if we have no drug info at all
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <h2 className="text-xl font-semibold text-red-700 mb-2">Error Loading Drug Information</h2>
-          <p className="text-red-600">{error}</p>
+          <p className="text-red-600">{error || 'Could not load drug information. Please try again later.'}</p>
           <button 
             onClick={() => window.location.href = '/'}
             className="mt-4 text-red-700 hover:text-red-800 font-medium"
@@ -1276,6 +1354,13 @@ export default function DrugPage({ params }: Props) {
               Pricing is displayed for {drugInfo?.genericName || params.name}
             </p>
           </motion.div>
+
+          {/* Show error message as a banner if we have drug info but encountered an error */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-600">{error}</p>
+            </div>
+          )}
 
           {/* Medication Form Selectors */}
           <div className="mb-8">
@@ -1303,19 +1388,11 @@ export default function DrugPage({ params }: Props) {
                   onChange={handleFormChange}
                   disabled={isLoading || availableForms.length === 0}
                 >
-                  {availableForms.length > 0 ? (
-                    availableForms.map((form, index) => (
-                      <option key={`form-${index}`} value={form.form}>
-                        {form.form}
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="CAPSULE">CAPSULE</option>
-                      <option value="TABLET">TABLET</option>
-                      <option value="LIQUID">LIQUID</option>
-                    </>
-                  )}
+                  {availableForms.map((form, index) => (
+                    <option key={`form-${index}`} value={form.form}>
+                      {form.form}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -1326,19 +1403,11 @@ export default function DrugPage({ params }: Props) {
                   onChange={handleStrengthChange}
                   disabled={isLoading || availableStrengths.length === 0}
                 >
-                  {availableStrengths.length > 0 ? (
-                    availableStrengths.map((strength, index) => (
-                      <option key={`strength-${index}`} value={strength.strength}>
-                        {strength.strength}
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="500 mg">500 mg</option>
-                      <option value="250 mg">250 mg</option>
-                      <option value="125 mg">125 mg</option>
-                    </>
-                  )}
+                  {availableStrengths.map((strength, index) => (
+                    <option key={`strength-${index}`} value={strength.strength}>
+                      {strength.strength}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -1349,19 +1418,11 @@ export default function DrugPage({ params }: Props) {
                   onChange={handleQuantityChange}
                   disabled={isLoading || availableQuantities.length === 0}
                 >
-                  {availableQuantities.length > 0 ? (
-                    availableQuantities.map((qty, index) => (
-                      <option key={`qty-${index}`} value={`${qty.quantity} ${qty.uom}`}>
-                        {qty.quantity} {qty.uom}
-                      </option>
-                    ))
-                  ) : (
-                    <>
-                      <option value="21 CAPSULE">21 CAPSULE</option>
-                      <option value="30 CAPSULE">30 CAPSULE</option>
-                      <option value="60 CAPSULE">60 CAPSULE</option>
-                    </>
-                  )}
+                  {availableQuantities.map((qty, index) => (
+                    <option key={`qty-${index}`} value={`${qty.quantity} ${qty.uom}`}>
+                      {qty.quantity} {qty.uom}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -1705,8 +1766,8 @@ export default function DrugPage({ params }: Props) {
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" viewBox="0 0 20 20" fill="currentColor">
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
-                          </div>
-                        </div>
+              </div>
+            </div>
                         <div className="ml-4 flex-1">
                           <h3 className="text-md font-semibold text-gray-900">Directions for Use</h3>
                           <p className="mt-1 text-gray-700">{detailedInfo?.admin || 'No directions for use available.'}</p>
