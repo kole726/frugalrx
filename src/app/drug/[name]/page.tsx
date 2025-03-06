@@ -491,7 +491,7 @@ export default function DrugPage({ params }: Props) {
     }
   }
 
-  // Function to fetch drug information
+  // Modify the fetchDrugInfo function to properly populate dropdowns based on API data
   const fetchDrugInfo = async () => {
     try {
       setIsLoading(true)
@@ -559,8 +559,13 @@ export default function DrugPage({ params }: Props) {
           // Set drug details from detailed info
           setDrugDetails(detailedInfo)
           
-          // Create brand variations
+          // ===== BRAND DROPDOWN POPULATION =====
+          // Create brand variations based on API data
           let variations = []
+          
+          // Start with the main drug (generic/brand)
+          const mainDrugBgFlag = (pricingData as any).drug?.bgFlag || '';
+          const isMainDrugBrand = mainDrugBgFlag === 'B';
           
           // Add the current brand/generic as options
           if (brandName && genericName && brandName !== genericName) {
@@ -568,12 +573,14 @@ export default function DrugPage({ params }: Props) {
               {
                 name: `${brandName} (Brand)`,
                 type: 'brand',
-                gsn: gsnToUse
+                gsn: gsnToUse,
+                selected: isMainDrugBrand
               },
               {
                 name: `${genericName} (Generic)`,
                 type: 'generic',
-                gsn: gsnToUse
+                gsn: gsnToUse,
+                selected: !isMainDrugBrand
               }
             )
           } else {
@@ -582,7 +589,8 @@ export default function DrugPage({ params }: Props) {
             variations.push({
               name: name,
               type: 'brand',
-              gsn: gsnToUse
+              gsn: gsnToUse,
+              selected: true
             })
           }
           
@@ -593,10 +601,15 @@ export default function DrugPage({ params }: Props) {
             // Add alternate drugs to variations
             (pricingData as any).alternateDrugs.forEach((altDrug: any, index: number) => {
               if (altDrug.medName || altDrug.genericName) {
+                const isBrand = altDrug.bgFlag === 'B';
+                const drugName = altDrug.medName || altDrug.genericName;
+                const suffix = isBrand ? ' (Brand)' : ' (Generic)';
+                
                 variations.push({
-                  name: `${altDrug.medName || altDrug.genericName} (Alternative)`,
+                  name: `${drugName}${suffix}`,
                   type: `alternate-${index}`,
-                  gsn: altDrug.gsn || gsnToUse
+                  gsn: altDrug.gsn || gsnToUse,
+                  selected: altDrug.selected || false
                 });
               }
             });
@@ -619,165 +632,188 @@ export default function DrugPage({ params }: Props) {
               console.log(`Found matching variation for last selected brand: ${matchingVariation.name}`);
               setSelectedBrand(matchingVariation.type);
               setDisplayedDrugName(matchingVariation.name);
-              return; // Exit early since we've set the brand
             } else {
               console.log(`No matching variation found for last selected brand: ${lastSelectedBrandName}`);
-            }
-          }
-          
-          // If we don't have a matching last selected brand, proceed with normal selection logic
-          // Set selected brand based on the current GSN and drug name
-          // If the current GSN matches the GSN in the URL, select the appropriate brand
-          if (gsn && parseInt(gsn, 10) === gsnToUse) {
-            // Find if there's a brand variation that matches the current drug name
-            const matchingVariation = variations.find(v => 
-              v.name.toLowerCase().includes(drugName.toLowerCase()) || 
-              (drugName.toLowerCase() === brandName.toLowerCase() && v.type === 'brand') ||
-              (drugName.toLowerCase() === genericName.toLowerCase() && v.type === 'generic')
-            )
-            
-            if (matchingVariation) {
-              console.log(`Setting selected brand to ${matchingVariation.type} based on drug name match`)
-              setSelectedBrand(matchingVariation.type)
-              setDisplayedDrugName(matchingVariation.name)
-            } else {
-              // Default to brand if it's a brand name, generic otherwise
-              const isBrand = drugName.toLowerCase() === brandName.toLowerCase()
-              console.log(`Setting selected brand to ${isBrand ? 'brand' : 'generic'} based on name comparison`)
-              setSelectedBrand(isBrand ? 'brand' : 'generic')
-              setDisplayedDrugName(isBrand ? `${brandName} (Brand)` : `${genericName} (Generic)`)
+              
+              // Find the selected variation from the API
+              const selectedVariation = variations.find(v => v.selected === true);
+              if (selectedVariation) {
+                console.log(`Using API-selected brand: ${selectedVariation.name}`);
+                setSelectedBrand(selectedVariation.type);
+                setDisplayedDrugName(selectedVariation.name);
+              } else {
+                // Default to the first variation if none is selected
+                console.log(`No selected brand found, using first variation: ${variations[0].name}`);
+                setSelectedBrand(variations[0].type);
+                setDisplayedDrugName(variations[0].name);
+              }
             }
           } else {
-            // If GSN doesn't match or no GSN in URL, default to brand for brand names, generic otherwise
-            const isBrand = drugName.toLowerCase() === brandName.toLowerCase()
-            console.log(`Setting selected brand to ${isBrand ? 'brand' : 'generic'} (default)`)
-            setSelectedBrand(isBrand ? 'brand' : 'generic')
-            setDisplayedDrugName(isBrand ? `${brandName} (Brand)` : `${genericName} (Generic)`)
+            // If we don't have a last selected brand, use the one marked as selected in the API
+            const selectedVariation = variations.find(v => v.selected === true);
+            if (selectedVariation) {
+              console.log(`Using API-selected brand: ${selectedVariation.name}`);
+              setSelectedBrand(selectedVariation.type);
+              setDisplayedDrugName(selectedVariation.name);
+            } else {
+              // If no variation is marked as selected, use the first one
+              console.log(`No selected brand found, using first variation: ${variations[0].name}`);
+              setSelectedBrand(variations[0].type);
+              setDisplayedDrugName(variations[0].name);
+            }
           }
           
-          // Extract filter options from detailed info
-          if (detailedInfo) {
-            // Extract forms
-            if (detailedInfo.forms && Array.isArray(detailedInfo.forms) && detailedInfo.forms.length > 0) {
-              console.log(`Found ${detailedInfo.forms.length} forms:`, detailedInfo.forms)
-              setAvailableForms(detailedInfo.forms)
-              
-              // Find the form that matches the current GSN
-              const matchingForm = detailedInfo.forms.find((form: DrugForm) => form.gsn === gsnToUse)
+          // ===== FORM DROPDOWN POPULATION =====
+          // Extract forms from detailed info
+          if (detailedInfo.forms && Array.isArray(detailedInfo.forms) && detailedInfo.forms.length > 0) {
+            console.log(`Found ${detailedInfo.forms.length} forms:`, detailedInfo.forms)
+            setAvailableForms(detailedInfo.forms)
+            
+            // Find the form that is marked as selected in the API
+            const selectedForm = detailedInfo.forms.find((form: DrugForm) => form.selected === true);
+            
+            if (selectedForm) {
+              console.log(`Setting selected form to ${selectedForm.form} based on API selected flag`);
+              setSelectedForm(selectedForm.form);
+            } else {
+              // If no form is marked as selected, find one that matches the current GSN
+              const matchingForm = detailedInfo.forms.find((form: DrugForm) => form.gsn === gsnToUse);
               
               if (matchingForm) {
-                console.log(`Setting selected form to ${matchingForm.form} based on GSN match`)
-                setSelectedForm(matchingForm.form)
+                console.log(`Setting selected form to ${matchingForm.form} based on GSN match`);
+                setSelectedForm(matchingForm.form);
               } else {
                 // If no matching form, check if current form exists in the new list
-                const currentFormExists = detailedInfo.forms.some((form: DrugForm) => form.form === selectedForm)
+                const currentFormExists = detailedInfo.forms.some((form: DrugForm) => form.form === selectedForm);
                 
                 if (currentFormExists) {
                   // Keep the current form if it exists in the new list
-                  console.log(`Keeping current form: ${selectedForm}`)
+                  console.log(`Keeping current form: ${selectedForm}`);
                 } else {
                   // Set to the first form if current form doesn't exist
-                  const firstForm = detailedInfo.forms[0]
-                  console.log(`Setting selected form to ${firstForm.form} (first available)`)
-                  setSelectedForm(firstForm.form)
+                  const firstForm = detailedInfo.forms[0];
+                  console.log(`Setting selected form to ${firstForm.form} (first available)`);
+                  setSelectedForm(firstForm.form);
                 }
               }
-            } else {
-              console.log('No forms found in detailed info, using defaults')
-              // Set default forms if none are available
-              const defaultForms = [
-                { form: 'TABLET', gsn: gsnToUse },
-                { form: 'CAPSULE', gsn: gsnToUse }
-              ]
-              setAvailableForms(defaultForms)
-              setSelectedForm(defaultForms[0].form)
             }
+          } else {
+            console.log('No forms found in detailed info, using defaults');
+            // Set default forms if none are available
+            const defaultForms = [
+              { form: 'TABLET', gsn: gsnToUse, selected: true },
+              { form: 'CAPSULE', gsn: gsnToUse, selected: false }
+            ];
+            setAvailableForms(defaultForms);
+            setSelectedForm(defaultForms[0].form);
+          }
+          
+          // ===== STRENGTH (DOSAGE) DROPDOWN POPULATION =====
+          // Extract strengths from detailed info
+          if (detailedInfo.strengths && Array.isArray(detailedInfo.strengths) && detailedInfo.strengths.length > 0) {
+            console.log(`Found ${detailedInfo.strengths.length} strengths:`, detailedInfo.strengths);
+            setAvailableStrengths(detailedInfo.strengths);
             
-            // Extract strengths
-            if (detailedInfo.strengths && Array.isArray(detailedInfo.strengths) && detailedInfo.strengths.length > 0) {
-              console.log(`Found ${detailedInfo.strengths.length} strengths:`, detailedInfo.strengths)
-              setAvailableStrengths(detailedInfo.strengths)
-              
-              // Find the strength that matches the current GSN
-              const matchingStrength = detailedInfo.strengths.find((strength: DrugStrength) => strength.gsn === gsnToUse)
+            // Find the strength that is marked as selected in the API
+            const selectedStrength = detailedInfo.strengths.find((strength: DrugStrength) => strength.selected === true);
+            
+            if (selectedStrength) {
+              console.log(`Setting selected strength to ${selectedStrength.strength} based on API selected flag`);
+              setSelectedStrength(selectedStrength.strength);
+            } else {
+              // If no strength is marked as selected, find one that matches the current GSN
+              const matchingStrength = detailedInfo.strengths.find((strength: DrugStrength) => strength.gsn === gsnToUse);
               
               if (matchingStrength) {
-                console.log(`Setting selected strength to ${matchingStrength.strength} based on GSN match`)
-                setSelectedStrength(matchingStrength.strength)
+                console.log(`Setting selected strength to ${matchingStrength.strength} based on GSN match`);
+                setSelectedStrength(matchingStrength.strength);
               } else {
                 // If no matching strength, check if current strength exists in the new list
-                const currentStrengthExists = detailedInfo.strengths.some((strength: DrugStrength) => strength.strength === selectedStrength)
+                const currentStrengthExists = detailedInfo.strengths.some(
+                  (strength: DrugStrength) => strength.strength === selectedStrength
+                );
                 
                 if (currentStrengthExists) {
                   // Keep the current strength if it exists in the new list
-                  console.log(`Keeping current strength: ${selectedStrength}`)
+                  console.log(`Keeping current strength: ${selectedStrength}`);
                 } else {
                   // Set to the first strength if current strength doesn't exist
-                  const firstStrength = detailedInfo.strengths[0]
-                  console.log(`Setting selected strength to ${firstStrength.strength} (first available)`)
-                  setSelectedStrength(firstStrength.strength)
+                  const firstStrength = detailedInfo.strengths[0];
+                  console.log(`Setting selected strength to ${firstStrength.strength} (first available)`);
+                  setSelectedStrength(firstStrength.strength);
                 }
               }
-            } else {
-              console.log('No strengths found in detailed info, using defaults')
-              // Set default strengths if none are available
-              const defaultStrengths = [
-                { strength: '500 mg', gsn: gsnToUse },
-                { strength: '250 mg', gsn: gsnToUse }
-              ]
-              setAvailableStrengths(defaultStrengths)
-              setSelectedStrength(defaultStrengths[0].strength)
             }
+          } else {
+            console.log('No strengths found in detailed info, using defaults');
+            // Set default strengths if none are available
+            const defaultStrengths = [
+              { strength: '500 mg', gsn: gsnToUse, selected: true },
+              { strength: '250 mg', gsn: gsnToUse, selected: false }
+            ];
+            setAvailableStrengths(defaultStrengths);
+            setSelectedStrength(defaultStrengths[0].strength);
+          }
+          
+          // ===== QUANTITY DROPDOWN POPULATION =====
+          // Extract quantities from detailed info
+          if (detailedInfo.quantities && Array.isArray(detailedInfo.quantities) && detailedInfo.quantities.length > 0) {
+            console.log(`Found ${detailedInfo.quantities.length} quantities:`, detailedInfo.quantities);
+            setAvailableQuantities(detailedInfo.quantities);
             
-            // Extract quantities
-            if (detailedInfo.quantities && Array.isArray(detailedInfo.quantities) && detailedInfo.quantities.length > 0) {
-              console.log(`Found ${detailedInfo.quantities.length} quantities:`, detailedInfo.quantities)
-              setAvailableQuantities(detailedInfo.quantities)
-              
-              // Find quantities that match the current GSN
-              const matchingQuantities = detailedInfo.quantities.filter((qty: DrugQuantity) => 
-                detailedInfo.forms.some((form: DrugForm) => form.gsn === gsnToUse && form.form === qty.uom)
-              )
+            // Find the quantity that is marked as selected in the API
+            const selectedQuantity = detailedInfo.quantities.find((qty: DrugQuantity) => qty.selected === true);
+            
+            if (selectedQuantity) {
+              const newQuantity = `${selectedQuantity.quantity} ${selectedQuantity.uom}`;
+              console.log(`Setting selected quantity to ${newQuantity} based on API selected flag`);
+              setSelectedQuantity(newQuantity);
+            } else {
+              // If no quantity is marked as selected, find quantities that match the current form
+              const currentForm = selectedForm;
+              const matchingQuantities = detailedInfo.quantities.filter(
+                (qty: DrugQuantity) => qty.uom === currentForm
+              );
               
               if (matchingQuantities.length > 0) {
                 // Use the first matching quantity
-                const firstMatchingQty = matchingQuantities[0]
-                const newQuantity = `${firstMatchingQty.quantity} ${firstMatchingQty.uom}`
-                console.log(`Setting selected quantity to ${newQuantity} based on form match`)
-                setSelectedQuantity(newQuantity)
+                const firstMatchingQty = matchingQuantities[0];
+                const newQuantity = `${firstMatchingQty.quantity} ${firstMatchingQty.uom}`;
+                console.log(`Setting selected quantity to ${newQuantity} based on form match`);
+                setSelectedQuantity(newQuantity);
               } else {
                 // Get the current quantity value and unit
-                const currentQuantityParts = selectedQuantity.split(' ')
-                const currentQuantityValue = parseInt(currentQuantityParts[0], 10)
-                const currentQuantityUnit = currentQuantityParts.slice(1).join(' ')
+                const currentQuantityParts = selectedQuantity.split(' ');
+                const currentQuantityValue = parseInt(currentQuantityParts[0], 10);
+                const currentQuantityUnit = currentQuantityParts.slice(1).join(' ');
                 
                 // Check if the current quantity exists in the new quantities list
                 const currentQuantityExists = detailedInfo.quantities.some(
                   (qty: DrugQuantity) => qty.quantity === currentQuantityValue && qty.uom === currentQuantityUnit
-                )
+                );
                 
                 if (currentQuantityExists) {
                   // Keep the current quantity if it exists in the new list
-                  console.log(`Keeping current quantity: ${selectedQuantity}`)
+                  console.log(`Keeping current quantity: ${selectedQuantity}`);
                 } else {
                   // Set to the first quantity if current quantity doesn't exist
-                  const firstQuantity = detailedInfo.quantities[0]
-                  const newQuantity = `${firstQuantity.quantity} ${firstQuantity.uom}`
-                  console.log(`Setting selected quantity to ${newQuantity} (first available)`)
-                  setSelectedQuantity(newQuantity)
+                  const firstQuantity = detailedInfo.quantities[0];
+                  const newQuantity = `${firstQuantity.quantity} ${firstQuantity.uom}`;
+                  console.log(`Setting selected quantity to ${newQuantity} (first available)`);
+                  setSelectedQuantity(newQuantity);
                 }
               }
-            } else {
-              console.log('No quantities found in detailed info, using defaults')
-              // Set default quantities if none are available
-              const defaultQuantities = [
-                { quantity: 30, uom: 'TABLET' },
-                { quantity: 60, uom: 'TABLET' },
-                { quantity: 90, uom: 'TABLET' }
-              ]
-              setAvailableQuantities(defaultQuantities)
-              setSelectedQuantity(`${defaultQuantities[0].quantity} ${defaultQuantities[0].uom}`)
             }
+          } else {
+            console.log('No quantities found in detailed info, using defaults');
+            // Set default quantities if none are available
+            const defaultQuantities = [
+              { quantity: 30, uom: 'TABLET', selected: true },
+              { quantity: 60, uom: 'TABLET', selected: false },
+              { quantity: 90, uom: 'TABLET', selected: false }
+            ];
+            setAvailableQuantities(defaultQuantities);
+            setSelectedQuantity(`${defaultQuantities[0].quantity} ${defaultQuantities[0].uom}`);
           }
         } catch (error) {
           console.error('Error fetching detailed drug info:', error)
@@ -794,40 +830,84 @@ export default function DrugPage({ params }: Props) {
           ndcCode: (pricingData as any).drug?.ndcCode || '',
         })
         
-        // Create a single brand variation
-        const variations = [
-          {
-            name: (pricingData as any).drug?.medName || drugName,
-            type: 'brand',
-            gsn: 0
-          }
-        ]
-        console.log('Setting single brand variation:', variations)
-        setBrandVariations(variations)
-        setSelectedBrand('brand')
+        // Create brand variations from the drug and alternateDrugs
+        let variations = [];
+        
+        // Add the main drug
+        variations.push({
+          name: (pricingData as any).drug?.medName || drugName,
+          type: 'brand',
+          gsn: 0,
+          selected: true
+        });
+        
+        // Add alternate drugs if available
+        if ((pricingData as any).alternateDrugs && Array.isArray((pricingData as any).alternateDrugs)) {
+          (pricingData as any).alternateDrugs.forEach((altDrug: any, index: number) => {
+            if (altDrug.medName) {
+              const isBrand = altDrug.bgFlag === 'B';
+              const suffix = isBrand ? ' (Brand)' : ' (Generic)';
+              
+              variations.push({
+                name: `${altDrug.medName}${suffix}`,
+                type: `alternate-${index}`,
+                gsn: altDrug.gsn || 0,
+                selected: altDrug.selected || false
+              });
+            }
+          });
+        }
+        
+        console.log('Setting brand variations from basic info:', variations);
+        setBrandVariations(variations);
+        setSelectedBrand(variations[0].type);
+        setDisplayedDrugName(variations[0].name);
         
         // Set default forms, strengths, and quantities
-        const defaultForms = [
-          { form: 'TABLET', gsn: 0 },
-          { form: 'CAPSULE', gsn: 0 }
-        ]
-        setAvailableForms(defaultForms)
-        setSelectedForm(defaultForms[0].form)
+        // Try to get these from the pricing data if available
+        if ((pricingData as any).forms && Array.isArray((pricingData as any).forms)) {
+          setAvailableForms((pricingData as any).forms);
+          const selectedForm = (pricingData as any).forms.find((form: any) => form.selected === true);
+          setSelectedForm(selectedForm ? selectedForm.form : (pricingData as any).forms[0].form);
+        } else {
+          const defaultForms = [
+            { form: 'TABLET', gsn: 0, selected: true },
+            { form: 'CAPSULE', gsn: 0, selected: false }
+          ];
+          setAvailableForms(defaultForms);
+          setSelectedForm(defaultForms[0].form);
+        }
         
-        const defaultStrengths = [
-          { strength: '500 mg', gsn: 0 },
-          { strength: '250 mg', gsn: 0 }
-        ]
-        setAvailableStrengths(defaultStrengths)
-        setSelectedStrength(defaultStrengths[0].strength)
+        if ((pricingData as any).strengths && Array.isArray((pricingData as any).strengths)) {
+          setAvailableStrengths((pricingData as any).strengths);
+          const selectedStrength = (pricingData as any).strengths.find((strength: any) => strength.selected === true);
+          setSelectedStrength(selectedStrength ? selectedStrength.strength : (pricingData as any).strengths[0].strength);
+        } else {
+          const defaultStrengths = [
+            { strength: '500 mg', gsn: 0, selected: true },
+            { strength: '250 mg', gsn: 0, selected: false }
+          ];
+          setAvailableStrengths(defaultStrengths);
+          setSelectedStrength(defaultStrengths[0].strength);
+        }
         
-        const defaultQuantities = [
-          { quantity: 30, uom: 'TABLET' },
-          { quantity: 60, uom: 'TABLET' },
-          { quantity: 90, uom: 'TABLET' }
-        ]
-        setAvailableQuantities(defaultQuantities)
-        setSelectedQuantity(`${defaultQuantities[0].quantity} ${defaultQuantities[0].uom}`)
+        if ((pricingData as any).quantities && Array.isArray((pricingData as any).quantities)) {
+          setAvailableQuantities((pricingData as any).quantities);
+          const selectedQuantity = (pricingData as any).quantities.find((qty: any) => qty.selected === true);
+          if (selectedQuantity) {
+            setSelectedQuantity(`${selectedQuantity.quantity} ${selectedQuantity.uom}`);
+          } else {
+            setSelectedQuantity(`${(pricingData as any).quantities[0].quantity} ${(pricingData as any).quantities[0].uom}`);
+          }
+        } else {
+          const defaultQuantities = [
+            { quantity: 30, uom: 'TABLET', selected: true },
+            { quantity: 60, uom: 'TABLET', selected: false },
+            { quantity: 90, uom: 'TABLET', selected: false }
+          ];
+          setAvailableQuantities(defaultQuantities);
+          setSelectedQuantity(`${defaultQuantities[0].quantity} ${defaultQuantities[0].uom}`);
+        }
       }
       
       setIsLoading(false)

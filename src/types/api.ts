@@ -64,16 +64,19 @@ export interface DrugVariation {
 export interface DrugForm {
   form: string;
   gsn?: number;
+  selected?: boolean;
 }
 
 export interface DrugStrength {
   strength: string;
   gsn?: number;
+  selected?: boolean;
 }
 
 export interface DrugQuantity {
   quantity: number;
   uom: string;
+  selected?: boolean;
 }
 
 export interface DrugPriceResponse {
