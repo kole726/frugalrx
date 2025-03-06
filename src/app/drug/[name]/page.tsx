@@ -1149,6 +1149,8 @@ export default function DrugPage({ params }: Props) {
     }
   };
 
+  const [isInfoExpanded, setIsInfoExpanded] = useState(false);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {isLoading ? (
@@ -1515,70 +1517,211 @@ export default function DrugPage({ params }: Props) {
             transition={{ duration: 0.5, delay: 0.7 }}
             className="mt-12"
           >
-            <button className="flex items-center justify-between w-full p-4 bg-[#006142] text-white rounded-t-lg shadow-md">
+            <button 
+              className="flex items-center justify-between w-full p-4 bg-[#006142] text-white rounded-t-lg shadow-md"
+              onClick={() => setIsInfoExpanded(!isInfoExpanded)}
+            >
               <span className="font-medium">{drugInfo?.genericName?.toUpperCase()} DRUG INFORMATION</span>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className={`h-5 w-5 transition-transform duration-300 ${isInfoExpanded ? 'transform rotate-180' : ''}`}
+                viewBox="0 0 20 20" 
+                fill="currentColor"
+              >
                 <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
             </button>
-            <div className="p-6 border border-gray-200 rounded-b-lg shadow-md bg-white">
-              <div className="prose max-w-none">
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Brand Name:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.brandName || drugInfo?.brandName || 'No brand name available.'}</span>
+            
+            {isInfoExpanded && (
+              <div className="border border-gray-200 rounded-b-lg shadow-md bg-white overflow-hidden">
+                {/* Drug Name Section */}
+                <div className="bg-gray-50 p-5 border-b border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="flex items-start">
+                        <div className="w-8 h-8 rounded-full bg-[#006142] flex items-center justify-center mr-3 mt-0.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.616a1 1 0 01.894-1.79l1.599.8L9 4.323V3a1 1 0 011-1z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-500">Brand Name</h3>
+                          <p className="text-lg font-semibold text-gray-900">{detailedInfo?.brandName || drugInfo?.brandName || 'No brand name available.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-start">
+                        <div className="w-8 h-8 rounded-full bg-[#006142] flex items-center justify-center mr-3 mt-0.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-500">Generic Name</h3>
+                          <p className="text-lg font-semibold text-gray-900">{detailedInfo?.genericName || drugInfo?.genericName || 'No generic name available.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Generic Name:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.genericName || drugInfo?.genericName || 'No generic name available.'}</span>
+                {/* Main Drug Information */}
+                <div className="p-5">
+                  <div className="grid grid-cols-1 gap-6">
+                    {/* Description */}
+                    <div className="bg-white rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <h3 className="text-md font-semibold text-gray-900">Description</h3>
+                          <p className="mt-1 text-gray-700">{detailedInfo?.description || drugInfo?.description || 'No description available.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Safety Information */}
+                    <div className="bg-white rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-600" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <h3 className="text-md font-semibold text-gray-900">Important Safety Information</h3>
+                          <p className="mt-1 text-gray-700">{detailedInfo?.monitor || 'No safety information available.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Directions for Use */}
+                    <div className="bg-white rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <h3 className="text-md font-semibold text-gray-900">Directions for Use</h3>
+                          <p className="mt-1 text-gray-700">{detailedInfo?.admin || 'No directions for use available.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Contraindications */}
+                    <div className="bg-white rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-600" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <h3 className="text-md font-semibold text-gray-900">Contraindications & Precautions</h3>
+                          <p className="mt-1 text-gray-700">{detailedInfo?.contra || drugInfo?.contraindications || 'No contraindication information available.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Side Effects */}
+                    <div className="bg-white rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-purple-600" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M11 17a1 1 0 001.447.894l4-2A1 1 0 0017 15V9.236a1 1 0 00-1.447-.894l-4 2a1 1 0 00-.553.894V17zM15.211 6.276a1 1 0 000-1.788l-4.764-2.382a1 1 0 00-.894 0L4.789 4.488a1 1 0 000 1.788l4.764 2.382a1 1 0 00.894 0l4.764-2.382zM4.447 8.342A1 1 0 003 9.236V15a1 1 0 00.553.894l4 2A1 1 0 009 17v-5.764a1 1 0 00-.553-.894l-4-2z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <h3 className="text-md font-semibold text-gray-900">Side Effects</h3>
+                          <p className="mt-1 text-gray-700">{detailedInfo?.side || drugInfo?.sideEffects || 'No side effects information available.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Drug Interactions */}
+                    <div className="bg-white rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <h3 className="text-md font-semibold text-gray-900">Drug Interactions</h3>
+                          <p className="mt-1 text-gray-700">{detailedInfo?.interaction || 'No drug interaction information available.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Missed Dose */}
+                    <div className="bg-white rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-pink-600" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.414L11 9.586V6z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <h3 className="text-md font-semibold text-gray-900">Missed Dose</h3>
+                          <p className="mt-1 text-gray-700">{detailedInfo?.missed || 'No missed dose information available.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Storage Instructions */}
+                    <div className="bg-white rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0 mt-1">
+                          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex-1">
+                          <h3 className="text-md font-semibold text-gray-900">Storage Instructions</h3>
+                          <p className="mt-1 text-gray-700">{detailedInfo?.store || drugInfo?.storage || 'No storage information available.'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Description:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.description || drugInfo?.description || 'No description available.'}</span>
-                </div>
-                
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Important Safety Information:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.monitor || 'No safety information available.'}</span>
-                </div>
-                
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Directions for Use:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.admin || 'No directions for use available.'}</span>
-                </div>
-                
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Contraindications & Precautions:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.contra || drugInfo?.contraindications || 'No contraindication information available.'}</span>
-                </div>
-                
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Side Effects:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.side || drugInfo?.sideEffects || 'No side effects information available.'}</span>
-                </div>
-                
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Drug Interactions:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.interaction || 'No drug interaction information available.'}</span>
-                </div>
-                
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Missed Dose:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.missed || 'No missed dose information available.'}</span>
-                </div>
-                
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">Storage Instructions:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.store || drugInfo?.storage || 'No storage information available.'}</span>
-                </div>
-                
-                <div className="mb-4 flex flex-wrap">
-                  <span className="text-lg font-semibold text-gray-800 mr-2 min-w-[180px]">General Disclaimer:</span>
-                  <span className="text-gray-700 flex-1">{detailedInfo?.disclaimer || 'This information is for educational purposes only. Always consult your healthcare provider for medical advice.'}</span>
+                {/* Disclaimer */}
+                <div className="bg-gray-50 p-4 border-t border-gray-200">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <p className="ml-3 text-sm text-gray-600">
+                      <span className="font-medium text-gray-700">General Disclaimer:</span> {detailedInfo?.disclaimer || 'This information is for educational purposes only. Always consult your healthcare provider for medical advice.'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </motion.div>
         </>
       )}
