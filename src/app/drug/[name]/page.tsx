@@ -558,13 +558,7 @@ export default function DrugPage({ params }: Props) {
           console.log(`Updating GSN state from ${currentGsn} to ${gsnToUse}`);
           setCurrentGsn(gsnToUse.toString());
           
-          // Update the URL with the new GSN if it's not already there
-          if (typeof window !== 'undefined' && gsnToUse.toString() !== gsnFromUrl) {
-            const url = new URL(window.location.href);
-            url.searchParams.set('gsn', gsnToUse.toString());
-            window.history.replaceState({}, '', url.toString());
-            console.log(`Updated URL with GSN: ${gsnToUse}`);
-          }
+          // Don't update the URL with the GSN - we want clean URLs
         }
         
         try {
@@ -1282,26 +1276,22 @@ export default function DrugPage({ params }: Props) {
         // Extract the drug name without the (Brand) or (Generic) suffix
         const drugName = selectedBrandName.replace(/ \((Brand|Generic)\)$/, '');
         
-        // Update the URL with the new GSN if available
-        if (selectedVariation.gsn && typeof window !== 'undefined') {
-          const url = new URL(window.location.href);
-          url.searchParams.set('gsn', selectedVariation.gsn.toString());
-          
-          // If this is an alternate drug, we might need to update the drug name in the URL
-          if (newBrand.startsWith('alternate-') && selectedVariation.name) {
-            // Update the URL path to reflect the new drug name
-            const pathParts = window.location.pathname.split('/');
-            pathParts[pathParts.length - 1] = encodeURIComponent(drugName);
-            url.pathname = pathParts.join('/');
-            
-            console.log(`Updating URL for alternate drug: ${drugName}, GSN: ${selectedVariation.gsn}`);
-          }
-          
-          window.history.replaceState({}, '', url.toString());
-          
-          // Update the gsn state variable to match the URL
+        // Store the GSN in state but don't add it to the URL
+        if (selectedVariation.gsn) {
+          // Update the gsn state variable
           setCurrentGsn(selectedVariation.gsn.toString());
           console.log(`Updated GSN state to: ${selectedVariation.gsn}`);
+        }
+        
+        // Update the URL to reflect the new drug name without GSN parameter
+        if (typeof window !== 'undefined') {
+          // Create a clean URL with just the drug name in the path
+          const baseUrl = window.location.origin;
+          const formattedDrugName = drugName.toLowerCase().replace(/\s+/g, '-');
+          const newUrl = `${baseUrl}/drug/${encodeURIComponent(formattedDrugName)}/`;
+          
+          console.log(`Updating URL to: ${newUrl}`);
+          window.history.replaceState({}, '', newUrl);
         }
         
         // Mark this brand as selected and others as not selected
@@ -1605,12 +1595,12 @@ export default function DrugPage({ params }: Props) {
   const handleQuantityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newQuantity = e.target.value;
     setSelectedQuantity(newQuantity);
-    console.log(`Quantity dropdown changed to: ${newQuantity}`);
     
-    // Find the GSN for the selected quantity if available
+    // Find the quantity object that matches the selected quantity
     const selectedQuantityObj = availableQuantities.find(quantity => 
-      quantity.quantity.toString() === newQuantity.toString()
+      `${quantity.quantity} ${quantity.uom}` === newQuantity
     );
+    
     if (selectedQuantityObj) {
       console.log(`Quantity changed to ${newQuantity}`);
       
@@ -1621,20 +1611,12 @@ export default function DrugPage({ params }: Props) {
       }));
       setAvailableQuantities(updatedQuantities);
       
-      // Update the URL with the new quantity
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.set('quantity', newQuantity);
-        window.history.replaceState({}, '', url.toString());
-      }
+      // Don't update the URL with the quantity - we want clean URLs
       
-      // If we have a GSN for this quantity, update the URL
+      // If we have a GSN for this quantity, update the state but not the URL
       if ((selectedQuantityObj as any).gsn) {
-        if (typeof window !== 'undefined') {
-          const url = new URL(window.location.href);
-          url.searchParams.set('gsn', (selectedQuantityObj as any).gsn.toString());
-          window.history.replaceState({}, '', url.toString());
-        }
+        // Update the GSN state
+        setCurrentGsn((selectedQuantityObj as any).gsn.toString());
         
         // Preserve the selected brand when refetching drug info
         const currentSelectedBrand = brandVariations.find(v => v.type === selectedBrand);
