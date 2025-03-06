@@ -32,7 +32,7 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     const normalizedQuery = query.toLowerCase().trim();
     console.log(`Client: Searching for medications with query: "${normalizedQuery}"`);
     
-    if (normalizedQuery.length < 2) {
+    if (normalizedQuery.length < 3) { // Match America's Pharmacy minLength: 3
       console.log('Query too short, returning empty results');
       return [];
     }
@@ -69,9 +69,23 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
         if (Array.isArray(data) && data.length > 0) {
           // Convert from America's Pharmacy format to our format
           const results = data.map(item => {
+            // Extract GSN from label if present
+            const drugNameOnlyRegex = /\(.*?\)/;
+            const label = item.label || '';
+            const value = item.value || '';
+            
+            // Extract GSN if present in the label
+            const gsnMatch = typeof label === 'string' ? label.match(/\(GSN: (\d+)\)/i) : null;
+            const gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
+            
+            // Remove GSN info from display name if present
+            const cleanName = typeof value === 'string' 
+              ? value.replace(drugNameOnlyRegex, '').trim() 
+              : value;
+            
             return {
-              drugName: item.value || (typeof item === 'string' ? item : ''),
-              gsn: item.gsn
+              drugName: cleanName,
+              gsn
             };
           });
           

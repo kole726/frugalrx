@@ -40,7 +40,7 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
     try {
       console.log('Searching for:', query);
       
-      // Use the new drugautocomplete endpoint that matches America's Pharmacy
+      // Use the drugautocomplete endpoint that matches America's Pharmacy
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
       const response = await fetch(`${API_BASE_URL}/drugautocomplete/${encodeURIComponent(query)}`, {
         method: 'GET',
@@ -57,11 +57,26 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
       const data = await response.json();
       console.log('Autocomplete results:', data);
       
-      // Format the results to match our expected format
-      const formattedResults = data.map((item: any) => ({
-        drugName: item.value || (typeof item === 'string' ? item : ''),
-        gsn: item.gsn
-      }));
+      // Extract GSN from label if present (following America's Pharmacy pattern)
+      const formattedResults = data.map((item: any) => {
+        const drugNameOnlyRegex = /\(.*?\)/;
+        const label = item.label || '';
+        const value = item.value || '';
+        
+        // Extract GSN if present in the label
+        const gsnMatch = typeof label === 'string' ? label.match(/\(GSN: (\d+)\)/i) : null;
+        const gsn = gsnMatch ? parseInt(gsnMatch[1], 10) : undefined;
+        
+        // Remove GSN info from display name if present
+        const cleanName = typeof value === 'string' 
+          ? value.replace(drugNameOnlyRegex, '').trim() 
+          : value;
+        
+        return {
+          drugName: cleanName,
+          gsn
+        };
+      });
       
       // Format drug names with proper capitalization (first letter uppercase, rest lowercase)
       const capitalizedResults = formattedResults.map((result: { drugName: string; gsn?: number }) => ({
@@ -81,7 +96,11 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
 
   // Fetch suggestions when debounced search term changes
   useEffect(() => {
-    fetchSuggestions(debouncedSearch)
+    if (debouncedSearch.length >= 3) { // Match America's Pharmacy minLength: 3
+      fetchSuggestions(debouncedSearch)
+    } else {
+      setSuggestions([])
+    }
   }, [debouncedSearch, fetchSuggestions])
 
   // Close suggestions when clicking outside
@@ -195,7 +214,7 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
         )}
       </form>
 
-      {showSuggestions && searchTerm && searchTerm.length > 1 && (
+      {showSuggestions && searchTerm && searchTerm.length >= 3 && (
         <div 
           ref={suggestionsRef}
           className="absolute w-full mt-2 bg-white rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
