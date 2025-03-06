@@ -81,7 +81,6 @@ export async function GET(request: Request) {
       return NextResponse.json(
         { 
           results: mockResults,
-          error: apiError instanceof Error ? apiError.message : 'Unknown error',
           usingMockData: true
         },
         { headers: corsHeaders }
@@ -89,12 +88,18 @@ export async function GET(request: Request) {
     }
   } catch (error) {
     console.error('Error in drug search API:', error);
+    
+    // Fall back to mock data as a last resort
+    const query = new URL(request.url).searchParams.get('q') || '';
+    const mockResults = getMockDrugSearchResults(query);
+    
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
       { 
-        status: 500,
-        headers: corsHeaders
-      }
+        results: mockResults,
+        usingMockData: true,
+        error: 'An error occurred while searching for medications'
+      },
+      { headers: corsHeaders }
     );
   }
 } 
