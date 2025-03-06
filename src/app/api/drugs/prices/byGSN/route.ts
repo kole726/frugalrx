@@ -111,11 +111,31 @@ export async function POST(request: Request) {
         throw new Error(`API error: ${response.status} - ${errorText}`);
       }
       
-      const data = await response.json();
-      console.log(`API returned data for GSN ${gsn}`);
+      // Check if the response has content before parsing it as JSON
+      const responseText = await response.text();
+      if (!responseText || responseText.trim() === '') {
+        console.error('API returned empty response');
+        return NextResponse.json(
+          { error: 'API returned empty response', pharmacies: [] },
+          { status: 200, headers: corsHeaders }
+        );
+      }
       
-      // Return the data
-      return NextResponse.json(data, { headers: corsHeaders });
+      try {
+        // Parse the response text as JSON
+        const data = JSON.parse(responseText);
+        console.log(`API returned data for GSN ${gsn}`);
+        
+        // Return the data
+        return NextResponse.json(data, { headers: corsHeaders });
+      } catch (jsonError) {
+        console.error('Error parsing API response as JSON:', jsonError);
+        console.error('Response text:', responseText);
+        return NextResponse.json(
+          { error: 'Invalid JSON response from API', pharmacies: [] },
+          { status: 200, headers: corsHeaders }
+        );
+      }
     } catch (apiError) {
       console.error('Error connecting to America\'s Pharmacy API:', apiError);
       throw apiError;

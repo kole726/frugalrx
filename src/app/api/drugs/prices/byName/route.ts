@@ -114,69 +114,89 @@ export async function POST(request: Request) {
         throw new Error(`API error: ${response.status} - ${errorText}`);
       }
       
-      const data = await response.json();
-      console.log(`API returned data for drug "${drugName}"`);
-      
-      // Add detailed logging to verify the structure of the response
-      console.log('Response data structure check:');
-      console.log('- Has drug info:', !!data.drug);
-      if (data.drug) {
-        console.log('  - Drug name:', data.drug.medName);
-        console.log('  - GSN:', data.drug.gsn);
-        console.log('  - NDC Code:', data.drug.ndcCode);
+      // Check if the response has content before parsing it as JSON
+      const responseText = await response.text();
+      if (!responseText || responseText.trim() === '') {
+        console.error('API returned empty response');
+        return NextResponse.json(
+          { error: 'API returned empty response', pharmacies: [] },
+          { status: 200, headers: corsHeaders }
+        );
       }
       
-      console.log('- Has pharmacyPrices:', !!data.pharmacyPrices && Array.isArray(data.pharmacyPrices));
-      if (data.pharmacyPrices && Array.isArray(data.pharmacyPrices)) {
-        console.log('  - Number of pharmacies:', data.pharmacyPrices.length);
-        if (data.pharmacyPrices.length > 0) {
-          const firstPharmacy = data.pharmacyPrices[0];
-          console.log('  - First pharmacy name:', firstPharmacy.pharmacy?.name);
-          console.log('  - First pharmacy price:', firstPharmacy.price?.price);
+      try {
+        // Parse the response text as JSON
+        const data = JSON.parse(responseText);
+        console.log(`API returned data for drug "${drugName}"`);
+        
+        // Add detailed logging to verify the structure of the response
+        console.log('Response data structure check:');
+        console.log('- Has drug info:', !!data.drug);
+        if (data.drug) {
+          console.log('  - Drug name:', data.drug.medName);
+          console.log('  - GSN:', data.drug.gsn);
+          console.log('  - NDC Code:', data.drug.ndcCode);
         }
-      }
-      
-      console.log('- Has forms:', !!data.forms && Array.isArray(data.forms));
-      if (data.forms && Array.isArray(data.forms)) {
-        console.log('  - Number of forms:', data.forms.length);
-        console.log('  - Available forms:', data.forms.map((form: any) => form.form).join(', '));
-      }
-      
-      console.log('- Has strengths:', !!data.strengths && Array.isArray(data.strengths));
-      if (data.strengths && Array.isArray(data.strengths)) {
-        console.log('  - Number of strengths:', data.strengths.length);
-        console.log('  - Available strengths:', data.strengths.map((strength: any) => strength.strength).join(', '));
-      }
-      
-      console.log('- Has quantities:', !!data.quantities && Array.isArray(data.quantities));
-      if (data.quantities && Array.isArray(data.quantities)) {
-        console.log('  - Number of quantities:', data.quantities.length);
-        console.log('  - Available quantities:', data.quantities.map((qty: any) => `${qty.quantity} ${qty.uom}`).join(', '));
-      }
-      
-      console.log('- Has alternateDrugs:', !!data.alternateDrugs && Array.isArray(data.alternateDrugs));
-      if (data.alternateDrugs && Array.isArray(data.alternateDrugs)) {
-        console.log('  - Number of alternate drugs:', data.alternateDrugs.length);
-        if (data.alternateDrugs.length > 0) {
-          console.log('  - First few alternates:', data.alternateDrugs.slice(0, 3).map((drug: any) => drug.medName).join(', '));
+        
+        console.log('- Has pharmacyPrices:', !!data.pharmacyPrices && Array.isArray(data.pharmacyPrices));
+        if (data.pharmacyPrices && Array.isArray(data.pharmacyPrices)) {
+          console.log('  - Number of pharmacies:', data.pharmacyPrices.length);
+          if (data.pharmacyPrices.length > 0) {
+            const firstPharmacy = data.pharmacyPrices[0];
+            console.log('  - First pharmacy name:', firstPharmacy.pharmacy?.name);
+            console.log('  - First pharmacy price:', firstPharmacy.price?.price);
+          }
         }
+        
+        console.log('- Has forms:', !!data.forms && Array.isArray(data.forms));
+        if (data.forms && Array.isArray(data.forms)) {
+          console.log('  - Number of forms:', data.forms.length);
+          console.log('  - Available forms:', data.forms.map((form: any) => form.form).join(', '));
+        }
+        
+        console.log('- Has strengths:', !!data.strengths && Array.isArray(data.strengths));
+        if (data.strengths && Array.isArray(data.strengths)) {
+          console.log('  - Number of strengths:', data.strengths.length);
+          console.log('  - Available strengths:', data.strengths.map((strength: any) => strength.strength).join(', '));
+        }
+        
+        console.log('- Has quantities:', !!data.quantities && Array.isArray(data.quantities));
+        if (data.quantities && Array.isArray(data.quantities)) {
+          console.log('  - Number of quantities:', data.quantities.length);
+          console.log('  - Available quantities:', data.quantities.map((qty: any) => `${qty.quantity} ${qty.uom}`).join(', '));
+        }
+        
+        console.log('- Has alternateDrugs:', !!data.alternateDrugs && Array.isArray(data.alternateDrugs));
+        if (data.alternateDrugs && Array.isArray(data.alternateDrugs)) {
+          console.log('  - Number of alternate drugs:', data.alternateDrugs.length);
+          if (data.alternateDrugs.length > 0) {
+            console.log('  - First few alternates:', data.alternateDrugs.slice(0, 3).map((drug: any) => drug.medName).join(', '));
+          }
+        }
+        
+        // Extract GSN from the response if available
+        if (data && data.drug && data.drug.gsn) {
+          console.log(`Found GSN ${data.drug.gsn} for drug "${drugName}" in the API response`);
+        } else {
+          console.log(`No GSN found for drug "${drugName}" in the API response`);
+        }
+        
+        // Ensure the drug name is included in the response
+        const enhancedData = {
+          ...data,
+          drugName: drugName
+        };
+        
+        // Return the data
+        return NextResponse.json(enhancedData, { headers: corsHeaders });
+      } catch (jsonError) {
+        console.error('Error parsing API response as JSON:', jsonError);
+        console.error('Response text:', responseText);
+        return NextResponse.json(
+          { error: 'Invalid JSON response from API', pharmacies: [] },
+          { status: 200, headers: corsHeaders }
+        );
       }
-      
-      // Extract GSN from the response if available
-      if (data && data.drug && data.drug.gsn) {
-        console.log(`Found GSN ${data.drug.gsn} for drug "${drugName}" in the API response`);
-      } else {
-        console.log(`No GSN found for drug "${drugName}" in the API response`);
-      }
-      
-      // Ensure the drug name is included in the response
-      const enhancedData = {
-        ...data,
-        drugName: drugName
-      };
-      
-      // Return the data
-      return NextResponse.json(enhancedData, { headers: corsHeaders });
     } catch (apiError) {
       console.error('Error connecting to America\'s Pharmacy API:', apiError);
       throw apiError;
