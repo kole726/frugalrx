@@ -21,7 +21,7 @@ export default function DrugPage({ params }: Props) {
   console.log('DrugPage component rendering with params:', params);
   
   const searchParams = useSearchParams()
-  const gsn = searchParams.get('gsn')
+  const gsnFromUrl = searchParams.get('gsn')
   
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +33,7 @@ export default function DrugPage({ params }: Props) {
   const [forceUpdate, setForceUpdate] = useState<number>(0)
   const [lastSelectedBrandType, setLastSelectedBrandType] = useState<string>('')
   const [lastSelectedBrandName, setLastSelectedBrandName] = useState<string>('')
-  const [gsn, setGsn] = useState<string>('')
+  const [currentGsn, setCurrentGsn] = useState<string>(gsnFromUrl || '')
   
   // Filter state
   const [selectedBrand, setSelectedBrand] = useState<string>('generic')
@@ -317,7 +317,7 @@ export default function DrugPage({ params }: Props) {
       }
       
       const drugName = drugInfo?.genericName || decodeURIComponent(params.name)
-      const gsnToUse = drugInfo?.gsn || (gsn ? parseInt(gsn, 10) : undefined)
+      const gsnToUse = drugInfo?.gsn || (gsnFromUrl ? parseInt(gsnFromUrl, 10) : undefined)
       
       console.log(`Fetching pharmacy prices for ${drugName} (GSN: ${gsnToUse || 'not available'})`)
       console.log(`Location: ${latitude}, ${longitude}, Radius: ${radius} miles`)
@@ -506,16 +506,16 @@ export default function DrugPage({ params }: Props) {
         if (gsnFromUrl) {
           console.log(`Found GSN in URL: ${gsnFromUrl}`);
           // Update the gsn state to match the URL
-          setGsn(gsnFromUrl);
+          setCurrentGsn(gsnFromUrl);
         }
       }
       
       // Use the GSN from state or URL
-      const currentGsn = gsn || gsnFromUrl;
-      console.log(`Current GSN for fetchDrugInfo: ${currentGsn || 'not available'}`);
+      const gsnToCheck = currentGsn || gsnFromUrl;
+      console.log(`Current GSN for fetchDrugInfo: ${gsnToCheck || 'not available'}`);
       
       const drugName = decodeURIComponent(params.name)
-      console.log(`Fetching drug info for: ${drugName}, GSN: ${currentGsn || 'not provided'}`)
+      console.log(`Fetching drug info for: ${drugName}, GSN: ${gsnToCheck || 'not provided'}`)
       
       // First, get drug pricing by name to get the GSN and pricing information
       console.log(`Getting drug pricing for: ${drugName} at location: ${userLocation.latitude}, ${userLocation.longitude}`)
@@ -527,7 +527,7 @@ export default function DrugPage({ params }: Props) {
         radius: searchRadius,
         quantity: parseInt(selectedQuantity.split(' ')[0], 10) || 30,
         customizedQuantity: true,
-        gsn: currentGsn ? parseInt(currentGsn, 10) : undefined // Pass GSN to API if available
+        gsn: gsnToCheck ? parseInt(gsnToCheck, 10) : undefined // Pass GSN to API if available
       })
       
       console.log('Drug pricing data:', pricingData)
@@ -550,13 +550,13 @@ export default function DrugPage({ params }: Props) {
       
       // If we have a GSN from pricing, URL, or state, use it to get detailed drug info
       // Prioritize the GSN from state/URL over the one from pricing
-      const gsnToUse = currentGsn ? parseInt(currentGsn, 10) : gsnFromPricing
+      const gsnToUse = gsnToCheck ? parseInt(gsnToCheck, 10) : gsnFromPricing
       
       if (gsnToUse) {
         // Update the GSN state if it's different from the current GSN
         if (gsnToUse.toString() !== currentGsn) {
           console.log(`Updating GSN state from ${currentGsn} to ${gsnToUse}`);
-          setGsn(gsnToUse.toString());
+          setCurrentGsn(gsnToUse.toString());
           
           // Update the URL with the new GSN if it's not already there
           if (typeof window !== 'undefined' && gsnToUse.toString() !== gsnFromUrl) {
@@ -1300,7 +1300,7 @@ export default function DrugPage({ params }: Props) {
           window.history.replaceState({}, '', url.toString());
           
           // Update the gsn state variable to match the URL
-          setGsn(selectedVariation.gsn.toString());
+          setCurrentGsn(selectedVariation.gsn.toString());
           console.log(`Updated GSN state to: ${selectedVariation.gsn}`);
         }
         
@@ -1848,7 +1848,7 @@ export default function DrugPage({ params }: Props) {
                     </>
                   )}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">GSN: {gsn || 'N/A'}</p>
+                <p className="text-xs text-gray-500 mt-1">GSN: {currentGsn || 'N/A'}</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Dosage</label>
