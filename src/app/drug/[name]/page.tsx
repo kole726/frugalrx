@@ -1287,7 +1287,8 @@ export default function DrugPage({ params }: Props) {
         if (typeof window !== 'undefined') {
           // Create a clean URL with just the drug name in the path
           const baseUrl = window.location.origin;
-          const formattedDrugName = drugName.toLowerCase().replace(/\s+/g, '-');
+          // Format drug name: lowercase, replace periods with empty string, replace spaces with hyphens
+          const formattedDrugName = drugName.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
           const newUrl = `${baseUrl}/drug/${encodeURIComponent(formattedDrugName)}/`;
           
           console.log(`Updating URL to: ${newUrl}`);
