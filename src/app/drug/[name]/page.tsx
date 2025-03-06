@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { getDrugInfo, getDrugPrices, getDetailedDrugInfo, searchMedications } from '@/services/medicationApi'
+import { getDrugInfo, getDrugPrices, getDetailedDrugInfo, searchMedications, getGsnForDrugName } from '@/services/medicationApi'
 import LoadingState from '@/components/search/LoadingState'
 import { DrugInfo as DrugInfoType, DrugDetails, PharmacyPrice, APIError, DrugSearchResponse, DrugPriceResponse, DrugForm, DrugStrength, DrugQuantity } from '@/types/api'
 import PharmacyMap from '@/components/maps/PharmacyMap'
@@ -302,191 +302,197 @@ export default function DrugPage({ params }: Props) {
 
   // Function to fetch pharmacy prices
   const fetchPharmacyPrices = async (latitude: number, longitude: number, radius: number) => {
+    setIsLoadingPharmacies(true);
+    setError(null);
+    
     try {
-      setIsLoadingPharmacies(true)
-      setError(null)
+      console.log(`Fetching pharmacy prices for ${params.name} at location (${latitude}, ${longitude}) with radius ${radius} miles`);
       
-      if (!drugInfo && !params.name) {
-        console.error('Cannot fetch pharmacy prices: No drug info or name available')
-        setError('Drug information not available. Please try searching again.')
-        return
+      // Decode the drug name from the URL
+      const drugName = decodeURIComponent(params.name);
+      
+      // First, try to get the GSN for the drug name if we don't already have it
+      let drugGsn = gsn ? parseInt(gsn, 10) : undefined;
+      
+      if (!drugGsn) {
+        console.log(`No GSN provided in URL, attempting to find GSN for drug name: "${drugName}"`);
+        drugGsn = await getGsnForDrugName(drugName);
+        
+        if (drugGsn) {
+          console.log(`Found GSN ${drugGsn} for drug "${drugName}"`);
+        } else {
+          console.log(`No GSN found for drug "${drugName}", will use drug name for price lookup`);
+        }
       }
-      
-      const drugName = drugInfo?.genericName || decodeURIComponent(params.name)
-      const gsnToUse = drugInfo?.gsn || (gsn ? parseInt(gsn, 10) : undefined)
-      
-      console.log(`Fetching pharmacy prices for ${drugName} (GSN: ${gsnToUse || 'not available'})`)
-      console.log(`Location: ${latitude}, ${longitude}, Radius: ${radius} miles`)
-      console.log(`Form: ${selectedForm}, Strength: ${selectedStrength}, Quantity: ${selectedQuantity}`)
       
       // Prepare the request
       const request = {
+        drugName: drugName,
+        gsn: drugGsn, // Include GSN if we found one
         latitude,
         longitude,
         radius,
-        customizedQuantity: false,
-        maximumPharmacies: 50 // Request more pharmacies for better results
-      }
+        quantity: parseInt(selectedQuantity.split(' ')[0], 10) || 30,
+        customizedQuantity: true
+      };
       
-      // Add either GSN or drug name
-      if (gsnToUse) {
-        Object.assign(request, { gsn: gsnToUse })
-      } else {
-        Object.assign(request, { drugName })
-      }
+      console.log('Drug price request:', request);
       
-      // Add form if selected
-      if (selectedForm) {
-        Object.assign(request, { form: selectedForm })
-      }
+      // Get drug prices
+      const priceData = await getDrugPrices(request);
+      console.log('Drug price response:', priceData);
       
-      // Add strength if selected
-      if (selectedStrength) {
-        Object.assign(request, { strength: selectedStrength })
-      }
+      // Use type assertion to handle the extended API response format
+      const apiResponse = priceData as any;
       
-      // Add quantity if selected
-      if (selectedQuantity) {
-        const quantityMatch = selectedQuantity.match(/(\d+)/)
-        if (quantityMatch && quantityMatch[1]) {
-          const quantity = parseInt(quantityMatch[1], 10)
-          if (!isNaN(quantity)) {
-            Object.assign(request, { 
-              customizedQuantity: true,
-              quantity
-            })
-          }
-        }
-      }
-      
-      console.log('Pharmacy price request:', request)
-      
-      // Call the API
-      const response = await getDrugPrices(request)
-      console.log('Pharmacy price response:', response)
-      
-      // Check if we're using mock data or fallback GSN
-      if ((response as any).usingMockData) {
-        console.warn('Using mock pharmacy data - real API data not available')
-        toast('Using mock pharmacy data - real API data not available', {
-          icon: '⚠️'
-        })
-      } else if ((response as any).usingFallbackGsn) {
-        console.warn(`Using data from a different medication (GSN: ${(response as any).originalGsn} → 62733)`)
-        toast('Showing prices from a similar medication. Actual prices may vary.', {
-          icon: '⚠️',
-          duration: 6000
-        })
-      }
-      
-      // Store brand variations if available
-      if (response.brandVariations && Array.isArray(response.brandVariations)) {
-        console.log('Setting brand variations:', response.brandVariations)
-        setBrandVariations(response.brandVariations)
-        
-        // If we have brand variations but no selected brand, set the first one as selected
-        if (response.brandVariations.length > 0 && !selectedBrand) {
-          console.log('Setting initial selected brand:', response.brandVariations[0])
-          setSelectedBrand(response.brandVariations[0].type)
-        }
-      } else {
-        console.warn('No brand variations found in API response')
-        // Create default brand variations if none are provided
-        const defaultVariations = [
-          {
-            name: `${drugName} (brand)`,
-            type: 'brand',
-            gsn: gsnToUse || 1790
-          },
-          {
-            name: `${drugName} (generic)`,
-            type: 'generic',
-            gsn: gsnToUse ? gsnToUse + 1 : 1791
-          }
-        ]
-        console.log('Setting default brand variations:', defaultVariations)
-        setBrandVariations(defaultVariations)
-        
-        // Set the first one as selected if no brand is selected
-        if (!selectedBrand) {
-          setSelectedBrand(defaultVariations[0].type)
-        }
-      }
-      
-      // Check if we have pharmacy data from the API response
-      if ((response as any).pharmacyPrices && Array.isArray((response as any).pharmacyPrices)) {
-        // API returned data in the new format with detailed pharmacy information
-        console.log('Using detailed pharmacy data from API')
-        
-        // Map the API response to our PharmacyPrice format
-        const mappedPharmacies = ((response as any).pharmacyPrices).map((item: any) => {
-          const pharmacy = item.pharmacy || {};
-          const price = item.price || {};
+      if (apiResponse) {
+        // Process pharmacy prices if available
+        if (apiResponse.pharmacies && Array.isArray(apiResponse.pharmacies) && apiResponse.pharmacies.length > 0) {
+          console.log(`Found ${apiResponse.pharmacies.length} pharmacies with prices`);
           
-          return {
-            name: pharmacy.name || 'Unknown Pharmacy',
-            price: parseFloat(price.price) || 0,
-            distance: `${pharmacy.distance?.toFixed(1) || '0.0'} miles`,
-            address: pharmacy.streetAddress || '',
-            city: pharmacy.city || '',
-            state: pharmacy.state || '',
-            zipCode: pharmacy.zipCode || '',
-            phone: pharmacy.phone || '',
-            latitude: pharmacy.latitude,
-            longitude: pharmacy.longitude,
-            open24H: pharmacy.open24H || false
-          };
-        });
-        
-        // Sort pharmacies based on selected sort option
-        if (selectedSort === 'PRICE') {
-          mappedPharmacies.sort((a: PharmacyPrice, b: PharmacyPrice) => a.price - b.price)
-        } else if (selectedSort === 'DISTANCE') {
-          mappedPharmacies.sort((a: PharmacyPrice, b: PharmacyPrice) => {
-            const distanceA = parseFloat(a.distance.replace(' miles', ''))
-            const distanceB = parseFloat(b.distance.replace(' miles', ''))
-            return distanceA - distanceB
-          })
+          // Sort pharmacies by price (lowest first)
+          const sortedPharmacies = [...apiResponse.pharmacies].sort((a, b) => {
+            const priceA = typeof a.price === 'string' ? parseFloat(a.price) : a.price;
+            const priceB = typeof b.price === 'string' ? parseFloat(b.price) : b.price;
+            return priceA - priceB;
+          });
+          
+          setPharmacyPrices(sortedPharmacies);
+          setCurrentPage(1); // Reset to first page when new results come in
+        } else {
+          console.log('No pharmacies found with prices');
+          setPharmacyPrices([]);
+          setError('No pharmacy prices found for this medication in your area. Try increasing the search radius or try a different medication.');
         }
         
-        setPharmacyPrices(mappedPharmacies)
-        console.log(`Found ${mappedPharmacies.length} pharmacies with prices from API`)
-      }
-      else if (response.pharmacies && response.pharmacies.length > 0) {
-        // Legacy format or mock data
-        console.log('Using legacy pharmacy data format')
-        
-        // Sort pharmacies based on selected sort option
-        let sortedPharmacies = [...response.pharmacies]
-        
-        if (selectedSort === 'PRICE') {
-          sortedPharmacies.sort((a, b) => a.price - b.price)
-        } else if (selectedSort === 'DISTANCE') {
-          sortedPharmacies.sort((a, b) => {
-            const distanceA = parseFloat(a.distance.replace(' miles', '').replace(' mi', ''))
-            const distanceB = parseFloat(b.distance.replace(' miles', '').replace(' mi', ''))
-            return distanceA - distanceB
-          })
+        // Update drug info with GSN if available
+        if (apiResponse.drug && apiResponse.drug.gsn) {
+          console.log(`Found GSN ${apiResponse.drug.gsn} for drug "${drugName}" in the API response`);
+          
+          // Update drug info with data from the API
+          setDrugInfo(prevInfo => {
+            if (!prevInfo) {
+              return {
+                brandName: apiResponse.drug.medName || drugName,
+                genericName: apiResponse.drug.medName || drugName,
+                gsn: apiResponse.drug.gsn,
+                ndcCode: apiResponse.drug.ndcCode || '',
+                description: '',
+                sideEffects: '',
+                dosage: '',
+                storage: '',
+                contraindications: ''
+              };
+            }
+            return {
+              ...prevInfo,
+              gsn: apiResponse.drug.gsn,
+              ndcCode: apiResponse.drug.ndcCode || prevInfo.ndcCode || '',
+              brandName: apiResponse.drug.medName || prevInfo.brandName,
+              genericName: apiResponse.drug.medName || prevInfo.genericName
+            };
+          });
+          
+          // Store the detailed info for reference
+          setDetailedInfo(apiResponse);
         }
         
-        setPharmacyPrices(sortedPharmacies)
-        console.log(`Found ${sortedPharmacies.length} pharmacies with prices from legacy format`)
-      } else {
-        console.warn('No pharmacy prices found in the response')
-        setError('No pharmacy prices found for this medication in your area.')
-        setPharmacyPrices([])
+        // Process forms if available
+        if (apiResponse.forms && Array.isArray(apiResponse.forms) && apiResponse.forms.length > 0) {
+          console.log('Setting available forms from API response:', apiResponse.forms);
+          
+          // Map the forms to the expected format
+          const formattedForms = apiResponse.forms.map((form: any) => ({
+            form: form.form,
+            gsn: form.gsn,
+            selected: form.selected || false
+          }));
+          
+          setAvailableForms(formattedForms);
+          
+          // Set default selected form (either the one marked as selected or the first one)
+          const defaultForm = formattedForms.find((form: any) => form.selected) || formattedForms[0];
+          if (defaultForm && defaultForm.form !== selectedForm) {
+            console.log('Setting default form from API:', defaultForm.form);
+            setSelectedForm(defaultForm.form);
+          }
+        }
+        
+        // Process strengths if available
+        if (apiResponse.strengths && Array.isArray(apiResponse.strengths) && apiResponse.strengths.length > 0) {
+          console.log('Setting available strengths from API response:', apiResponse.strengths);
+          
+          // Map the strengths to the expected format
+          const formattedStrengths = apiResponse.strengths.map((strength: any) => ({
+            strength: strength.strength,
+            gsn: strength.gsn,
+            selected: strength.selected || false
+          }));
+          
+          setAvailableStrengths(formattedStrengths);
+          
+          // Set default selected strength (either the one marked as selected or the first one)
+          const defaultStrength = formattedStrengths.find((strength: any) => strength.selected) || formattedStrengths[0];
+          if (defaultStrength && defaultStrength.strength !== selectedStrength) {
+            console.log('Setting default strength from API:', defaultStrength.strength);
+            setSelectedStrength(defaultStrength.strength);
+          }
+        }
+        
+        // Process quantities if available
+        if (apiResponse.quantities && Array.isArray(apiResponse.quantities) && apiResponse.quantities.length > 0) {
+          console.log('Setting available quantities from API response:', apiResponse.quantities);
+          
+          // Map the quantities to the expected format
+          const formattedQuantities = apiResponse.quantities.map((qty: any) => ({
+            quantity: qty.quantity,
+            uom: qty.uom,
+            selected: qty.selected || false
+          }));
+          
+          setAvailableQuantities(formattedQuantities);
+          
+          // Set default selected quantity (either the one marked as selected or the first one)
+          const defaultQuantity = formattedQuantities.find((qty: any) => qty.selected) || formattedQuantities[0];
+          if (defaultQuantity) {
+            const quantityString = `${defaultQuantity.quantity} ${defaultQuantity.uom}`;
+            if (quantityString !== selectedQuantity) {
+              console.log('Setting default quantity from API:', quantityString);
+              setSelectedQuantity(quantityString);
+            }
+          }
+        }
+        
+        // Process alternate drugs (brands) if available
+        if (apiResponse.alternateDrugs && Array.isArray(apiResponse.alternateDrugs) && apiResponse.alternateDrugs.length > 0) {
+          console.log('Setting available brands from API response:', apiResponse.alternateDrugs);
+          
+          // Map the alternate drugs to the expected format for brand variations
+          const formattedBrands = apiResponse.alternateDrugs.map((drug: any) => ({
+            name: drug.medName,
+            type: drug.bgFlag === 'G' ? 'generic' : 'brand',
+            gsn: drug.gsn || (apiResponse.drug && apiResponse.drug.gsn) || undefined,
+            selected: drug.selected || false
+          }));
+          
+          setBrandVariations(formattedBrands);
+          
+          // Set default selected brand (either the one marked as selected or the first one)
+          const defaultBrand = formattedBrands.find((brand: any) => brand.selected) || formattedBrands[0];
+          if (defaultBrand && defaultBrand.type !== selectedBrand) {
+            console.log('Setting default brand from API:', defaultBrand.type);
+            setSelectedBrand(defaultBrand.type);
+          }
+        }
       }
-      
-      // Always set loading to false after processing the response
-      setIsLoading(false)
-      setIsLoadingPharmacies(false)
     } catch (error) {
-      console.error('Error fetching pharmacy prices:', error)
-      setError(`Error loading pharmacy prices: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      setIsLoading(false)
-      setIsLoadingPharmacies(false)
+      console.error('Error fetching pharmacy prices:', error);
+      setError('Error fetching pharmacy prices. Please try again later.');
+      setPharmacyPrices([]);
+    } finally {
+      setIsLoadingPharmacies(false);
     }
-  }
+  };
 
   // Function to fetch drug information
   const fetchDrugInfo = async () => {
