@@ -28,8 +28,8 @@ export async function GET(
     console.log(`API Drugautocomplete: Received query "${query}"`);
     console.log('Environment variables check:');
     console.log('- NODE_ENV:', process.env.NODE_ENV);
-    console.log('- AMERICAS_PHARMACY_API_URL:', process.env.AMERICAS_PHARMACY_API_URL ? 'Set' : 'Not set');
-    console.log('- AMERICAS_PHARMACY_HQ_MAPPING:', process.env.AMERICAS_PHARMACY_HQ_MAPPING ? 'Set' : 'Not set');
+    console.log('- AMERICAS_PHARMACY_API_URL:', process.env.AMERICAS_PHARMACY_API_URL);
+    console.log('- AMERICAS_PHARMACY_HQ_MAPPING:', process.env.AMERICAS_PHARMACY_HQ_MAPPING);
     console.log('- NEXT_PUBLIC_USE_REAL_API:', process.env.NEXT_PUBLIC_USE_REAL_API);
     console.log('- NEXT_PUBLIC_FALLBACK_TO_MOCK:', process.env.NEXT_PUBLIC_FALLBACK_TO_MOCK);
     
@@ -81,13 +81,18 @@ export async function GET(
         // Use the documented API endpoint from the Postman collection
         const apiUrl = process.env.AMERICAS_PHARMACY_API_URL || 'https://api.americaspharmacy.com';
         
-        // Ensure the URL is properly formatted
+        // Ensure the URL is properly formatted - remove trailing slashes
         const baseUrl = apiUrl.replace(/\/+$/, '');
         
+        // Check if baseUrl already includes /pricing/v1 to avoid duplication
+        const baseUrlHasPath = baseUrl.includes('/pricing/v1');
+        
         // Use the drug-names endpoint from the Postman collection
-        const endpoint = '/pricing/v1/drugs/names';
+        // Construct the endpoint path carefully to avoid duplication
+        const endpoint = baseUrlHasPath ? '/drugs/names' : '/pricing/v1/drugs/names';
         
         console.log(`Using America's Pharmacy API: ${baseUrl}${endpoint}`);
+        console.log(`Full API URL: ${baseUrl}${endpoint}`);
         
         // Prepare the request body
         const requestBody = {
@@ -137,7 +142,10 @@ export async function GET(
           console.log('No results from POST method, trying GET method (opFindDrugByName)');
           
           // Use the opFindDrugByName endpoint from the API documentation
-          const getEndpoint = `/pricing/v1/drugs/${encodeURIComponent(query)}`;
+          // Construct the endpoint path carefully to avoid duplication
+          const getEndpoint = baseUrlHasPath 
+            ? `/drugs/${encodeURIComponent(query)}`
+            : `/pricing/v1/drugs/${encodeURIComponent(query)}`;
           
           console.log(`Using America's Pharmacy API GET: ${baseUrl}${getEndpoint}`);
           
