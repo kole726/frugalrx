@@ -29,22 +29,38 @@ interface DrugPriceRequest {
 export async function searchMedications(query: string): Promise<DrugSearchResponse[]> {
   try {
     // Convert query to lowercase before encoding to ensure consistent URL format
-    const normalizedQuery = query.toLowerCase();
+    const normalizedQuery = query.toLowerCase().trim();
     console.log(`Client: Searching for medications with query: "${normalizedQuery}"`);
+    
+    if (normalizedQuery.length < 2) {
+      console.log('Query too short, returning empty results');
+      return [];
+    }
+    
+    // Track API call attempts for logging
+    let apiAttempts = 0;
+    let apiSuccess = false;
     
     // First try the direct autocomplete endpoint
     try {
+      apiAttempts++;
       // Use the client-side API proxy to avoid CORS issues
       const autocompleteEndpoint = `${API_BASE_URL}/api/drugs/autocomplete/${encodeURIComponent(normalizedQuery)}`;
-      console.log(`Using autocomplete endpoint: ${autocompleteEndpoint}`);
+      console.log(`[Attempt ${apiAttempts}] Using autocomplete endpoint: ${autocompleteEndpoint}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
       
       const response = await fetch(autocompleteEndpoint, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
         },
+        signal: controller.signal,
         cache: 'no-store' // Ensure we don't use cached responses
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
@@ -66,6 +82,7 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
           });
           
           console.log(`Client: Found ${results.length} autocomplete results for "${normalizedQuery}"`);
+          apiSuccess = true;
           return results;
         } else {
           console.log(`Client: Autocomplete endpoint returned empty results for "${normalizedQuery}"`);
@@ -77,60 +94,104 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
       
       // If autocomplete fails or returns empty, fall back to the search endpoint
       console.log(`Autocomplete failed or returned empty, falling back to search endpoint`);
-    } catch (autocompleteError) {
-      console.error('Error with autocomplete endpoint:', autocompleteError);
+    } catch (autocompleteError: any) {
+      if (autocompleteError.name === 'AbortError') {
+        console.error('Autocomplete endpoint timed out after 3 seconds');
+      } else {
+        console.error('Error with autocomplete endpoint:', autocompleteError);
+      }
       console.log('Falling back to search endpoint');
     }
     
     // Try the search endpoint with query parameter
     try {
+      apiAttempts++;
       const searchEndpoint = `${API_BASE_URL}/api/drugs/search?q=${encodeURIComponent(normalizedQuery)}`;
       
-      console.log(`Using search endpoint: ${searchEndpoint}`);
+      console.log(`[Attempt ${apiAttempts}] Using search endpoint: ${searchEndpoint}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+      
       const response = await fetch(searchEndpoint, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
         },
+        signal: controller.signal,
         cache: 'no-store' // Ensure we don't use cached responses
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
         console.log(`Client: Received search results:`, data);
         
         // Return the results array from the response
-        const results = data.results || [];
-        console.log(`Client: Found ${results.length} results for "${normalizedQuery}"`);
-        
-        return results;
+        if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+          console.log(`Client: Found ${data.results.length} results for "${normalizedQuery}"`);
+          apiSuccess = true;
+          return data.results;
+        } else if (Array.isArray(data) && data.length > 0) {
+          // Handle case where the API returns an array directly
+          const formattedResults = data.map(item => {
+            if (typeof item === 'string') {
+              return { drugName: item };
+            } else if (typeof item === 'object') {
+              return {
+                drugName: item.drugName || item.name || item.value || '',
+                gsn: item.gsn || undefined
+              };
+            }
+            return { drugName: String(item) };
+          });
+          
+          console.log(`Client: Found ${formattedResults.length} direct results for "${normalizedQuery}"`);
+          apiSuccess = true;
+          return formattedResults;
+        } else {
+          console.log(`Client: Search endpoint returned empty results for "${normalizedQuery}"`);
+        }
       } else {
         const errorText = await response.text();
         console.error(`Client: Search endpoint error (${response.status}):`, errorText);
       }
-    } catch (searchError) {
-      console.error('Error with search endpoint:', searchError);
+    } catch (searchError: any) {
+      if (searchError.name === 'AbortError') {
+        console.error('Search endpoint timed out after 3 seconds');
+      } else {
+        console.error('Error with search endpoint:', searchError);
+      }
     }
     
     // Try the dynamic route search endpoint as a last resort
     try {
+      apiAttempts++;
       const dynamicSearchEndpoint = `${API_BASE_URL}/api/drugs/search/${encodeURIComponent(normalizedQuery)}`;
       
-      console.log(`Using dynamic search endpoint: ${dynamicSearchEndpoint}`);
+      console.log(`[Attempt ${apiAttempts}] Using dynamic search endpoint: ${dynamicSearchEndpoint}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+      
       const response = await fetch(dynamicSearchEndpoint, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
         },
+        signal: controller.signal,
         cache: 'no-store' // Ensure we don't use cached responses
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
         console.log(`Client: Received dynamic search results:`, data);
         
         // Format the results if they're not already in the expected format
-        if (Array.isArray(data)) {
+        if (Array.isArray(data) && data.length > 0) {
           const formattedResults = data.map(item => {
             if (typeof item === 'string') {
               return { drugName: item };
@@ -144,28 +205,34 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
           });
           
           console.log(`Client: Formatted ${formattedResults.length} dynamic search results`);
+          apiSuccess = true;
           return formattedResults;
         }
         
         // If data has a results property, use that
-        if (data.results && Array.isArray(data.results)) {
+        if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+          apiSuccess = true;
           return data.results;
         }
       } else {
         const errorText = await response.text();
         console.error(`Client: Dynamic search endpoint error (${response.status}):`, errorText);
       }
-    } catch (dynamicSearchError) {
-      console.error('Error with dynamic search endpoint:', dynamicSearchError);
+    } catch (dynamicSearchError: any) {
+      if (dynamicSearchError.name === 'AbortError') {
+        console.error('Dynamic search endpoint timed out after 3 seconds');
+      } else {
+        console.error('Error with dynamic search endpoint:', dynamicSearchError);
+      }
     }
     
     // If all API calls fail, return mock data
-    console.log('All API calls failed, returning mock data');
+    console.log(`All ${apiAttempts} API attempts failed, returning mock data for "${normalizedQuery}"`);
     return getMockDrugResults(normalizedQuery);
   } catch (error) {
     console.error('Client: Error searching medications:', error);
     // Return mock data as a last resort
-    return getMockDrugResults(query.toLowerCase());
+    return getMockDrugResults(query.toLowerCase().trim());
   }
 }
 
@@ -192,7 +259,15 @@ function getMockDrugResults(query: string): DrugSearchResponse[] {
     { drugName: 'Simvastatin', gsn: 5467 },
     { drugName: 'Tylenol', gsn: 7689 },
     { drugName: 'Advil', gsn: 8790 },
-    { drugName: 'Lipitor', gsn: 62733 }
+    { drugName: 'Lipitor', gsn: 62733 },
+    { drugName: 'Trintellix', gsn: 39968 },
+    { drugName: 'Adderall', gsn: 1695 },
+    { drugName: 'Xanax', gsn: 6102 },
+    { drugName: 'Zoloft', gsn: 8612 },
+    { drugName: 'Prozac', gsn: 6996 },
+    { drugName: 'Lexapro', gsn: 58827 },
+    { drugName: 'Cymbalta', gsn: 72872 },
+    { drugName: 'Wellbutrin', gsn: 6989 }
   ];
   
   // Filter the mock drugs based on the query

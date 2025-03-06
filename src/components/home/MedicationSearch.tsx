@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline"
 import { useDebounce } from '@/hooks/useDebounce'
 import { searchMedications } from '@/services/medicationApi'
@@ -21,44 +21,49 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const suggestionsRef = useRef<HTMLDivElement>(null)
   
   const debouncedSearch = useDebounce(searchTerm, 300)
 
-  useEffect(() => {
-    async function fetchSuggestions() {
-      if (!debouncedSearch || debouncedSearch.length < 2) {
-        setSuggestions([])
-        setError(null)
-        return
-      }
-
-      setIsLoading(true)
+  // Function to fetch suggestions
+  const fetchSuggestions = useCallback(async (query: string) => {
+    if (!query || query.length < 2) {
+      setSuggestions([])
       setError(null)
-      try {
-        console.log('Searching for:', debouncedSearch);
-        
-        // Call the searchMedications function from the API service
-        const results = await searchMedications(debouncedSearch);
-        
-        // Format drug names with proper capitalization (first letter uppercase, rest lowercase)
-        const formattedResults = results.map(result => ({
-          ...result,
-          drugName: result.drugName.charAt(0).toUpperCase() + result.drugName.slice(1).toLowerCase()
-        }));
-        
-        console.log('Search results:', formattedResults);
-        setSuggestions(formattedResults);
-      } catch (error) {
-        console.error('Error fetching suggestions:', error)
-        setError('Failed to fetch medications. Please try again.')
-      } finally {
-        setIsLoading(false)
-      }
+      return
     }
 
-    fetchSuggestions()
-  }, [debouncedSearch])
+    setIsLoading(true)
+    setError(null)
+    try {
+      console.log('Searching for:', query);
+      
+      // Call the searchMedications function from the API service
+      const results = await searchMedications(query);
+      
+      // Format drug names with proper capitalization (first letter uppercase, rest lowercase)
+      const formattedResults = results.map(result => ({
+        ...result,
+        drugName: result.drugName.charAt(0).toUpperCase() + result.drugName.slice(1).toLowerCase()
+      }));
+      
+      console.log('Search results:', formattedResults);
+      setSuggestions(formattedResults);
+    } catch (error) {
+      console.error('Error fetching suggestions:', error)
+      setError('Failed to fetch medications. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, []);
+
+  // Fetch suggestions when debounced search term changes
+  useEffect(() => {
+    fetchSuggestions(debouncedSearch)
+  }, [debouncedSearch, fetchSuggestions])
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -71,6 +76,41 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Scroll active suggestion into view
+  useEffect(() => {
+    if (activeIndex >= 0 && suggestionsRef.current) {
+      const activeElement = suggestionsRef.current.querySelector(`li:nth-child(${activeIndex + 1})`) as HTMLElement;
+      if (activeElement) {
+        activeElement.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [activeIndex]);
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+
+    // Arrow down
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    }
+    // Arrow up
+    else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    }
+    // Enter
+    else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      handleSuggestionClick(suggestions[activeIndex]);
+    }
+    // Escape
+    else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
+
   const handleSuggestionClick = (suggestion: DrugSuggestion) => {
     console.log('Selected suggestion:', suggestion);
     
@@ -79,6 +119,9 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
     
     // Close the suggestions dropdown
     setShowSuggestions(false);
+    
+    // Reset active index
+    setActiveIndex(-1);
     
     // Call the onChange callback with the selected drug name and GSN if available
     onChange(suggestion.drugName, suggestion.gsn);
@@ -106,6 +149,7 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
         <div className="flex items-center flex-1 min-w-0">
           <MagnifyingGlassIcon className="h-5 w-5 sm:h-6 sm:w-6 text-gray-400 ml-2 sm:ml-3 flex-shrink-0" />
           <input
+            ref={inputRef}
             type="text"
             placeholder="Enter medication name..."
             className="flex-1 px-2 sm:px-4 py-2 sm:py-3 focus:outline-none text-sm sm:text-xl text-gray-900 font-medium w-full min-w-0 truncate"
@@ -113,9 +157,12 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
             onChange={(e) => {
               setSearchTerm(e.target.value)
               setShowSuggestions(true)
+              setActiveIndex(-1)
               onChange(e.target.value)
             }}
             onFocus={() => setShowSuggestions(true)}
+            onKeyDown={handleKeyDown}
+            autoComplete="off"
             required
           />
         </div>
@@ -130,7 +177,10 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
       </form>
 
       {showSuggestions && searchTerm && searchTerm.length > 1 && (
-        <div className="absolute w-full mt-2 bg-white rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+        <div 
+          ref={suggestionsRef}
+          className="absolute w-full mt-2 bg-white rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto"
+        >
           {isLoading ? (
             <div className="p-3 sm:p-4 text-center text-gray-500 text-sm sm:text-base">Loading...</div>
           ) : suggestions.length > 0 ? (
@@ -138,8 +188,11 @@ export default function MedicationSearch({ value, onChange, onSearch }: Props) {
               {suggestions.map((suggestion, index) => (
                 <li
                   key={index}
-                  className="px-3 sm:px-6 py-2 sm:py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  className={`px-3 sm:px-6 py-2 sm:py-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${
+                    index === activeIndex ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  }`}
                   onClick={() => handleSuggestionClick(suggestion)}
+                  onMouseEnter={() => setActiveIndex(index)}
                 >
                   <div className="flex items-start">
                     <span className="text-sm sm:text-lg text-gray-900 font-medium">
