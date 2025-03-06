@@ -35,7 +35,7 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     // First try the America's Pharmacy API format
     try {
       // Use the client-side API proxy to avoid CORS issues
-      const autocompleteEndpoint = `${API_BASE_URL}/drugs/autocomplete/${encodeURIComponent(normalizedQuery)}`;
+      const autocompleteEndpoint = `${API_BASE_URL}/api/drugs/autocomplete/${encodeURIComponent(normalizedQuery)}`;
       console.log(`Using autocomplete endpoint: ${autocompleteEndpoint}`);
       
       const response = await fetch(autocompleteEndpoint, {
@@ -81,7 +81,7 @@ export async function searchMedications(query: string): Promise<DrugSearchRespon
     }
     
     // Fall back to the regular search endpoint
-    const apiEndpoint = `${API_BASE_URL}/drugs/search?q=${encodeURIComponent(normalizedQuery)}`;
+    const apiEndpoint = `${API_BASE_URL}/api/drugs/search?q=${encodeURIComponent(normalizedQuery)}`;
     
     console.log(`Using API endpoint: ${apiEndpoint}`);
     const response = await fetch(apiEndpoint, {
@@ -137,13 +137,13 @@ export async function getDrugPrices(criteria: DrugPriceRequest): Promise<DrugPri
     
     if (requestCriteria.gsn) {
       console.log(`Client: Using GSN ${requestCriteria.gsn} for drug price lookup`);
-      endpoint = `${API_BASE_URL}/drugs/prices/byGSN`;
+      endpoint = `${API_BASE_URL}/api/drugs/prices/byGSN`;
     } else if (requestCriteria.drugName) {
       console.log(`Client: Using drug name "${requestCriteria.drugName}" for drug price lookup`);
-      endpoint = `${API_BASE_URL}/drugs/prices/byName`;
+      endpoint = `${API_BASE_URL}/api/drugs/prices/byName`;
     } else if (requestCriteria.ndcCode) {
       console.log(`Client: Using NDC code ${requestCriteria.ndcCode} for drug price lookup`);
-      endpoint = `${API_BASE_URL}/drugs/prices/byNdcCode`;
+      endpoint = `${API_BASE_URL}/api/drugs/prices/byNdcCode`;
     } else {
       throw new Error('Either drugName, gsn, or ndcCode must be provided');
     }
@@ -164,6 +164,13 @@ export async function getDrugPrices(criteria: DrugPriceRequest): Promise<DrugPri
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Client: Drug prices API error: ${response.status}`, errorText);
+      
+      // If we get a 404 Not Found, try a fallback approach
+      if (response.status === 404) {
+        console.log('API endpoint not found, trying fallback approach');
+        return await getFallbackDrugPrices(requestCriteria);
+      }
+      
       throw new Error(`Failed to get drug prices: ${response.status} - ${errorText || 'Unknown error'}`);
     }
     
@@ -173,8 +180,62 @@ export async function getDrugPrices(criteria: DrugPriceRequest): Promise<DrugPri
     return data;
   } catch (error) {
     console.error('Client: Error getting drug prices:', error);
-    throw error;
+    
+    // Try fallback approach if there's an error
+    try {
+      console.log('Error in primary approach, trying fallback');
+      return await getFallbackDrugPrices(criteria);
+    } catch (fallbackError) {
+      console.error('Fallback approach also failed:', fallbackError);
+      throw error; // Throw the original error
+    }
   }
+}
+
+/**
+ * Fallback function to get drug prices using the legacy API endpoint
+ * @param criteria The search criteria
+ * @returns Price information for the medication
+ */
+async function getFallbackDrugPrices(criteria: DrugPriceRequest): Promise<DrugPriceResponse> {
+  console.log('Using fallback approach for drug prices');
+  
+  // If we have a drug name, use the direct byName endpoint
+  if (criteria.drugName) {
+    console.log(`Fallback: Using direct byName endpoint for drug "${criteria.drugName}"`);
+    return getDrugPricesByName(
+      criteria.drugName,
+      criteria.latitude,
+      criteria.longitude,
+      criteria.radius,
+      criteria.quantity
+    );
+  }
+  
+  // If we have a GSN, use the direct byGSN endpoint
+  if (criteria.gsn) {
+    console.log(`Fallback: Using direct byGSN endpoint for GSN ${criteria.gsn}`);
+    
+    // Make the API request to the legacy endpoint
+    const response = await fetch(`${API_BASE_URL}/drugs/prices`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(criteria),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Fallback API error: ${response.status}`, errorText);
+      throw new Error(`Fallback API error: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  }
+  
+  throw new Error('No valid criteria for fallback approach');
 }
 
 /**
