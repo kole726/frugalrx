@@ -1247,6 +1247,52 @@ export default function DrugPage({ params }: Props) {
     }
   }, [isLoading, isLoadingPharmacies, pharmacyPrices.length]);
 
+  // Add a useEffect to initialize the selected brand based on the current URL
+  useEffect(() => {
+    const initializeBrand = async () => {
+      console.log('Initializing brand based on URL path');
+      
+      // Get the drug name from the URL path
+      const drugNameFromPath = decodeURIComponent(params.name);
+      console.log(`Drug name from URL path: ${drugNameFromPath}`);
+      
+      // Wait for brand variations to be loaded
+      if (brandVariations.length > 0) {
+        console.log('Brand variations loaded, finding matching brand');
+        
+        // Try to find a brand variation that matches the drug name in the URL
+        // We need to normalize both strings for comparison (lowercase, no periods, replace spaces with hyphens)
+        const normalizedPathName = drugNameFromPath.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
+        
+        // Find the matching brand variation
+        const matchingVariation = brandVariations.find(variation => {
+          const drugName = variation.name.replace(/ \((Brand|Generic)\)$/, '');
+          const normalizedVariationName = drugName.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
+          return normalizedVariationName === normalizedPathName;
+        });
+        
+        if (matchingVariation) {
+          console.log(`Found matching brand variation: ${matchingVariation.name}, type: ${matchingVariation.type}`);
+          
+          // Update the selected brand
+          setSelectedBrand(matchingVariation.type);
+          setDisplayedDrugName(matchingVariation.name);
+          
+          // Mark this brand as selected and others as not selected
+          const updatedVariations = brandVariations.map(variation => ({
+            ...variation,
+            selected: variation.type === matchingVariation.type
+          }));
+          setBrandVariations(updatedVariations);
+        } else {
+          console.log(`No matching brand variation found for: ${drugNameFromPath}`);
+        }
+      }
+    };
+    
+    initializeBrand();
+  }, [params.name, brandVariations]);
+
   // Handle brand change
   const handleBrandChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newBrand = e.target.value;
@@ -1292,7 +1338,11 @@ export default function DrugPage({ params }: Props) {
           const newUrl = `${baseUrl}/drug/${encodeURIComponent(formattedDrugName)}/`;
           
           console.log(`Updating URL to: ${newUrl}`);
-          window.history.replaceState({}, '', newUrl);
+          
+          // Use window.location.href instead of history.replaceState to force a full page reload
+          // This ensures the dropdown is properly updated with the new selection
+          window.location.href = newUrl;
+          return; // Stop execution here since we're navigating away
         }
         
         // Mark this brand as selected and others as not selected
