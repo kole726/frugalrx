@@ -1261,13 +1261,22 @@ export default function DrugPage({ params }: Props) {
         console.log('Brand variations loaded, finding matching brand');
         
         // Try to find a brand variation that matches the drug name in the URL
-        // We need to normalize both strings for comparison (lowercase, no periods, replace spaces with hyphens)
-        const normalizedPathName = drugNameFromPath.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
+        // We need to normalize both strings for comparison
+        const normalizedPathName = drugNameFromPath
+          .toLowerCase()
+          .replace(/\./g, '') // Remove periods
+          .replace(/'/g, '-') // Replace apostrophes with hyphens
+          .replace(/\s+/g, '-'); // Replace spaces with hyphens
         
         // Find the matching brand variation
         const matchingVariation = brandVariations.find(variation => {
-          const drugName = variation.name.replace(/ \((Brand|Generic)\)$/, '');
-          const normalizedVariationName = drugName.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
+          const drugName = variation.name.replace(/ \((Brand|Generic)\)$/, ''); // Remove (Brand) or (Generic) suffix
+          const normalizedVariationName = drugName
+            .toLowerCase()
+            .replace(/\./g, '') // Remove periods
+            .replace(/'/g, '-') // Replace apostrophes with hyphens
+            .replace(/\s+/g, '-'); // Replace spaces with hyphens
+          
           return normalizedVariationName === normalizedPathName;
         });
         
@@ -1333,8 +1342,20 @@ export default function DrugPage({ params }: Props) {
         if (typeof window !== 'undefined') {
           // Create a clean URL with just the drug name in the path
           const baseUrl = window.location.origin;
-          // Format drug name: lowercase, replace periods with empty string, replace spaces with hyphens
-          const formattedDrugName = drugName.toLowerCase().replace(/\./g, '').replace(/\s+/g, '-');
+          
+          // Format drug name:
+          // 1. Remove (Brand) or (Generic) suffix
+          // 2. Convert to lowercase
+          // 3. Replace periods with empty string
+          // 4. Replace apostrophes with hyphens
+          // 5. Replace spaces with hyphens
+          const formattedDrugName = drugName
+            .replace(/ \((Brand|Generic)\)$/, '') // Remove (Brand) or (Generic) suffix
+            .toLowerCase()
+            .replace(/\./g, '') // Remove periods
+            .replace(/'/g, '-') // Replace apostrophes with hyphens
+            .replace(/\s+/g, '-'); // Replace spaces with hyphens
+            
           const newUrl = `${baseUrl}/drug/${encodeURIComponent(formattedDrugName)}/`;
           
           console.log(`Updating URL to: ${newUrl}`);
