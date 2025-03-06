@@ -30,6 +30,7 @@ export default function DrugPage({ params }: Props) {
   const [pharmacyPrices, setPharmacyPrices] = useState<PharmacyPrice[]>([])
   const [brandVariations, setBrandVariations] = useState<any[]>([])
   const [displayedDrugName, setDisplayedDrugName] = useState<string>('')
+  const [forceUpdate, setForceUpdate] = useState(0)
   
   // Filter state
   const [selectedBrand, setSelectedBrand] = useState<string>('generic')
@@ -1005,6 +1006,7 @@ export default function DrugPage({ params }: Props) {
   const handleBrandChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newBrand = e.target.value;
     setSelectedBrand(newBrand);
+    console.log(`Brand dropdown changed to: ${newBrand}`);
     
     // If we have brand variations, find the matching one and update GSN
     if (brandVariations.length > 0) {
@@ -1015,8 +1017,9 @@ export default function DrugPage({ params }: Props) {
       if (selectedVariation && selectedVariation.gsn) {
         console.log(`Brand changed to ${selectedVariation.name}, GSN: ${selectedVariation.gsn}`);
         
-        // Update the displayed drug name to match the selected brand
-        setDisplayedDrugName(selectedVariation.name);
+        // Store the selected brand name to use after fetchDrugInfo completes
+        const selectedBrandName = selectedVariation.name;
+        console.log(`Storing selected brand name: ${selectedBrandName}`);
         
         // Update the URL with the new GSN
         if (typeof window !== 'undefined') {
@@ -1041,6 +1044,19 @@ export default function DrugPage({ params }: Props) {
         
         // Refetch drug info with the new GSN
         await fetchDrugInfo();
+        
+        // Set the displayed drug name AFTER fetchDrugInfo completes
+        // This ensures it won't be overwritten by the fetchDrugInfo function
+        console.log(`Setting displayed drug name to: ${selectedBrandName}`);
+        setDisplayedDrugName(selectedBrandName);
+        
+        // Force a re-render to ensure the H1 title updates
+        setForceUpdate(prev => prev + 1);
+        
+        // Log the current state after update
+        setTimeout(() => {
+          console.log(`Current displayed drug name (after timeout): ${displayedDrugName}`);
+        }, 100);
       }
     }
   };
@@ -1153,6 +1169,18 @@ export default function DrugPage({ params }: Props) {
       setIsLoadingPharmacies(false);
     }
   };
+
+  // Effect to update document title when displayedDrugName changes
+  useEffect(() => {
+    if (displayedDrugName) {
+      console.log(`displayedDrugName changed to: ${displayedDrugName}`);
+      // You could also update the document title here if needed
+      // document.title = displayedDrugName;
+    }
+  }, [displayedDrugName]);
+
+  // Log before rendering
+  console.log(`Rendering with displayed drug name: ${displayedDrugName}, forceUpdate: ${forceUpdate}`);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
