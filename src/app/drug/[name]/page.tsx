@@ -31,6 +31,8 @@ export default function DrugPage({ params }: Props) {
   const [brandVariations, setBrandVariations] = useState<any[]>([])
   const [displayedDrugName, setDisplayedDrugName] = useState<string>('')
   const [forceUpdate, setForceUpdate] = useState(0)
+  const [lastSelectedBrandType, setLastSelectedBrandType] = useState<string>('')
+  const [lastSelectedBrandName, setLastSelectedBrandName] = useState<string>('')
   
   // Filter state
   const [selectedBrand, setSelectedBrand] = useState<string>('generic')
@@ -603,6 +605,27 @@ export default function DrugPage({ params }: Props) {
           console.log('Setting brand variations:', variations)
           setBrandVariations(variations)
           
+          // Check if we have a last selected brand that matches one of the variations
+          if (lastSelectedBrandName) {
+            console.log(`Looking for last selected brand: ${lastSelectedBrandName}`);
+            
+            // Try to find the variation that matches the last selected brand name
+            const matchingVariation = variations.find(v => 
+              v.name === lastSelectedBrandName || 
+              v.type === lastSelectedBrandType
+            );
+            
+            if (matchingVariation) {
+              console.log(`Found matching variation for last selected brand: ${matchingVariation.name}`);
+              setSelectedBrand(matchingVariation.type);
+              setDisplayedDrugName(matchingVariation.name);
+              return; // Exit early since we've set the brand
+            } else {
+              console.log(`No matching variation found for last selected brand: ${lastSelectedBrandName}`);
+            }
+          }
+          
+          // If we don't have a matching last selected brand, proceed with normal selection logic
           // Set selected brand based on the current GSN and drug name
           // If the current GSN matches the GSN in the URL, select the appropriate brand
           if (gsn && parseInt(gsn, 10) === gsnToUse) {
@@ -1020,6 +1043,10 @@ export default function DrugPage({ params }: Props) {
         // Store the selected brand name to use after fetchDrugInfo completes
         const selectedBrandName = selectedVariation.name;
         console.log(`Storing selected brand name: ${selectedBrandName}`);
+        
+        // Save the selected brand type and name for later use
+        setLastSelectedBrandType(newBrand);
+        setLastSelectedBrandName(selectedBrandName);
         
         // Update the URL with the new GSN
         if (typeof window !== 'undefined') {
