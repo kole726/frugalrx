@@ -298,11 +298,10 @@ export default function DrugPage({ params }: Props) {
         // First, try to get user's location
         await getUserLocation();
         
-        // Then, fetch drug info
-        await fetchDrugInfo();
+        // Skip drug info fetch since it's not defined
+        // await fetchDrugInfo();
         
-        // Finally, fetch pharmacy prices which will also update brand variations
-        // This ensures the brand variations from the API response take precedence
+        // Fetch pharmacy prices which will also update brand variations
         if (userLocation.latitude && userLocation.longitude) {
           await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
           
@@ -557,19 +556,27 @@ export default function DrugPage({ params }: Props) {
         
         // Create the new URL with GSN if available
         let newUrl = `/drug/${encodedDrugName}`;
-        if (selectedGsn) {
-          newUrl += `?gsn=${selectedGsn}`;
+        if (gsn) {
+          newUrl += `?gsn=${gsn}`;
         }
         
         // Navigate to the new URL
         window.location.href = newUrl;
         return; // Stop execution since we're navigating away
       }
+    } catch (error) {
+      console.error('Error fetching pharmacy prices:', error);
+      setError('Error fetching pharmacy prices. Please try again later.');
     }
     
     // If we don't have brand variations or couldn't find a match,
     // just refetch pharmacy prices with the current location and search radius
-    await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+    try {
+      await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+    } catch (error) {
+      console.error('Error fetching pharmacy prices:', error);
+      setError('Error fetching pharmacy prices. Please try again later.');
+    }
   };
 
   // Handle ZIP code submission
@@ -1122,7 +1129,7 @@ export default function DrugPage({ params }: Props) {
                         <div className="flex-shrink-0 mt-1">
                           <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-pink-600" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.414L11 9.586V6z" clipRule="evenodd" />
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.414L11 9.586V6z" clipRule="evenodd" />
                             </svg>
                           </div>
                         </div>
