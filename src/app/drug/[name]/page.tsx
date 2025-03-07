@@ -292,12 +292,31 @@ export default function DrugPage({ params }: Props) {
       }
     }, 5000); // 5 seconds timeout
     
-    // Try to get user's location
-    getUserLocation();
+    // Define an async function to load all data in the correct order
+    const loadData = async () => {
+      try {
+        // First, try to get user's location
+        await getUserLocation();
+        
+        // Then, fetch drug info
+        await fetchDrugInfo();
+        
+        // Finally, fetch pharmacy prices which will also update brand variations
+        // This ensures the brand variations from the API response take precedence
+        if (userLocation.latitude && userLocation.longitude) {
+          await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setIsLoading(false);
+        setError('Error loading drug information. Please try again later.');
+      }
+    };
     
-    // Fetch drug info
-    fetchDrugInfo();
+    // Start loading data
+    loadData();
     
+    // Clean up the timeout
     return () => clearTimeout(timeoutId);
   }, []);
 
@@ -663,13 +682,20 @@ export default function DrugPage({ params }: Props) {
                 { name: detailedInfo.brandName, type: 'brand', gsn: detailedInfo.gsn },
                 { name: detailedInfo.genericName, type: 'generic', gsn: detailedInfo.gsn }
               ]
-              setBrandVariations(variations)
               
-              // Set default selected brand based on the current GSN or preference
-              setSelectedBrandType(detailedInfo.genericName ? 'generic' : 'brand')
-              setSelectedBrandName(detailedInfo.genericName || detailedInfo.brandName)
-            } else if (detailedInfo.brandName || detailedInfo.genericName) {
-              // If only one name is available, use it
+              // Only set brand variations if we don't already have them from the API response
+              if (brandVariations.length === 0) {
+                console.log('Setting brand variations from detailed drug info');
+                setBrandVariations(variations)
+                
+                // Set default selected brand based on the current GSN or preference
+                setSelectedBrandType(detailedInfo.genericName ? 'generic' : 'brand')
+                setSelectedBrandName(detailedInfo.genericName || detailedInfo.brandName)
+              } else {
+                console.log('Brand variations already exist from API response, not overwriting');
+              }
+            } else if ((detailedInfo.brandName || detailedInfo.genericName) && brandVariations.length === 0) {
+              // If only one name is available and we don't have brand variations yet, use it
               const drugName = detailedInfo.brandName || detailedInfo.genericName || ''
               const variations = [
                 { name: drugName, type: 'generic', gsn: detailedInfo.gsn }
@@ -854,13 +880,20 @@ export default function DrugPage({ params }: Props) {
                   { name: detailedInfo.brandName, type: 'brand', gsn: gsnFromSearch },
                   { name: detailedInfo.genericName, type: 'generic', gsn: gsnFromSearch }
                 ]
-                setBrandVariations(variations)
                 
-                // Set default selected brand based on the current GSN or preference
-                setSelectedBrandType(detailedInfo.genericName ? 'generic' : 'brand')
-                setSelectedBrandName(detailedInfo.genericName || detailedInfo.brandName)
-              } else if (detailedInfo.brandName || detailedInfo.genericName) {
-                // If only one name is available, use it
+                // Only set brand variations if we don't already have them from the API response
+                if (brandVariations.length === 0) {
+                  console.log('Setting brand variations from detailed drug info');
+                  setBrandVariations(variations)
+                  
+                  // Set default selected brand based on the current GSN or preference
+                  setSelectedBrandType(detailedInfo.genericName ? 'generic' : 'brand')
+                  setSelectedBrandName(detailedInfo.genericName || detailedInfo.brandName)
+                } else {
+                  console.log('Brand variations already exist from API response, not overwriting');
+                }
+              } else if ((detailedInfo.brandName || detailedInfo.genericName) && brandVariations.length === 0) {
+                // If only one name is available and we don't have brand variations yet, use it
                 const drugName = detailedInfo.brandName || detailedInfo.genericName || ''
                 const variations = [
                   { name: drugName, type: 'generic', gsn: gsnFromSearch }
