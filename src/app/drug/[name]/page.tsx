@@ -33,7 +33,7 @@ export default function DrugPage({ params }: Props) {
   
   // Filter state
   const [selectedBrandType, setSelectedBrandType] = useState<string>('generic')
-  const [selectedBrandName, setSelectedBrandName] = useState<string>('')
+  const [selectedBrandName, setSelectedBrandName] = useState<string>(decodeURIComponent(params.name))
   const [availableForms, setAvailableForms] = useState<DrugForm[]>([])
   const [selectedForm, setSelectedForm] = useState<string>('CAPSULE')
   const [availableStrengths, setAvailableStrengths] = useState<DrugStrength[]>([])
@@ -540,7 +540,20 @@ export default function DrugPage({ params }: Props) {
           
           // Set default selected brand (either the one marked as selected or the first one)
           const defaultBrand = sortedBrands.find((brand: any) => brand.selected) || sortedBrands[0];
-          if (defaultBrand) {
+          
+          // Find if there's a brand that matches the current URL parameter
+          const currentDrugName = decodeURIComponent(params.name);
+          const currentBrand = sortedBrands.find((brand: any) => 
+            brand.name.toLowerCase() === currentDrugName.toLowerCase()
+          );
+          
+          if (currentBrand) {
+            // If we found a brand that matches the current URL, use it
+            console.log(`Found brand matching current URL: ${currentBrand.name}`);
+            setSelectedBrandType(currentBrand.type);
+            setSelectedBrandName(currentBrand.name);
+          } else if (defaultBrand) {
+            // Otherwise use the default brand from the API
             console.log('Setting default brand from API:', defaultBrand.type, defaultBrand.name);
             setSelectedBrandType(defaultBrand.type);
             setSelectedBrandName(defaultBrand.name);
@@ -679,8 +692,8 @@ export default function DrugPage({ params }: Props) {
             if (detailedInfo.brandName && detailedInfo.genericName && detailedInfo.brandName !== detailedInfo.genericName) {
               // If both brand and generic names are available and different, set up brand variations
               const variations = [
-                { name: detailedInfo.brandName, type: 'brand', gsn: detailedInfo.gsn },
-                { name: detailedInfo.genericName, type: 'generic', gsn: detailedInfo.gsn }
+                { name: detailedInfo.brandName, type: 'brand', gsn: gsnNumber },
+                { name: detailedInfo.genericName, type: 'generic', gsn: gsnNumber }
               ]
               
               // Only set brand variations if we don't already have them from the API response
@@ -688,9 +701,22 @@ export default function DrugPage({ params }: Props) {
                 console.log('Setting brand variations from detailed drug info');
                 setBrandVariations(variations)
                 
-                // Set default selected brand based on the current GSN or preference
-                setSelectedBrandType(detailedInfo.genericName ? 'generic' : 'brand')
-                setSelectedBrandName(detailedInfo.genericName || detailedInfo.brandName)
+                // Check if one of the variations matches the current URL parameter
+                const currentDrugName = decodeURIComponent(params.name);
+                const matchingVariation = variations.find(v => 
+                  v.name.toLowerCase() === currentDrugName.toLowerCase()
+                );
+                
+                if (matchingVariation) {
+                  // If we found a match, use it
+                  console.log(`Found brand variation matching current URL: ${matchingVariation.name}`);
+                  setSelectedBrandType(matchingVariation.type);
+                  setSelectedBrandName(matchingVariation.name);
+                } else {
+                  // Otherwise use the default
+                  setSelectedBrandType(detailedInfo.genericName ? 'generic' : 'brand')
+                  setSelectedBrandName(detailedInfo.genericName || detailedInfo.brandName)
+                }
               } else {
                 console.log('Brand variations already exist from API response, not overwriting');
               }
@@ -698,7 +724,7 @@ export default function DrugPage({ params }: Props) {
               // If only one name is available and we don't have brand variations yet, use it
               const drugName = detailedInfo.brandName || detailedInfo.genericName || ''
               const variations = [
-                { name: drugName, type: 'generic', gsn: detailedInfo.gsn }
+                { name: drugName, type: 'generic', gsn: gsnNumber }
               ]
               setBrandVariations(variations)
               setSelectedBrandType('generic')
@@ -886,9 +912,22 @@ export default function DrugPage({ params }: Props) {
                   console.log('Setting brand variations from detailed drug info');
                   setBrandVariations(variations)
                   
-                  // Set default selected brand based on the current GSN or preference
-                  setSelectedBrandType(detailedInfo.genericName ? 'generic' : 'brand')
-                  setSelectedBrandName(detailedInfo.genericName || detailedInfo.brandName)
+                  // Check if one of the variations matches the current URL parameter
+                  const currentDrugName = decodeURIComponent(params.name);
+                  const matchingVariation = variations.find(v => 
+                    v.name.toLowerCase() === currentDrugName.toLowerCase()
+                  );
+                  
+                  if (matchingVariation) {
+                    // If we found a match, use it
+                    console.log(`Found brand variation matching current URL: ${matchingVariation.name}`);
+                    setSelectedBrandType(matchingVariation.type);
+                    setSelectedBrandName(matchingVariation.name);
+                  } else {
+                    // Otherwise use the default
+                    setSelectedBrandType(detailedInfo.genericName ? 'generic' : 'brand')
+                    setSelectedBrandName(detailedInfo.genericName || detailedInfo.brandName)
+                  }
                 } else {
                   console.log('Brand variations already exist from API response, not overwriting');
                 }
