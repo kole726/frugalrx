@@ -619,6 +619,113 @@ export default function DrugPage({ params }: Props) {
 
   const [isInfoExpanded, setIsInfoExpanded] = useState(false);
 
+  // Handle brand change
+  const handleBrandChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newBrandName = e.target.value;
+    setSelectedBrandName(newBrandName);
+    
+    // If we have brand variations, find the matching one
+    if (brandVariations.length > 0) {
+      const selectedVariation = brandVariations.find(
+        variation => variation.name === newBrandName
+      );
+      
+      if (selectedVariation) {
+        console.log(`Selected brand variation: ${selectedVariation.name}`);
+        
+        // Update the selected brand type (generic/brand)
+        setSelectedBrandType(selectedVariation.type);
+        
+        // Get the drug name from the selected variation
+        const drugName = selectedVariation.name;
+        
+        // Always navigate to the new drug page to ensure we get fresh data
+        console.log(`Navigating to new drug page for: ${drugName}`);
+        
+        // Encode the drug name for the URL
+        const encodedDrugName = encodeURIComponent(drugName);
+        
+        // Create the new URL with GSN if available
+        let newUrl = `/drug/${encodedDrugName}`;
+        if (selectedVariation.gsn) {
+          newUrl += `?gsn=${selectedVariation.gsn}`;
+        }
+        
+        // Navigate to the new URL
+        window.location.href = newUrl;
+        return; // Stop execution since we're navigating away
+      }
+    }
+    
+    // If we don't have brand variations or couldn't find a match,
+    // just refetch pharmacy prices with the current location and search radius
+    try {
+      await fetchPharmacyPrices(userLocation.latitude, userLocation.longitude, searchRadius);
+    } catch (error) {
+      console.error('Error fetching pharmacy prices:', error);
+      setError('Error fetching pharmacy prices. Please try again later.');
+    }
+  };
+
+  // Handle form change
+  const handleFormChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedForm(e.target.value);
+    // No need to refetch prices for form change
+  };
+
+  // Handle strength change
+  const handleStrengthChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedStrength(e.target.value);
+    // No need to refetch prices for strength change
+  };
+
+  // Handle quantity change
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedQuantity(e.target.value);
+    // No need to refetch prices for quantity change
+  };
+
+  // Handle sort change
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedSort(e.target.value);
+    // Sort the pharmacy prices based on the selected sort option
+    if (e.target.value === 'PRICE') {
+      setPharmacyPrices([...pharmacyPrices].sort((a, b) => a.price - b.price));
+    } else if (e.target.value === 'DISTANCE') {
+      setPharmacyPrices([...pharmacyPrices].sort((a, b) => {
+        const distanceA = parseFloat(a.distance.split(' ')[0]);
+        const distanceB = parseFloat(b.distance.split(' ')[0]);
+        return distanceA - distanceB;
+      }));
+    }
+  };
+
+  // Handle pharmacies per page change
+  const handlePharmaciesPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPharmaciesPerPage(parseInt(e.target.value, 10));
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
+  // Handle page change
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    // Scroll to the top of the pharmacy list
+    if (pharmacyListRef.current) {
+      pharmacyListRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Handle get coupon
+  const handleGetCoupon = (pharmacy: PharmacyPrice) => {
+    setSelectedPharmacy(pharmacy);
+    setIsCouponModalOpen(true);
+  };
+
+  // Handle ZIP code change
+  const handleZipCodeChange = async (newZipCode: string) => {
+    setUserLocation(prev => ({ ...prev, zipCode: newZipCode }));
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       {isLoading ? (
