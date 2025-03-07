@@ -32,7 +32,8 @@ export default function DrugPage({ params }: Props) {
   const [brandVariations, setBrandVariations] = useState<any[]>([])
   
   // Filter state
-  const [selectedBrand, setSelectedBrand] = useState<string>('generic')
+  const [selectedBrandType, setSelectedBrandType] = useState<string>('generic')
+  const [selectedBrandName, setSelectedBrandName] = useState<string>('')
   const [availableForms, setAvailableForms] = useState<DrugForm[]>([])
   const [selectedForm, setSelectedForm] = useState<string>('CAPSULE')
   const [availableStrengths, setAvailableStrengths] = useState<DrugStrength[]>([])
@@ -284,8 +285,8 @@ export default function DrugPage({ params }: Props) {
           });
           
           // Set the first one as selected if no brand is selected
-          if (!selectedBrand) {
-            setSelectedBrand(mockVariations[0].type);
+          if (!selectedBrandName) {
+            setSelectedBrandName(mockVariations[0].name);
           }
         }
       }
@@ -520,9 +521,10 @@ export default function DrugPage({ params }: Props) {
           
           // Set default selected brand (either the one marked as selected or the first one)
           const defaultBrand = sortedBrands.find((brand: any) => brand.selected) || sortedBrands[0];
-          if (defaultBrand && defaultBrand.type !== selectedBrand) {
-            console.log('Setting default brand from API:', defaultBrand.type);
-            setSelectedBrand(defaultBrand.type);
+          if (defaultBrand) {
+            console.log('Setting default brand from API:', defaultBrand.type, defaultBrand.name);
+            setSelectedBrandType(defaultBrand.type);
+            setSelectedBrandName(defaultBrand.name);
           }
           dataProcessed = true;
         }
@@ -658,22 +660,24 @@ export default function DrugPage({ params }: Props) {
             if (detailedInfo.brandName && detailedInfo.genericName && detailedInfo.brandName !== detailedInfo.genericName) {
               // If both brand and generic names are available and different, set up brand variations
               const variations = [
-                { name: detailedInfo.brandName, type: 'brand', gsn: gsnNumber },
-                { name: detailedInfo.genericName, type: 'generic', gsn: gsnNumber }
+                { name: detailedInfo.brandName, type: 'brand', gsn: detailedInfo.gsn },
+                { name: detailedInfo.genericName, type: 'generic', gsn: detailedInfo.gsn }
               ]
               setBrandVariations(variations)
               
               // Set default selected brand based on the current GSN or preference
-              setSelectedBrand(detailedInfo.genericName ? 'generic' : 'brand')
+              setSelectedBrandType(detailedInfo.genericName ? 'generic' : 'brand')
+              setSelectedBrandName(detailedInfo.genericName || detailedInfo.brandName)
             } else if (detailedInfo.brandName || detailedInfo.genericName) {
               // If only one name is available, use it
-              const name = detailedInfo.brandName || detailedInfo.genericName
+              const drugName = detailedInfo.brandName || detailedInfo.genericName || ''
               const variations = [
-                { name, type: 'generic', gsn: gsnNumber }
+                { name: drugName, type: 'generic', gsn: detailedInfo.gsn }
               ]
               setBrandVariations(variations)
-              setSelectedBrand('generic')
-          }
+              setSelectedBrandType('generic')
+              setSelectedBrandName(drugName)
+            }
           
           // Combine the information
           setDrugInfo({
@@ -853,15 +857,17 @@ export default function DrugPage({ params }: Props) {
                 setBrandVariations(variations)
                 
                 // Set default selected brand based on the current GSN or preference
-                setSelectedBrand(detailedInfo.genericName ? 'generic' : 'brand')
+                setSelectedBrandType(detailedInfo.genericName ? 'generic' : 'brand')
+                setSelectedBrandName(detailedInfo.genericName || detailedInfo.brandName)
               } else if (detailedInfo.brandName || detailedInfo.genericName) {
                 // If only one name is available, use it
-                const name = detailedInfo.brandName || detailedInfo.genericName
+                const drugName = detailedInfo.brandName || detailedInfo.genericName || ''
                 const variations = [
-                  { name, type: 'generic', gsn: gsnFromSearch }
+                  { name: drugName, type: 'generic', gsn: gsnFromSearch }
                 ]
                 setBrandVariations(variations)
-                setSelectedBrand('generic')
+                setSelectedBrandType('generic')
+                setSelectedBrandName(drugName)
               }
               
               // Combine the information
@@ -1275,17 +1281,19 @@ export default function DrugPage({ params }: Props) {
   
   // Handle brand change
   const handleBrandChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newBrand = e.target.value;
-    setSelectedBrand(newBrand);
+    const newBrandName = e.target.value;
     
     // If we have brand variations, find the matching one
     if (brandVariations.length > 0) {
       const selectedVariation = brandVariations.find(
-        variation => variation.type === newBrand || variation.name.toLowerCase() === newBrand.toLowerCase()
+        variation => variation.name === newBrandName
       );
       
       if (selectedVariation) {
         console.log(`Selected brand variation: ${selectedVariation.name}`);
+        
+        // Update the selected brand type (generic/brand)
+        setSelectedBrandType(selectedVariation.type);
         
         // Get the drug name from the selected variation
         const drugName = selectedVariation.name;
@@ -1397,12 +1405,12 @@ export default function DrugPage({ params }: Props) {
                 <label className="block text-xs font-medium text-gray-600 mb-1">Brand</label>
                 <select 
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={selectedBrand}
+                  value={selectedBrandName}
                   onChange={handleBrandChange}
                   disabled={isLoading || brandVariations.length === 0}
                 >
                   {brandVariations.map((variation, index) => (
-                    <option key={`brand-${index}`} value={variation.type}>
+                    <option key={`brand-${index}`} value={variation.name}>
                       {variation.name}
                     </option>
                   ))}
